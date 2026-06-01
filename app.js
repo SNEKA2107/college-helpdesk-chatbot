@@ -342,11 +342,7 @@ function populateUserInfo() {
   document.querySelectorAll('[data-user-name]').forEach(function (el) { el.textContent = user.name || 'Student'; });
   document.querySelectorAll('[data-user-id]').forEach(function (el) { el.textContent = user.studentId || ''; });
   document.querySelectorAll('[data-user-initial]').forEach(function (el) {
-    if (user.photo) {
-      el.innerHTML = '<img src="' + user.photo + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" alt="Profile">';
-    } else {
-      el.innerHTML = (user.name || 'S')[0].toUpperCase();
-    }
+    el.innerHTML = (user.name || 'S')[0].toUpperCase();
   });
 }
 

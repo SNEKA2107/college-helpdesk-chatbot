@@ -272,7 +272,7 @@ async function loadDashboard() {
 
     // Mobile notices
     const mPanel = document.getElementById('mobileNoticesPanel');
-    if (mPanel) {
+    if (mPanel && window.innerWidth <= 768) {
       mPanel.style.display = 'flex';
       if (!notices.length) {
         mPanel.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">No notices.</p>';

@@ -100,4 +100,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 CampusAssist backend running on http://localhost:${PORT}`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📁 Static files: ${require('path').join(__dirname, '..')}`);
 });

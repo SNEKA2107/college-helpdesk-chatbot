@@ -1,0 +1,286 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Requests | CampusAssist</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.req-card{background:var(--white);border-radius:var(--radius);padding:20px 24px;border:1px solid var(--border);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;transition:box-shadow 0.2s;}
+.req-card:hover{box-shadow:var(--shadow-md);}
+.req-left{display:flex;align-items:center;gap:16px;}
+.req-icon{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.req-info h3{font-size:15px;font-weight:700;color:var(--dark);}
+.req-info p{font-size:13px;color:var(--text-muted);margin-top:2px;}
+.req-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.show{display:flex;}
+.modal{background:var(--white);border-radius:var(--radius-lg);padding:32px;width:90%;max-width:500px;position:relative;}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);}
+.modal-close:hover{color:var(--text);}
+.modal h3{font-size:20px;font-weight:800;color:var(--dark);margin-bottom:6px;}
+.modal p.sub{font-size:14px;color:var(--text-muted);margin-bottom:24px;}
+</style>
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Main</p>
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="chat.html" class="nav-link"><span class="nav-icon">💬</span> Chat with Bot</a>
+      <a href="requests.html" class="nav-link active"><span class="nav-icon">📋</span> My Requests</a>
+      <p class="nav-section-title">Academics</p>
+      <a href="attendance.html" class="nav-link"><span class="nav-icon">✅</span> Attendance</a>
+      <a href="status.html" class="nav-link"><span class="nav-icon">📄</span> Marksheet Status</a>
+      <a href="exam.html" class="nav-link"><span class="nav-icon">📘</span> Exam Info</a>
+      <a href="fees.html" class="nav-link"><span class="nav-icon">💳</span> Fee Information</a>
+      <a href="timetable.html" class="nav-link"><span class="nav-icon">📅</span> Timetable</a>
+      <a href="cgpa.html" class="nav-link"><span class="nav-icon">🎯</span> CGPA Calculator</a>
+      <p class="nav-section-title">Services</p>
+      <a href="leave.html" class="nav-link"><span class="nav-icon">📝</span> Leave Application</a>
+      <a href="od.html" class="nav-link"><span class="nav-icon">🏅</span> OD Request</a>
+      <a href="events.html" class="nav-link"><span class="nav-icon">🎉</span> Events</a>
+      <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
+      <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
+      <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
+      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>S</div>
+        <div class="user-info"><h4 data-user-name>Student</h4><span data-user-id>22IT101</span></div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">My Requests</h1>
+      </div>
+      <div class="topbar-right">
+        <button id="themeToggleBtn" class="theme-btn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme">🌙 <span class="theme-label">Dark</span></button>
+        <a href="notices.html" class="notif-btn">🔔<span class="notif-dot"></span></a>
+        <div class="topbar-profile">
+          <div class="topbar-avatar" data-user-initial>S</div>
+          <span class="topbar-name" data-user-name>Student</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h2>My Requests</h2>
+          <p>Track all your document and service requests</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal()">+ New Request</button>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="flex gap-3 mb-6" style="flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" id="tabAll" onclick="filterRequests('all')">All</button>
+        <button class="btn btn-secondary btn-sm" id="tabDone" onclick="filterRequests('Completed')">Completed</button>
+        <button class="btn btn-secondary btn-sm" id="tabProg" onclick="filterRequests('progress')">In Progress</button>
+        <button class="btn btn-secondary btn-sm" id="tabPend" onclick="filterRequests('Submitted')">Pending</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;" id="reqList">
+        <p style="color:var(--text-muted);text-align:center;padding:32px 0;">Loading requests…</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- New Request Modal -->
+<div class="modal-overlay" id="reqModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>New Request</h3>
+    <p class="sub">Submit a new document or service request</p>
+    <div class="form-group">
+      <label class="form-label">Request Type</label>
+      <select class="form-select" id="reqType" style="padding-left:14px;">
+        <option value="">Select request type</option>
+        <option>Marksheet</option>
+        <option>Bonafide Certificate</option>
+        <option>Transfer Certificate</option>
+        <option>Migration Certificate</option>
+        <option>Conduct Certificate</option>
+        <option>Provisional Certificate</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Purpose / Reason</label>
+      <textarea class="form-textarea" id="reqReason" placeholder="Briefly describe why you need this document…"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Urgency</label>
+      <select class="form-select" id="reqUrgency" style="padding-left:14px;">
+        <option>Normal (5-7 working days)</option>
+        <option>Urgent (2-3 working days)</option>
+        <option>Emergency (1 day)</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="submitRequest()">Submit Request</button>
+  </div>
+</div>
+
+<!-- View Details Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    <h3 id="detailTitle">Request Details</h3>
+    <p class="sub">Current request status and information</p>
+    <div class="step-row"><div class="step-left"><div class="step-dot dot-success"></div><span style="font-size:13.5px;">Request Submitted</span></div><span class="badge badge-success">Done</span></div>
+    <div class="step-row" id="verifyRow"><div class="step-left"><div class="step-dot dot-success"></div><span style="font-size:13.5px;">Under Review</span></div><span class="badge badge-success" id="verifyBadge">Done</span></div>
+    <div class="step-row" id="processRow"><div class="step-left"><div class="step-dot dot-primary" id="processDot"></div><span style="font-size:13.5px;">Processing</span></div><span class="badge badge-primary" id="processBadge">In Progress</span></div>
+    <div class="step-row" id="readyRow"><div class="step-left"><div class="step-dot dot-muted" id="readyDot"></div><span style="font-size:13.5px;">Ready for Collection</span></div><span class="badge badge-muted" id="readyBadge">Pending</span></div>
+    <div class="alert alert-info mt-4" id="detailMsg"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!requireAuth()) throw new Error('redirect');
+populateUserInfo();
+
+let allRequests = [];
+
+const statusBadge = {
+  'Submitted':             '<span class="badge badge-warning">🕐 Submitted</span>',
+  'Under Review':          '<span class="badge badge-primary">🔍 Under Review</span>',
+  'Processing':            '<span class="badge badge-primary">⏳ Processing</span>',
+  'Ready for Collection':  '<span class="badge badge-success">📦 Ready for Collection</span>',
+  'Completed':             '<span class="badge badge-success">✅ Completed</span>',
+  'Rejected':              '<span class="badge badge-danger">❌ Rejected</span>',
+};
+
+function isInProgress(status) {
+  return ['Under Review','Processing','Ready for Collection'].includes(status);
+}
+
+function renderRequests(requests) {
+  const list = document.getElementById('reqList');
+  if (!requests.length) {
+    list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:32px 0;">No requests found. Click "+ New Request" to submit one.</p>';
+    return;
+  }
+  list.innerHTML = requests.map(r => `
+    <div class="req-card" data-status="${r.status}" data-id="${r._id}">
+      <div class="req-left">
+        <div class="req-icon si-blue">📄</div>
+        <div class="req-info">
+          <h3>${r.type}</h3>
+          <p>Submitted ${formatDate(r.createdAt)} · Ref: ${r.refNumber || '—'}</p>
+        </div>
+      </div>
+      <div class="req-right">
+        ${statusBadge[r.status] || ''}
+        <button class="btn btn-secondary btn-sm" onclick="viewRequest('${r._id}')">View Details</button>
+      </div>
+    </div>`).join('');
+}
+
+async function loadRequests() {
+  const result = await apiCall('/requests');
+  if (result.ok) {
+    allRequests = result.data.requests;
+    renderRequests(allRequests);
+  } else {
+    document.getElementById('reqList').innerHTML = '<p style="color:var(--danger);text-align:center;padding:32px 0;">Failed to load requests. Please refresh.</p>';
+  }
+}
+
+loadRequests();
+
+function openModal() { document.getElementById('reqModal').classList.add('show'); }
+function closeModal() {
+  document.getElementById('reqModal').classList.remove('show');
+  document.getElementById('reqType').value = '';
+  document.getElementById('reqReason').value = '';
+  document.getElementById('reqUrgency').selectedIndex = 0;
+}
+
+async function submitRequest() {
+  const type    = document.getElementById('reqType').value;
+  const purpose = document.getElementById('reqReason').value.trim();
+  const urgency = document.getElementById('reqUrgency').value.split(' ')[0];
+
+  if (!type)    { showToast('Please select a request type', 'error'); return; }
+  if (!purpose) { showToast('Please provide a reason', 'error'); return; }
+
+  const btn = document.querySelector('#reqModal .btn-primary');
+  btn.textContent = 'Submitting…';
+  btn.disabled = true;
+
+  const result = await apiCall('/requests', {
+    method: 'POST',
+    body: JSON.stringify({ type, purpose, urgency })
+  });
+
+  btn.textContent = 'Submit Request';
+  btn.disabled = false;
+
+  if (result.ok) {
+    closeModal();
+    showToast('Request submitted successfully!', 'success');
+    loadRequests();
+  } else {
+    showToast(result.error || 'Failed to submit request', 'error');
+  }
+}
+
+function viewRequest(id) {
+  const r = allRequests.find(x => x._id === id);
+  if (!r) return;
+  document.getElementById('detailTitle').textContent = r.type;
+  document.getElementById('detailMsg').textContent = r.remarks || 'Your request is being processed. You will be notified of updates.';
+
+  const statusOrder = ['Submitted','Under Review','Processing','Ready for Collection','Completed'];
+  const idx = statusOrder.indexOf(r.status);
+  const isRejected = r.status === 'Rejected';
+
+  const verifyDone  = idx >= 1 || isRejected;
+  const processDone = idx >= 2 || isRejected;
+  const readyDone   = idx >= 3;
+  const completeDone = idx >= 4;
+
+  document.getElementById('verifyBadge').className  = `badge ${verifyDone  ? 'badge-success' : 'badge-muted'}`;
+  document.getElementById('verifyBadge').textContent = verifyDone ? 'Done' : 'Pending';
+  document.getElementById('processDot').className   = `step-dot ${processDone ? 'dot-success' : 'dot-muted'}`;
+  document.getElementById('processBadge').className = `badge ${processDone ? 'badge-success' : 'badge-muted'}`;
+  document.getElementById('processBadge').textContent = processDone ? 'Done' : 'Pending';
+  document.getElementById('readyDot').className     = `step-dot ${readyDone ? 'dot-success' : 'dot-muted'}`;
+  document.getElementById('readyBadge').className   = `badge ${readyDone ? 'badge-success' : 'badge-muted'}`;
+  document.getElementById('readyBadge').textContent = readyDone ? 'Done' : 'Pending';
+
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeDetailModal() { document.getElementById('detailModal').classList.remove('show'); }
+
+function filterRequests(status) {
+  document.querySelectorAll('[id^="tab"]').forEach(b => b.className = 'btn btn-secondary btn-sm');
+  const tabMap = { all:'tabAll', Completed:'tabDone', progress:'tabProg', Submitted:'tabPend' };
+  if (tabMap[status]) document.getElementById(tabMap[status]).className = 'btn btn-primary btn-sm';
+  const filtered = status === 'all' ? allRequests
+    : status === 'progress' ? allRequests.filter(r => isInProgress(r.status))
+    : allRequests.filter(r => r.status === status);
+  renderRequests(filtered);
+}
+</script>
+</body>
+</html>

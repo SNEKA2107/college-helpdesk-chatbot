@@ -1,0 +1,246 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Search | CampusAssist</title>
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Main</p>
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="chat.html" class="nav-link"><span class="nav-icon">💬</span> Chat with Bot</a>
+      <a href="requests.html" class="nav-link"><span class="nav-icon">📋</span> My Requests</a>
+      <p class="nav-section-title">Academics</p>
+      <a href="attendance.html" class="nav-link"><span class="nav-icon">✅</span> Attendance</a>
+      <a href="status.html" class="nav-link"><span class="nav-icon">📄</span> Marksheet Status</a>
+      <a href="exam.html" class="nav-link"><span class="nav-icon">📘</span> Exam Info</a>
+      <a href="fees.html" class="nav-link"><span class="nav-icon">💳</span> Fee Information</a>
+      <a href="timetable.html" class="nav-link"><span class="nav-icon">📅</span> Timetable</a>
+      <a href="cgpa.html" class="nav-link"><span class="nav-icon">🎯</span> CGPA Calculator</a>
+      <p class="nav-section-title">Services</p>
+      <a href="leave.html" class="nav-link"><span class="nav-icon">📝</span> Leave Application</a>
+      <a href="od.html" class="nav-link"><span class="nav-icon">🏅</span> OD Request</a>
+      <a href="events.html" class="nav-link"><span class="nav-icon">🎉</span> Events</a>
+      <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
+      <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
+      <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
+      <a href="student-search.html" class="nav-link active"><span class="nav-icon">🔍</span> Student Search</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>S</div>
+        <div class="user-info"><h4 data-user-name>Student</h4><span data-user-id>22IT101</span></div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">Student Search</h1>
+      </div>
+      <div class="topbar-right">
+        <button id="themeToggleBtn" class="theme-btn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme">🌙 <span class="theme-label">Dark</span></button>
+        <a href="notices.html" class="notif-btn">🔔<span class="notif-dot"></span></a>
+        <div class="topbar-profile">
+          <div class="topbar-avatar" data-user-initial>S</div>
+          <span class="topbar-name" data-user-name>Student</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h2>Student Search</h2>
+          <p>Look up student details by Register Number or Name</p>
+        </div>
+      </div>
+
+      <!-- Search Bar -->
+      <div class="card mb-6">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div class="input-icon-wrap" style="flex:1;min-width:200px;">
+            <span class="input-icon">🔍</span>
+            <input type="text" id="searchInput" class="form-input" placeholder="Enter Register Number or Student Name…" onkeydown="if(event.key==='Enter') doSearch()">
+          </div>
+          <select class="form-select" id="filterDept" style="width:160px;padding-left:14px;">
+            <option value="">All Departments</option>
+            <option>IT</option><option>CSE</option><option>ECE</option><option>EEE</option><option>MECH</option>
+          </select>
+          <select class="form-select" id="filterSem" style="width:140px;padding-left:14px;">
+            <option value="">All Semesters</option>
+            <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+            <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+          </select>
+          <button class="btn btn-primary" onclick="doSearch()">Search</button>
+          <button class="btn btn-secondary" onclick="clearSearch()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="resultsSection">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title" id="resultsTitle">All Students</div>
+            <span class="text-muted" id="resultsCount">Showing 6 results</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="studentsTable">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Register No.</th>
+                  <th>Department</th>
+                  <th>Semester</th>
+                  <th>Email</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="studentsBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Modal -->
+      <div class="overlay" id="detailOverlay" style="z-index:200;">
+        <div style="background:var(--white);border-radius:16px;padding:32px;width:90%;max-width:520px;position:relative;max-height:90vh;overflow-y:auto;">
+          <button onclick="closeDetail()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button>
+          <div style="text-align:center;margin-bottom:24px;">
+            <div id="detailAvatar" style="width:72px;height:72px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;margin:0 auto 12px;"></div>
+            <h3 id="detailName" style="font-size:20px;font-weight:800;color:var(--dark);"></h3>
+            <p id="detailRegNo" style="font-size:14px;color:var(--text-muted);"></p>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" id="detailGrid"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!requireAuth()) throw new Error('redirect');
+populateUserInfo();
+
+let _currentStudents = [];
+
+function renderTable(data) {
+  _currentStudents = data;
+  const body = document.getElementById('studentsBody');
+  document.getElementById('resultsCount').textContent = `Showing ${data.length} result${data.length !== 1 ? 's' : ''}`;
+  if (!data.length) {
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);">No students found matching your search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = data.map((s, i) => `
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">${(s.name||'?')[0]}</div>
+          <div style="font-weight:600;font-size:13.5px;">${s.name}</div>
+        </div>
+      </td>
+      <td style="font-weight:600;">${s.studentId}</td>
+      <td>${s.department || '—'}</td>
+      <td>${s.semester || '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted);">${s.email || '—'}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="showDetail(${i})">View</button></td>
+    </tr>`).join('');
+}
+
+async function doSearch() {
+  const q    = document.getElementById('searchInput').value.trim();
+  const dept = document.getElementById('filterDept').value;
+  const sem  = document.getElementById('filterSem').value;
+
+  if (!q && !dept && !sem) {
+    showEmptyState();
+    return;
+  }
+
+  document.getElementById('studentsBody').innerHTML =
+    `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">Searching…</td></tr>`;
+
+  const query = q || dept || sem;
+  const res = await apiCall(`/students/search/${encodeURIComponent(query)}`);
+  if (!res.ok) {
+    document.getElementById('studentsBody').innerHTML =
+      `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--danger);">Search failed. Please try again.</td></tr>`;
+    return;
+  }
+
+  let students = res.data.students || [];
+  if (dept) students = students.filter(s => s.department === dept);
+  if (sem)  students = students.filter(s => String(s.semester) === sem.replace(/[a-z]+$/i,''));
+
+  document.getElementById('resultsTitle').textContent = `Search: "${query}"`;
+  document.getElementById('resultsCount').textContent = `Showing ${students.length} result${students.length !== 1 ? 's' : ''}`;
+  renderTable(students);
+}
+
+function showEmptyState() {
+  document.getElementById('resultsTitle').textContent = 'All Students';
+  document.getElementById('resultsCount').textContent = 'Enter a name or register number to search';
+  document.getElementById('studentsBody').innerHTML =
+    `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">
+      <div style="font-size:32px;margin-bottom:8px;">🔍</div>
+      <div style="font-weight:600;margin-bottom:4px;">Search for a student</div>
+      <div style="font-size:13px;">Enter a name or register number above</div>
+    </td></tr>`;
+  _currentStudents = [];
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('filterDept').value  = '';
+  document.getElementById('filterSem').value   = '';
+  showEmptyState();
+}
+
+function showDetail(idx) {
+  const s = _currentStudents[idx];
+  if (!s) return;
+  document.getElementById('detailAvatar').textContent = (s.name || '?')[0];
+  document.getElementById('detailName').textContent   = s.name;
+  document.getElementById('detailRegNo').textContent  = s.studentId + ' · ' + (s.department || '') + ' Department';
+  document.getElementById('detailGrid').innerHTML = [
+    ['📋 Register No.', s.studentId],
+    ['🏫 Department',   s.department || '—'],
+    ['📚 Semester',     s.semester   || '—'],
+    ['📧 Email',        s.email      || '—'],
+    ['📱 Phone',        s.phone      || '—'],
+    ['🔖 Role',         s.role       || 'student'],
+  ].map(([label, val]) => `
+    <div style="padding:12px;background:var(--bg2);border-radius:8px;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:3px;">${label}</div>
+      <div style="font-size:14px;font-weight:600;color:var(--dark);">${val}</div>
+    </div>`).join('');
+  document.getElementById('detailOverlay').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('show');
+}
+
+// Init
+showEmptyState();
+</script>
+</body>
+</html>

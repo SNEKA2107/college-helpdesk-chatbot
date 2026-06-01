@@ -1,0 +1,12 @@
+node_modules/
+backend/node_modules/
+.env
+backend/.env
+*.log
+dist/
+screenshots/
+test-screenshots/
+test-login.js
+open-login.js
+*.png
+.claude/

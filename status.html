@@ -1,0 +1,280 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marksheet Status | CampusAssist</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.timeline{position:relative;padding-left:32px;}
+.timeline::before{content:'';position:absolute;left:11px;top:0;bottom:0;width:2px;background:var(--border);}
+.tl-item{position:relative;margin-bottom:28px;}
+.tl-dot{
+  position:absolute;left:-32px;top:4px;
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;border:3px solid var(--white);z-index:1;
+}
+.tl-dot.done{background:var(--secondary);}
+.tl-dot.active{background:var(--primary);animation:pulse 2s infinite;}
+.tl-dot.waiting{background:#cbd5e1;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,0.4);}50%{box-shadow:0 0 0 8px rgba(79,70,229,0);}}
+.tl-content{background:var(--bg2);border-radius:10px;padding:14px 18px;border:1px solid var(--border);}
+.tl-content.done-bg{border-left:3px solid var(--secondary);}
+.tl-content.active-bg{border-left:3px solid var(--primary);}
+.tl-date{font-size:12px;color:var(--text-muted);margin-top:3px;}
+</style>
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Main</p>
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="chat.html" class="nav-link"><span class="nav-icon">💬</span> Chat with Bot</a>
+      <a href="requests.html" class="nav-link"><span class="nav-icon">📋</span> My Requests</a>
+      <p class="nav-section-title">Academics</p>
+      <a href="attendance.html" class="nav-link"><span class="nav-icon">✅</span> Attendance</a>
+      <a href="status.html" class="nav-link active"><span class="nav-icon">📄</span> Marksheet Status</a>
+      <a href="exam.html" class="nav-link"><span class="nav-icon">📘</span> Exam Info</a>
+      <a href="fees.html" class="nav-link"><span class="nav-icon">💳</span> Fee Information</a>
+      <a href="timetable.html" class="nav-link"><span class="nav-icon">📅</span> Timetable</a>
+      <a href="cgpa.html" class="nav-link"><span class="nav-icon">🎯</span> CGPA Calculator</a>
+      <p class="nav-section-title">Services</p>
+      <a href="leave.html" class="nav-link"><span class="nav-icon">📝</span> Leave Application</a>
+      <a href="od.html" class="nav-link"><span class="nav-icon">🏅</span> OD Request</a>
+      <a href="events.html" class="nav-link"><span class="nav-icon">🎉</span> Events</a>
+      <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
+      <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
+      <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
+      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>S</div>
+        <div class="user-info"><h4 data-user-name>Student</h4><span data-user-id>22IT101</span></div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">Marksheet Status</h1>
+      </div>
+      <div class="topbar-right">
+        <button id="themeToggleBtn" class="theme-btn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme">🌙 <span class="theme-label">Dark</span></button>
+        <a href="notices.html" class="notif-btn">🔔<span class="notif-dot"></span></a>
+        <div class="topbar-profile">
+          <div class="topbar-avatar" data-user-initial>S</div>
+          <span class="topbar-name" data-user-name>Student</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h2>Marksheet Status</h2>
+          <p>Track the progress of your document request</p>
+        </div>
+        <button class="btn btn-primary" onclick="window.location.href='requests.html'">+ New Request</button>
+      </div>
+
+      <div id="statusAlert" class="alert alert-info mb-6">
+        <span>ℹ️</span>
+        <div id="statusAlertText">Loading your document requests…</div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Current Request Progress -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📄 Current Request – Marksheet</div>
+            <span class="badge badge-primary">In Progress</span>
+          </div>
+
+          <div id="currentRequestDetail">
+            <div style="text-align:center;padding:40px;color:var(--text-muted);">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <!-- Request New Document -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📋 Request a Document</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <button class="btn btn-secondary btn-full" style="justify-content:flex-start;gap:10px;" onclick="window.location.href='requests.html'">📄 Marksheet</button>
+              <button class="btn btn-secondary btn-full" style="justify-content:flex-start;gap:10px;" onclick="window.location.href='requests.html'">📜 Bonafide Certificate</button>
+              <button class="btn btn-secondary btn-full" style="justify-content:flex-start;gap:10px;" onclick="window.location.href='requests.html'">📋 Transfer Certificate</button>
+              <button class="btn btn-secondary btn-full" style="justify-content:flex-start;gap:10px;" onclick="window.location.href='requests.html'">🏅 Conduct Certificate</button>
+              <button class="btn btn-secondary btn-full" style="justify-content:flex-start;gap:10px;" onclick="window.location.href='requests.html'">📃 Provisional Certificate</button>
+            </div>
+          </div>
+
+          <!-- All Requests -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📊 All Requests History</div>
+            </div>
+            <div id="allRequestsList">
+              <div style="text-align:center;padding:20px;color:var(--text-muted);">Loading…</div>
+            </div>
+            <div style="margin-top:12px;">
+              <a href="requests.html" class="btn btn-outline btn-full btn-sm">View All Requests →</a>
+            </div>
+          </div>
+
+          <!-- Collection Info -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🏫 Collection Information</div>
+            </div>
+            <div style="font-size:13.5px;line-height:1.8;color:var(--text);">
+              <div style="margin-bottom:8px;"><strong>Office Location:</strong> Administrative Block, Room 101</div>
+              <div style="margin-bottom:8px;"><strong>Collection Hours:</strong> Mon–Fri, 9 AM – 4 PM</div>
+              <div style="margin-bottom:8px;"><strong>Required:</strong> Original ID Card + Acknowledgment Slip</div>
+              <div><strong>Contact:</strong> +91 98765 43210</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="app.js"></script>
+<script>
+if (!requireAuth()) throw new Error('redirect');
+populateUserInfo();
+
+const fmtDate = iso => new Date(iso).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+const statusSteps = ['Submitted','Under Review','Processing','Ready for Collection','Completed'];
+const statusProgress = { Submitted:20, 'Under Review':40, Processing:60, 'Ready for Collection':85, Completed:100, Rejected:0 };
+const statusBadge = {
+  Submitted:'badge-muted', 'Under Review':'badge-warning', Processing:'badge-primary',
+  'Ready for Collection':'badge-info', Completed:'badge-success', Rejected:'badge-danger'
+};
+const dotClass = { done:'done', active:'active', waiting:'waiting' };
+
+function buildTimeline(req) {
+  const stepIdx = statusSteps.indexOf(req.status);
+  return statusSteps.map((step, i) => {
+    const isDone   = i < stepIdx || req.status === 'Completed';
+    const isActive = i === stepIdx && req.status !== 'Completed' && req.status !== 'Rejected';
+    const dotCls   = isDone ? 'done' : isActive ? 'active' : 'waiting';
+    const contentCls = isDone ? 'done-bg' : isActive ? 'active-bg' : '';
+    const nameStyle  = (!isDone && !isActive) ? 'color:var(--text-muted);' : '';
+    return `
+      <div class="tl-item">
+        <div class="tl-dot ${dotCls}">${isDone ? '✓' : isActive ? '●' : ''}</div>
+        <div class="tl-content ${contentCls}">
+          <div style="font-weight:600;font-size:14px;${nameStyle}">${step}</div>
+          <div class="tl-date">${isActive ? 'In Progress' : isDone ? 'Completed' : 'Pending'}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadStatus() {
+  const res = await apiCall('/requests');
+  if (!res.ok) {
+    document.getElementById('statusAlertText').textContent = 'Could not load requests. Please try again.';
+    document.getElementById('currentRequestDetail').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><h3>No Requests Found</h3><p>Submit a document request to track its progress.</p></div>';
+    document.getElementById('allRequestsList').innerHTML = '';
+    return;
+  }
+
+  const requests = res.data.requests || [];
+
+  // Current request: most recent non-completed request, or most recent overall
+  const active = requests.find(r => r.status !== 'Completed' && r.status !== 'Rejected');
+  const current = active || requests[0];
+
+  if (!current) {
+    document.getElementById('statusAlert').className = 'alert alert-info mb-6';
+    document.getElementById('statusAlertText').textContent = 'No document requests yet. Submit a request from My Requests page.';
+    document.getElementById('currentRequestDetail').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><h3>No Requests Yet</h3><p>Click "New Request" to submit your first document request.</p></div>';
+    document.getElementById('allRequestsList').innerHTML = '';
+    return;
+  }
+
+  // Update alert
+  const alertEl = document.getElementById('statusAlert');
+  const prog = statusProgress[current.status] || 0;
+  if (current.status === 'Completed') {
+    alertEl.className = 'alert alert-success mb-6';
+    document.getElementById('statusAlertText').innerHTML = `Your <strong>${current.type}</strong> request is <strong>completed</strong> and ready for collection.`;
+  } else if (current.status === 'Rejected') {
+    alertEl.className = 'alert alert-danger mb-6';
+    document.getElementById('statusAlertText').innerHTML = `Your <strong>${current.type}</strong> request was <strong>rejected</strong>. Please contact the office for details.`;
+  } else {
+    alertEl.className = 'alert alert-info mb-6';
+    document.getElementById('statusAlertText').innerHTML = `Your <strong>${current.type}</strong> is currently being processed. Estimated completion: <strong>3–5 working days</strong>.`;
+  }
+
+  // Card title badge
+  document.querySelector('#currentRequestDetail').closest('.card').querySelector('.card-title').textContent = `📄 Current Request – ${current.type}`;
+  const cardBadgeEl = document.querySelector('#currentRequestDetail').closest('.card').querySelector('.badge');
+  if (cardBadgeEl) { cardBadgeEl.className = `badge ${statusBadge[current.status] || 'badge-muted'}`; cardBadgeEl.textContent = current.status; }
+
+  document.getElementById('currentRequestDetail').innerHTML = `
+    <div style="margin-bottom:24px;padding:14px;background:var(--bg2);border-radius:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:13px;color:var(--text-muted);">Request ID</span>
+        <span style="font-size:13px;font-weight:600;">${current._id.slice(-8).toUpperCase()}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:13px;color:var(--text-muted);">Submitted On</span>
+        <span style="font-size:13px;font-weight:600;">${fmtDate(current.createdAt || current.submittedAt)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:13px;color:var(--text-muted);">Document Type</span>
+        <span style="font-size:13px;font-weight:600;">${current.type}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:13px;color:var(--text-muted);">Urgency</span>
+        <span style="font-size:13px;font-weight:600;color:var(--primary);">${current.urgency || 'Normal'}</span>
+      </div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+        <span style="font-weight:600;">Overall Progress</span>
+        <span style="color:var(--primary);font-weight:700;">${prog}%</span>
+      </div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:${prog}%;background:linear-gradient(90deg,var(--primary),var(--primary-light));border-radius:4px;transition:width 1s ease;"></div>
+      </div>
+    </div>
+    <div class="timeline">${buildTimeline(current)}</div>`;
+
+  // All requests list
+  if (!requests.length) {
+    document.getElementById('allRequestsList').innerHTML = '<p style="color:var(--text-muted);font-size:13.5px;">No requests yet.</p>';
+    return;
+  }
+  const dotColors = { Completed:'dot-success', Processing:'dot-primary', 'Under Review':'dot-warning', 'Ready for Collection':'dot-primary', Submitted:'dot-muted', Rejected:'dot-danger' };
+  document.getElementById('allRequestsList').innerHTML = requests.slice(0, 5).map(r => `
+    <div class="step-row">
+      <div class="step-left"><div class="step-dot ${dotColors[r.status] || 'dot-muted'}"></div><span style="font-size:13.5px;">${r.type}</span></div>
+      <span class="badge ${statusBadge[r.status] || 'badge-muted'}">${r.status}</span>
+    </div>`).join('');
+}
+
+loadStatus();
+</script>
+</body>
+</html>

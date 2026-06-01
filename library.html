@@ -1,0 +1,284 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library | CampusAssist</title>
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Main</p>
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="chat.html" class="nav-link"><span class="nav-icon">💬</span> Chat with Bot</a>
+      <a href="requests.html" class="nav-link"><span class="nav-icon">📋</span> My Requests</a>
+      <p class="nav-section-title">Academics</p>
+      <a href="attendance.html" class="nav-link"><span class="nav-icon">✅</span> Attendance</a>
+      <a href="status.html" class="nav-link"><span class="nav-icon">📄</span> Marksheet Status</a>
+      <a href="exam.html" class="nav-link"><span class="nav-icon">📘</span> Exam Info</a>
+      <a href="fees.html" class="nav-link"><span class="nav-icon">💳</span> Fee Information</a>
+      <a href="timetable.html" class="nav-link"><span class="nav-icon">📅</span> Timetable</a>
+      <a href="cgpa.html" class="nav-link"><span class="nav-icon">🎯</span> CGPA Calculator</a>
+      <p class="nav-section-title">Services</p>
+      <a href="leave.html" class="nav-link"><span class="nav-icon">📝</span> Leave Application</a>
+      <a href="od.html" class="nav-link"><span class="nav-icon">🏅</span> OD Request</a>
+      <a href="events.html" class="nav-link"><span class="nav-icon">🎉</span> Events</a>
+      <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
+      <a href="library.html" class="nav-link active"><span class="nav-icon">📚</span> Library</a>
+      <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
+      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>S</div>
+        <div class="user-info"><h4 data-user-name>Student</h4><span data-user-id>22IT101</span></div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">Library</h1>
+      </div>
+      <div class="topbar-right">
+        <button id="themeToggleBtn" class="theme-btn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme">🌙 <span class="theme-label">Dark</span></button>
+        <a href="notices.html" class="notif-btn">🔔<span class="notif-dot"></span></a>
+        <div class="topbar-profile">
+          <div class="topbar-avatar" data-user-initial>S</div>
+          <span class="topbar-name" data-user-name>Student</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h2>Library</h2>
+          <p>Search books, view borrowed books, and library information</p>
+        </div>
+      </div>
+
+      <!-- Library Stats -->
+      <div class="stats-grid mb-6">
+        <div class="stat-card">
+          <div class="stat-icon si-blue">📚</div>
+          <div class="stat-info"><h3 id="statTotalBooks">…</h3><p>Total Books</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-green">✅</div>
+          <div class="stat-info"><h3 id="statAvailable">…</h3><p>Available Now</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-orange">📖</div>
+          <div class="stat-info"><h3 id="statBorrowed">…</h3><p>My Borrowed Books</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-purple">📅</div>
+          <div class="stat-info"><h3 id="statNextDue">—</h3><p>Next Due Date</p></div>
+        </div>
+      </div>
+
+      <!-- Search + Hours -->
+      <div class="grid-2 mb-6">
+        <!-- Book Search -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔍 Search Book Catalog</div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <input type="text" id="bookSearch" class="form-input" placeholder="Search by title, author, or ISBN…" style="flex:1;" onkeydown="if(event.key==='Enter') searchBooks()">
+            <button class="btn btn-primary" onclick="searchBooks()">Search</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="searchByCategory('IT')">IT</button>
+            <button class="btn btn-secondary btn-sm" onclick="searchByCategory('AI')">AI / ML</button>
+            <button class="btn btn-secondary btn-sm" onclick="searchByCategory('Java')">Java</button>
+            <button class="btn btn-secondary btn-sm" onclick="searchByCategory('DBMS')">DBMS</button>
+            <button class="btn btn-secondary btn-sm" onclick="searchByCategory('Python')">Python</button>
+            <button class="btn btn-secondary btn-sm" onclick="searchByCategory('Math')">Maths</button>
+          </div>
+          <div id="searchResults">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>Title</th><th>Author</th><th>Category</th><th>Status</th></tr>
+                </thead>
+                <tbody id="booksBody">
+                  <tr><td>Introduction to Java</td><td>James Gosling</td><td>Programming</td><td><span class="badge badge-success">Available</span></td></tr>
+                  <tr><td>Database System Concepts</td><td>Silberschatz</td><td>DBMS</td><td><span class="badge badge-success">Available</span></td></tr>
+                  <tr><td>Artificial Intelligence</td><td>Stuart Russell</td><td>AI / ML</td><td><span class="badge badge-danger">Borrowed</span></td></tr>
+                  <tr><td>Computer Networks</td><td>Andrew Tanenbaum</td><td>Networking</td><td><span class="badge badge-success">Available</span></td></tr>
+                  <tr><td>Python Crash Course</td><td>Eric Matthes</td><td>Python</td><td><span class="badge badge-success">Available</span></td></tr>
+                  <tr><td>Design Patterns</td><td>Gang of Four</td><td>Software Eng.</td><td><span class="badge badge-warning">Reserved</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Library Info -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🕐 Library Hours</div>
+              <span class="badge badge-success">● Open Now</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;padding:10px;background:var(--primary-bg,#eef2ff);border-radius:8px;">
+                <span style="font-size:13.5px;font-weight:600;">Monday – Friday</span>
+                <span style="font-size:13.5px;">8:00 AM – 6:00 PM</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg2);border-radius:8px;">
+                <span style="font-size:13.5px;font-weight:600;">Saturday</span>
+                <span style="font-size:13.5px;">9:00 AM – 4:00 PM</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg2);border-radius:8px;">
+                <span style="font-size:13.5px;font-weight:600;">Sunday / Holidays</span>
+                <span style="font-size:13.5px;color:var(--danger);">Closed</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📖 My Borrowed Books</div>
+            </div>
+            <div id="borrowedBooks" style="display:flex;flex-direction:column;gap:10px;">
+              <div style="text-align:center;padding:20px;color:var(--text-muted);">Loading…</div>
+            </div>
+            <div class="alert alert-info mt-4">
+              <span>ℹ️</span>
+              <div>You can borrow up to <strong>3 books</strong> at a time. Fine: ₹2 per day after due date.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Library Rules -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Library Rules & Policies</div>
+        </div>
+        <div class="grid-3">
+          <div style="padding:16px;background:var(--bg2);border-radius:10px;">
+            <div style="font-size:24px;margin-bottom:8px;">📚</div>
+            <div style="font-weight:700;margin-bottom:4px;">Borrowing Limit</div>
+            <div style="font-size:13px;color:var(--text-muted);">Students can borrow up to 3 books at a time for a period of 14 days.</div>
+          </div>
+          <div style="padding:16px;background:var(--bg2);border-radius:10px;">
+            <div style="font-size:24px;margin-bottom:8px;">💰</div>
+            <div style="font-weight:700;margin-bottom:4px;">Late Fine</div>
+            <div style="font-size:13px;color:var(--text-muted);">₹2 per book per day for late return. Maximum fine of ₹100 per book.</div>
+          </div>
+          <div style="padding:16px;background:var(--bg2);border-radius:10px;">
+            <div style="font-size:24px;margin-bottom:8px;">🔕</div>
+            <div style="font-weight:700;margin-bottom:4px;">Silence Zone</div>
+            <div style="font-size:13px;color:var(--text-muted);">Maintain silence in the reading hall. Mobile phones must be on silent mode.</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!requireAuth()) throw new Error('redirect');
+populateUserInfo();
+
+const statusClasses = { Available:'badge-success', Borrowed:'badge-danger', Reserved:'badge-warning' };
+const fmtDate = iso => new Date(iso).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+function renderBooks(books) {
+  const body = document.getElementById('booksBody');
+  if (!books.length) {
+    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px;">No books found</td></tr>`;
+    return;
+  }
+  body.innerHTML = books.map(b => `
+    <tr>
+      <td>${b.title}</td>
+      <td>${b.author}</td>
+      <td>${b.category}</td>
+      <td><span class="badge ${statusClasses[b.status] || 'badge-muted'}">${b.status}</span></td>
+    </tr>`).join('');
+}
+
+function renderBorrowed(borrowed) {
+  const container = document.getElementById('borrowedBooks');
+  if (!borrowed.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:13.5px;padding:8px 0;">No books currently borrowed.</p>';
+    return;
+  }
+  const now = new Date();
+  container.innerHTML = borrowed.map(b => {
+    const due = new Date(b.dueDate);
+    const daysLeft = Math.ceil((due - now) / (1000*60*60*24));
+    const badgeClass = daysLeft < 0 ? 'badge-danger' : daysLeft <= 3 ? 'badge-warning' : 'badge-success';
+    const badgeText  = daysLeft < 0 ? `${Math.abs(daysLeft)} days overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft} days left`;
+    return `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${b.title} – ${b.author}</div>
+        <div style="font-size:12px;color:var(--text-muted);">Borrowed: ${fmtDate(b.borrowedDate)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+          <span style="font-size:12px;color:${daysLeft < 0 ? 'var(--danger)' : 'var(--secondary)'};font-weight:600;">Due: ${fmtDate(b.dueDate)}</span>
+          <span class="badge ${badgeClass}">⏰ ${badgeText}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadLibrary() {
+  const [booksRes, borrowedRes] = await Promise.all([
+    apiCall('/library'),
+    apiCall('/library/borrowed')
+  ]);
+  if (booksRes.ok) {
+    const books = booksRes.data.books;
+    renderBooks(books);
+    document.getElementById('statTotalBooks').textContent = books.length.toLocaleString('en-IN');
+    document.getElementById('statAvailable').textContent  = books.filter(b => b.status === 'Available').length.toLocaleString('en-IN');
+  }
+  if (borrowedRes.ok) {
+    const borrowed = borrowedRes.data.borrowed;
+    document.getElementById('statBorrowed').textContent = borrowed.length;
+    renderBorrowed(borrowed);
+    if (borrowed.length) {
+      const earliest = [...borrowed].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))[0];
+      const d = new Date(earliest.dueDate);
+      document.getElementById('statNextDue').textContent = d.toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+    } else {
+      document.getElementById('statNextDue').textContent = '—';
+    }
+  }
+}
+
+async function searchBooks() {
+  const q = document.getElementById('bookSearch').value.trim();
+  const res = await apiCall(`/library?search=${encodeURIComponent(q)}`);
+  if (res.ok) renderBooks(res.data.books);
+}
+
+async function searchByCategory(cat) {
+  document.getElementById('bookSearch').value = cat;
+  const res = await apiCall(`/library?category=${encodeURIComponent(cat)}`);
+  if (res.ok) renderBooks(res.data.books);
+}
+
+loadLibrary();
+</script>
+</body>
+</html>

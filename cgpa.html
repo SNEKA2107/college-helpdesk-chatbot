@@ -1,0 +1,288 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CGPA Calculator | CampusAssist</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.grade-table{width:100%;border-collapse:collapse;}
+.grade-table th{background:var(--bg2);padding:10px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;}
+.grade-table td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;}
+.grade-table tr:last-child td{border-bottom:none;}
+.grade-input{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--dark);font-size:13px;width:100%;}
+.grade-input:focus{outline:none;border-color:var(--primary);}
+.sem-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg2);border-radius:10px;cursor:pointer;margin-bottom:8px;transition:background .2s;}
+.sem-header:hover{background:var(--border);}
+.sem-title{font-weight:800;font-size:15px;color:var(--dark);}
+.sem-gpa{font-size:14px;font-weight:700;color:var(--primary);}
+.sem-body{margin-bottom:16px;}
+.cgpa-display{text-align:center;padding:32px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:16px;color:#fff;margin-bottom:24px;}
+.cgpa-val{font-size:64px;font-weight:900;line-height:1;}
+.cgpa-label{font-size:14px;opacity:.8;margin-top:8px;}
+.cgpa-grade{font-size:20px;font-weight:700;margin-top:8px;}
+.grade-ref-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.grade-ref-row:last-child{border-bottom:none;}
+.add-sub-btn{background:none;border:1px dashed var(--border);color:var(--text-muted);padding:7px;border-radius:6px;width:100%;cursor:pointer;font-size:13px;transition:all .2s;}
+.add-sub-btn:hover{border-color:var(--primary);color:var(--primary);}
+.del-row{background:none;border:none;color:#f87171;cursor:pointer;font-size:16px;padding:0 4px;}
+.del-row:hover{color:#ef4444;}
+.sem-gpa-pill{background:rgba(79,70,229,.12);color:var(--primary);padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;}
+</style>
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Main</p>
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="chat.html" class="nav-link"><span class="nav-icon">💬</span> Chat with Bot</a>
+      <a href="requests.html" class="nav-link"><span class="nav-icon">📋</span> My Requests</a>
+      <p class="nav-section-title">Academics</p>
+      <a href="attendance.html" class="nav-link"><span class="nav-icon">✅</span> Attendance</a>
+      <a href="status.html" class="nav-link"><span class="nav-icon">📄</span> Marksheet Status</a>
+      <a href="exam.html" class="nav-link"><span class="nav-icon">📘</span> Exam Info</a>
+      <a href="fees.html" class="nav-link"><span class="nav-icon">💳</span> Fee Information</a>
+      <a href="timetable.html" class="nav-link"><span class="nav-icon">📅</span> Timetable</a>
+      <a href="cgpa.html" class="nav-link active"><span class="nav-icon">🎯</span> CGPA Calculator</a>
+      <p class="nav-section-title">Services</p>
+      <a href="leave.html" class="nav-link"><span class="nav-icon">📝</span> Leave Application</a>
+      <a href="od.html" class="nav-link"><span class="nav-icon">🏅</span> OD Request</a>
+      <a href="events.html" class="nav-link"><span class="nav-icon">🎉</span> Events</a>
+      <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
+      <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
+      <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
+      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>S</div>
+        <div class="user-info"><h4 data-user-name>Student</h4><span data-user-id>22IT101</span></div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">CGPA Calculator</h1>
+      </div>
+      <div class="topbar-right">
+        <button id="themeToggleBtn" class="theme-btn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme">🌙 <span class="theme-label">Dark</span></button>
+        <a href="notices.html" class="notif-btn">🔔<span class="notif-dot"></span></a>
+        <div class="topbar-profile">
+          <div class="topbar-avatar" data-user-initial>S</div>
+          <span class="topbar-name" data-user-name>Student</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h2>CGPA Calculator</h2>
+          <p>Enter your grades semester-wise to calculate your CGPA</p>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-secondary" onclick="resetAll()">🔄 Reset All</button>
+          <button class="btn btn-primary" onclick="addSemester()">+ Add Semester</button>
+        </div>
+      </div>
+
+      <div class="cgpa-display">
+        <div class="cgpa-val" id="cgpaVal">—</div>
+        <div class="cgpa-grade" id="cgpaGrade">Enter grades to calculate</div>
+        <div class="cgpa-label">Cumulative Grade Point Average (10-point scale)</div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <div id="semesterList"></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <div class="card">
+            <div class="card-header"><div class="card-title">📊 Semester Summary</div></div>
+            <div id="semSummary" style="display:flex;flex-direction:column;gap:8px;">
+              <p style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px 0;">Add semesters to see summary</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">📋 Grade Reference</div></div>
+            <div>
+              <div class="grade-ref-row"><span style="font-weight:700;">O</span><span style="color:var(--text-muted);">Outstanding</span><span style="font-weight:700;color:#4ade80;">10</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;">A+</span><span style="color:var(--text-muted);">Excellent</span><span style="font-weight:700;color:#4ade80;">9</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;">A</span><span style="color:var(--text-muted);">Very Good</span><span style="font-weight:700;color:#86efac;">8</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;">B+</span><span style="color:var(--text-muted);">Good</span><span style="font-weight:700;color:#fde047;">7</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;">B</span><span style="color:var(--text-muted);">Above Average</span><span style="font-weight:700;color:#fbbf24;">6</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;">C</span><span style="color:var(--text-muted);">Average</span><span style="font-weight:700;color:#fb923c;">5</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;">RA / F</span><span style="color:var(--text-muted);">Fail</span><span style="font-weight:700;color:#f87171;">0</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">🏆 CGPA Scale</div></div>
+            <div>
+              <div class="grade-ref-row"><span style="font-weight:700;color:#4ade80;">9.0 – 10.0</span><span>First Class with Distinction</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;color:#86efac;">7.5 – 8.99</span><span>First Class</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;color:#fbbf24;">6.0 – 7.49</span><span>Second Class</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;color:#fb923c;">5.0 – 5.99</span><span>Pass</span></div>
+              <div class="grade-ref-row"><span style="font-weight:700;color:#f87171;">Below 5.0</span><span>Fail / Arrear</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!requireAuth()) throw new Error('redirect');
+populateUserInfo();
+
+const GRADES = { O:10, 'A+':9, A:8, 'B+':7, B:6, C:5, RA:0, F:0 };
+let semesters = JSON.parse(localStorage.getItem('cgpa_data') || '[]');
+
+function save() { localStorage.setItem('cgpa_data', JSON.stringify(semesters)); }
+
+function gradePoints(g) { return GRADES[g] !== undefined ? GRADES[g] : parseFloat(g) || 0; }
+
+function calcGPA(subjects) {
+  const filtered = subjects.filter(s => s.name && s.credits > 0 && s.grade);
+  if (!filtered.length) return null;
+  const totalCredits = filtered.reduce((a, s) => a + Number(s.credits), 0);
+  const totalPoints  = filtered.reduce((a, s) => a + gradePoints(s.grade) * Number(s.credits), 0);
+  return totalCredits ? (totalPoints / totalCredits) : null;
+}
+
+function calcCGPA() {
+  const all = semesters.filter(sem => calcGPA(sem.subjects) !== null);
+  if (!all.length) return null;
+  const totalC = all.reduce((a, sem) => a + sem.subjects.filter(s => s.name && s.credits > 0 && s.grade).reduce((x, s) => x + Number(s.credits), 0), 0);
+  const totalP = all.reduce((a, sem) => a + sem.subjects.filter(s => s.name && s.credits > 0 && s.grade).reduce((x, s) => x + gradePoints(s.grade) * Number(s.credits), 0), 0);
+  return totalC ? (totalP / totalC) : null;
+}
+
+function cgpaGradeLabel(v) {
+  if (v >= 9)   return 'First Class with Distinction 🏆';
+  if (v >= 7.5) return 'First Class 🎉';
+  if (v >= 6)   return 'Second Class';
+  if (v >= 5)   return 'Pass';
+  return 'Arrear / Fail';
+}
+
+function render() {
+  const list = document.getElementById('semesterList');
+  list.innerHTML = semesters.map((sem, si) => {
+    const gpa = calcGPA(sem.subjects);
+    return `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="sem-header" onclick="toggleSem(${si})">
+        <span class="sem-title">Semester ${sem.num}</span>
+        <span class="sem-gpa-pill">${gpa !== null ? 'GPA: ' + gpa.toFixed(2) : 'Incomplete'}</span>
+      </div>
+      <div class="sem-body" id="semBody${si}">
+        <table class="grade-table">
+          <thead><tr><th>Subject</th><th>Credits</th><th>Grade</th><th></th></tr></thead>
+          <tbody id="subList${si}">
+            ${sem.subjects.map((s, xi) => `
+              <tr>
+                <td><input class="grade-input" placeholder="Subject name" value="${s.name||''}" oninput="updateSub(${si},${xi},'name',this.value)"></td>
+                <td><input class="grade-input" type="number" min="1" max="6" placeholder="Credits" value="${s.credits||''}" style="width:70px;" oninput="updateSub(${si},${xi},'credits',this.value)"></td>
+                <td>
+                  <select class="grade-input" style="width:80px;" onchange="updateSub(${si},${xi},'grade',this.value)">
+                    <option value="">--</option>
+                    ${Object.keys(GRADES).map(g => `<option value="${g}" ${s.grade===g?'selected':''}>${g}</option>`).join('')}
+                  </select>
+                </td>
+                <td><button class="del-row" onclick="deleteSub(${si},${xi})">×</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px;">
+          <button class="add-sub-btn" onclick="addSubject(${si})">+ Add Subject</button>
+          <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="deleteSem(${si})">🗑 Remove Semester</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') || `<div class="card" style="text-align:center;padding:40px;color:var(--text-muted);">
+    <div style="font-size:48px;margin-bottom:12px;">🎓</div>
+    <p>Click <strong>+ Add Semester</strong> to start calculating your CGPA</p>
+  </div>`;
+
+  const cgpa = calcCGPA();
+  document.getElementById('cgpaVal').textContent   = cgpa !== null ? cgpa.toFixed(2) : '—';
+  document.getElementById('cgpaGrade').textContent = cgpa !== null ? cgpaGradeLabel(cgpa) : 'Enter grades to calculate';
+
+  const sumEl = document.getElementById('semSummary');
+  if (!semesters.length) {
+    sumEl.innerHTML = '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px 0;">Add semesters to see summary</p>';
+  } else {
+    sumEl.innerHTML = semesters.map(sem => {
+      const g = calcGPA(sem.subjects);
+      return `<div style="display:flex;justify-content:space-between;padding:8px;background:var(--bg2);border-radius:8px;">
+        <span style="font-weight:600;font-size:13px;">Semester ${sem.num}</span>
+        <span style="font-weight:700;color:var(--primary);font-size:13px;">${g !== null ? g.toFixed(2) : '—'}</span>
+      </div>`;
+    }).join('') + (cgpa !== null ? `<div style="display:flex;justify-content:space-between;padding:10px;background:rgba(79,70,229,.1);border-radius:8px;margin-top:4px;">
+      <span style="font-weight:800;font-size:14px;">CGPA</span>
+      <span style="font-weight:900;color:var(--primary);font-size:16px;">${cgpa.toFixed(2)}</span>
+    </div>` : '');
+  }
+}
+
+function toggleSem(si) {
+  const el = document.getElementById(`semBody${si}`);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function addSemester() {
+  const num = semesters.length + 1;
+  semesters.push({ num, subjects: [{ name:'', credits:'', grade:'' }] });
+  save(); render();
+}
+
+function deleteSem(si) {
+  semesters.splice(si, 1);
+  semesters.forEach((s, i) => s.num = i + 1);
+  save(); render();
+}
+
+function addSubject(si) {
+  semesters[si].subjects.push({ name:'', credits:'', grade:'' });
+  save(); render();
+}
+
+function deleteSub(si, xi) {
+  semesters[si].subjects.splice(xi, 1);
+  save(); render();
+}
+
+function updateSub(si, xi, field, val) {
+  semesters[si].subjects[xi][field] = val;
+  save(); render();
+}
+
+function resetAll() {
+  if (!confirm('Reset all semesters? This cannot be undone.')) return;
+  semesters = [];
+  save(); render();
+}
+
+if (!semesters.length) addSemester();
+else render();
+</script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Leaves | CampusAssist Admin</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+.filter-btn{padding:7px 18px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;}
+.filter-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+.badge-pending{background:rgba(234,179,8,0.15);color:#eab308;}
+.badge-approved{background:rgba(74,222,128,0.15);color:#4ade80;}
+.badge-rejected{background:rgba(248,113,113,0.15);color:#f87171;}
+.action-btns{display:flex;gap:6px;}
+.btn-approve{padding:5px 12px;background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;}
+.btn-approve:hover{background:rgba(74,222,128,0.25);}
+.btn-reject{padding:5px 12px;background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.3);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;}
+.btn-reject:hover{background:rgba(248,113,113,0.25);}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:#161616;border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:100%;max-width:440px;}
+.modal h3{margin:0 0 18px;color:var(--dark);}
+.modal textarea{width:100%;background:#111;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:14px;resize:vertical;min-height:80px;font-family:inherit;box-sizing:border-box;}
+.modal-btns{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;}
+</style>
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="admin-dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Admin Panel</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Admin</p>
+      <a href="admin-dashboard.html" class="nav-link"><span class="nav-icon">📊</span> Admin Dashboard</a>
+      <a href="admin-leaves.html" class="nav-link active"><span class="nav-icon">📝</span> Manage Leaves</a>
+      <a href="admin-requests.html" class="nav-link"><span class="nav-icon">📋</span> Manage Requests</a>
+      <a href="admin-notices.html" class="nav-link"><span class="nav-icon">📢</span> Manage Notices</a>
+      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+      <p class="nav-section-title">Student View</p>
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">🏠</span> Switch to Student</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>A</div>
+        <div class="user-info"><h4 data-user-name>Admin</h4><span>Administrator</span></div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">Manage Leaves</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-profile">
+          <div class="topbar-avatar" data-user-initial>A</div>
+          <span class="topbar-name" data-user-name>Admin</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="card reveal">
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterLeaves('All', this)">All</button>
+          <button class="filter-btn" onclick="filterLeaves('Pending', this)">⏳ Pending</button>
+          <button class="filter-btn" onclick="filterLeaves('Approved', this)">✅ Approved</button>
+          <button class="filter-btn" onclick="filterLeaves('Rejected', this)">❌ Rejected</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th><th>Dept</th><th>Leave Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="leavesBody">
+              <tr><td colspan="9" style="text-align:center;color:var(--text-muted);">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Remarks Modal -->
+<div class="modal-overlay" id="remarksModal">
+  <div class="modal">
+    <h3 id="modalTitle">Add Remarks</h3>
+    <textarea id="remarksInput" placeholder="Add remarks (optional)…"></textarea>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="confirmBtn" onclick="confirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+requireAdmin();
+populateUserInfo();
+
+let allLeaves = [];
+let pendingAction = null; // { id, status }
+
+async function loadLeaves() {
+  const res = await apiCall('/leave');
+  if (!res.ok) { showToast('Failed to load leaves', 'error'); return; }
+  allLeaves = res.data.leaves || [];
+  renderLeaves(allLeaves);
+}
+
+function renderLeaves(leaves) {
+  const body = document.getElementById('leavesBody');
+  if (!leaves.length) {
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No leave applications found</td></tr>';
+    return;
+  }
+  body.innerHTML = leaves.map(l => {
+    const days = Math.ceil((new Date(l.toDate) - new Date(l.fromDate)) / 86400000) + 1;
+    const badgeCls = l.status === 'Approved' ? 'badge-approved' : l.status === 'Rejected' ? 'badge-rejected' : 'badge-pending';
+    const actions = l.status === 'Pending'
+      ? `<div class="action-btns">
+           <button class="btn-approve" onclick="openModal('${l._id}','Approved')">✅ Approve</button>
+           <button class="btn-reject" onclick="openModal('${l._id}','Rejected')">❌ Reject</button>
+         </div>`
+      : `<span style="color:var(--text-muted);font-size:12px;">${l.approvedBy || '—'}</span>`;
+    const reason = l.reason.length > 40 ? l.reason.slice(0, 40) + '…' : l.reason;
+    return `<tr>
+      <td><strong>${l.name}</strong><br><span style="font-size:11px;color:var(--text-muted)">${l.studentId}</span></td>
+      <td>${l.department}</td>
+      <td style="font-size:13px">${l.leaveType}</td>
+      <td>${new Date(l.fromDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'})}</td>
+      <td>${new Date(l.toDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'})}</td>
+      <td style="text-align:center">${days}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${reason}</td>
+      <td><span class="badge ${badgeCls}">${l.status}</span></td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLeaves(status, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLeaves(status === 'All' ? allLeaves : allLeaves.filter(l => l.status === status));
+}
+
+function openModal(id, status) {
+  pendingAction = { id, status };
+  document.getElementById('modalTitle').textContent = status === 'Approved' ? '✅ Approve Leave' : '❌ Reject Leave';
+  document.getElementById('remarksInput').value = '';
+  document.getElementById('confirmbtn') && (document.getElementById('confirmBtn').style.background = '');
+  document.getElementById('remarksModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('remarksModal').classList.remove('show');
+  pendingAction = null;
+}
+
+async function confirmAction() {
+  if (!pendingAction) return;
+  const remarks = document.getElementById('remarksInput').value.trim();
+  const res = await apiCall(`/leave/${pendingAction.id}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ status: pendingAction.status, remarks }),
+  });
+  closeModal();
+  if (res.ok) {
+    showToast(`Leave ${pendingAction.status.toLowerCase()} successfully`, 'success');
+    loadLeaves();
+  } else {
+    showToast(res.error || 'Action failed', 'error');
+  }
+}
+
+loadLeaves();
+</script>
+</body>
+</html>

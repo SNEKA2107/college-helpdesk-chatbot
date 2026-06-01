@@ -1,0 +1,290 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Office | CampusAssist</title>
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Main</p>
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="chat.html" class="nav-link"><span class="nav-icon">💬</span> Chat with Bot</a>
+      <a href="requests.html" class="nav-link"><span class="nav-icon">📋</span> My Requests</a>
+      <p class="nav-section-title">Academics</p>
+      <a href="attendance.html" class="nav-link"><span class="nav-icon">✅</span> Attendance</a>
+      <a href="status.html" class="nav-link"><span class="nav-icon">📄</span> Marksheet Status</a>
+      <a href="exam.html" class="nav-link"><span class="nav-icon">📘</span> Exam Info</a>
+      <a href="fees.html" class="nav-link"><span class="nav-icon">💳</span> Fee Information</a>
+      <a href="timetable.html" class="nav-link"><span class="nav-icon">📅</span> Timetable</a>
+      <a href="cgpa.html" class="nav-link"><span class="nav-icon">🎯</span> CGPA Calculator</a>
+      <p class="nav-section-title">Services</p>
+      <a href="leave.html" class="nav-link"><span class="nav-icon">📝</span> Leave Application</a>
+      <a href="od.html" class="nav-link"><span class="nav-icon">🏅</span> OD Request</a>
+      <a href="events.html" class="nav-link"><span class="nav-icon">🎉</span> Events</a>
+      <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
+      <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
+      <a href="contact.html" class="nav-link active"><span class="nav-icon">☎</span> Contact Office</a>
+      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>S</div>
+        <div class="user-info"><h4 data-user-name>Student</h4><span data-user-id>22IT101</span></div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">Contact Office</h1>
+      </div>
+      <div class="topbar-right">
+        <button id="themeToggleBtn" class="theme-btn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme">🌙 <span class="theme-label">Dark</span></button>
+        <a href="notices.html" class="notif-btn">🔔<span class="notif-dot"></span></a>
+        <div class="topbar-profile">
+          <div class="topbar-avatar" data-user-initial>S</div>
+          <span class="topbar-name" data-user-name>Student</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h2>Contact Office</h2>
+          <p>Reach out to college departments and send a direct message</p>
+        </div>
+      </div>
+
+      <!-- Contact Cards -->
+      <div class="grid-3 mb-6">
+        <div class="card" style="text-align:center;border-top:3px solid var(--primary);">
+          <div style="font-size:36px;margin-bottom:10px;">🏫</div>
+          <h3 style="font-weight:700;font-size:15px;margin-bottom:4px;">Admin Office</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Room 101, Administrative Block</p>
+          <div style="font-size:14px;font-weight:600;color:var(--primary);">+91 98765 43210</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">admin@campusassist.edu</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Mon–Fri: 9 AM – 5 PM</div>
+        </div>
+        <div class="card" style="text-align:center;border-top:3px solid var(--secondary);">
+          <div style="font-size:36px;margin-bottom:10px;">📘</div>
+          <h3 style="font-weight:700;font-size:15px;margin-bottom:4px;">Examination Cell</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Room 205, Academic Block</p>
+          <div style="font-size:14px;font-weight:600;color:var(--secondary);">+91 98765 43211</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">exam@campusassist.edu</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Mon–Fri: 10 AM – 4 PM</div>
+        </div>
+        <div class="card" style="text-align:center;border-top:3px solid var(--warning);">
+          <div style="font-size:36px;margin-bottom:10px;">💳</div>
+          <h3 style="font-weight:700;font-size:15px;margin-bottom:4px;">Accounts Office</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Room 102, Administrative Block</p>
+          <div style="font-size:14px;font-weight:600;color:var(--warning);">+91 98765 43212</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">accounts@campusassist.edu</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Mon–Fri: 9 AM – 3 PM</div>
+        </div>
+        <div class="card" style="text-align:center;border-top:3px solid #ec4899;">
+          <div style="font-size:36px;margin-bottom:10px;">🏥</div>
+          <h3 style="font-weight:700;font-size:15px;margin-bottom:4px;">Student Welfare</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Room 110, Administrative Block</p>
+          <div style="font-size:14px;font-weight:600;color:#ec4899;">+91 98765 43213</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">welfare@campusassist.edu</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Mon–Sat: 9 AM – 5 PM</div>
+        </div>
+        <div class="card" style="text-align:center;border-top:3px solid #06b6d4;">
+          <div style="font-size:36px;margin-bottom:10px;">📚</div>
+          <h3 style="font-weight:700;font-size:15px;margin-bottom:4px;">Library</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Central Library Building</p>
+          <div style="font-size:14px;font-weight:600;color:#06b6d4;">+91 98765 43214</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">library@campusassist.edu</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Mon–Sat: 8 AM – 6 PM</div>
+        </div>
+        <div class="card" style="text-align:center;border-top:3px solid #8b5cf6;">
+          <div style="font-size:36px;margin-bottom:10px;">🚨</div>
+          <h3 style="font-weight:700;font-size:15px;margin-bottom:4px;">Security & Emergency</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Main Gate, Campus</p>
+          <div style="font-size:14px;font-weight:600;color:var(--danger);">+91 98765 43200</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">security@campusassist.edu</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">24 / 7 Available</div>
+        </div>
+      </div>
+
+      <!-- Contact Form -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">✉️ Send a Message</div>
+          </div>
+          <div id="contactForm">
+            <div class="form-group">
+              <label class="form-label">Your Name</label>
+              <input type="text" id="cName" class="form-input" placeholder="Full name" data-user-name>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Student ID</label>
+              <input type="text" id="cId" class="form-input" placeholder="Register number" data-user-id>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="cEmail" class="form-input" placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Department / Office</label>
+              <select class="form-select" id="cDept" style="padding-left:14px;">
+                <option value="">Select department</option>
+                <option>Admin Office</option>
+                <option>Examination Cell</option>
+                <option>Accounts Office</option>
+                <option>Student Welfare</option>
+                <option>Library</option>
+                <option>HOD – IT Department</option>
+                <option>HOD – CSE Department</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Subject</label>
+              <input type="text" id="cSubject" class="form-input" placeholder="Brief subject of your query">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Message</label>
+              <textarea id="cMessage" class="form-textarea" placeholder="Describe your query in detail…"></textarea>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="sendMessage()">Send Message →</button>
+          </div>
+          <div id="contactSuccess" style="display:none;text-align:center;padding:30px 0;">
+            <div style="font-size:56px;margin-bottom:14px;">📨</div>
+            <h3 style="font-weight:800;font-size:20px;color:var(--dark);margin-bottom:8px;">Message Sent!</h3>
+            <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px;">Your message has been sent to the selected department. You'll receive a response within 1–2 working days.</p>
+            <button class="btn btn-primary" onclick="resetContact()">Send Another Message</button>
+          </div>
+        </div>
+
+        <!-- FAQs -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">❓ Frequently Asked Questions</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;" id="faqList">
+            <div class="faq-item" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+              <button onclick="toggleFaq(this)" style="width:100%;padding:14px 16px;text-align:left;font-weight:600;font-size:14px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                How do I download my Hall Ticket? <span>+</span>
+              </button>
+              <div class="faq-answer" style="display:none;padding:0 16px 14px;font-size:13.5px;color:var(--text-muted);line-height:1.7;">
+                Log in to CampusAssist, go to Exam Info page, and click "Download Hall Ticket". Hall tickets are available from June 10, 2026 onwards.
+              </div>
+            </div>
+            <div class="faq-item" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+              <button onclick="toggleFaq(this)" style="width:100%;padding:14px 16px;text-align:left;font-weight:600;font-size:14px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                How long does a marksheet request take? <span>+</span>
+              </button>
+              <div class="faq-answer" style="display:none;padding:0 16px 14px;font-size:13.5px;color:var(--text-muted);line-height:1.7;">
+                Normal marksheet requests take 5–7 working days. Urgent requests (with additional fee) take 2–3 working days. You can track the status on the Marksheet Status page.
+              </div>
+            </div>
+            <div class="faq-item" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+              <button onclick="toggleFaq(this)" style="width:100%;padding:14px 16px;text-align:left;font-weight:600;font-size:14px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                What is the fee payment mode? <span>+</span>
+              </button>
+              <div class="faq-answer" style="display:none;padding:0 16px 14px;font-size:13.5px;color:var(--text-muted);line-height:1.7;">
+                Fees can be paid online via Net Banking, UPI (GPay, Paytm, PhonePe), or Debit/Credit cards. Cash payments are accepted at the Accounts Office only.
+              </div>
+            </div>
+            <div class="faq-item" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+              <button onclick="toggleFaq(this)" style="width:100%;padding:14px 16px;text-align:left;font-weight:600;font-size:14px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                How do I apply for a scholarship? <span>+</span>
+              </button>
+              <div class="faq-answer" style="display:none;padding:0 16px 14px;font-size:13.5px;color:var(--text-muted);line-height:1.7;">
+                Visit the Student Welfare office with your income certificate, previous year marksheet, and a filled application form. Scholarship applications are accepted every academic year by June 5.
+              </div>
+            </div>
+            <div class="faq-item" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+              <button onclick="toggleFaq(this)" style="width:100%;padding:14px 16px;text-align:left;font-weight:600;font-size:14px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                Can I renew library books online? <span>+</span>
+              </button>
+              <div class="faq-answer" style="display:none;padding:0 16px 14px;font-size:13.5px;color:var(--text-muted);line-height:1.7;">
+                Yes! Library book renewal can be requested through the Library page in CampusAssist. You can renew up to 2 times per book, provided no one else has reserved the same book.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!requireAuth()) throw new Error('redirect');
+populateUserInfo();
+
+const user = getUser();
+if (user) {
+  const nameEl = document.getElementById('cName');
+  const idEl   = document.getElementById('cId');
+  if (nameEl) nameEl.value = user.name || '';
+  if (idEl)   idEl.value   = user.studentId || '';
+}
+
+async function sendMessage() {
+  const dept    = document.getElementById('cDept').value;
+  const subject = document.getElementById('cSubject').value.trim();
+  const msg     = document.getElementById('cMessage').value.trim();
+  if (!dept)    { showToast('Please select a department', 'error'); return; }
+  if (!subject) { showToast('Please enter a subject', 'error'); return; }
+  if (!msg)     { showToast('Please write your message', 'error'); return; }
+
+  const btn = document.querySelector('#contactForm .btn-primary');
+  btn.textContent = 'Sending…';
+  btn.disabled = true;
+
+  const res = await apiCall('/contact', {
+    method: 'POST',
+    body: JSON.stringify({ department: dept, subject, message: msg })
+  });
+
+  btn.textContent = 'Send Message →';
+  btn.disabled = false;
+
+  if (res.ok) {
+    document.getElementById('contactForm').style.display = 'none';
+    document.getElementById('contactSuccess').style.display = 'block';
+  } else {
+    showToast(res.error || 'Failed to send message. Please try again.', 'error');
+  }
+}
+
+function resetContact() {
+  document.getElementById('contactForm').style.display = 'block';
+  document.getElementById('contactSuccess').style.display = 'none';
+  document.getElementById('cDept').value    = '';
+  document.getElementById('cSubject').value = '';
+  document.getElementById('cMessage').value = '';
+}
+
+function toggleFaq(btn) {
+  const answer = btn.nextElementSibling;
+  const isOpen = answer.style.display !== 'none';
+  document.querySelectorAll('.faq-answer').forEach(a => a.style.display = 'none');
+  document.querySelectorAll('.faq-item button span').forEach(s => s.textContent = '+');
+  if (!isOpen) {
+    answer.style.display = 'block';
+    btn.querySelector('span').textContent = '–';
+  }
+}
+</script>
+</body>
+</html>

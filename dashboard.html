@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | CampusAssist</title>
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Main</p>
+      <a href="dashboard.html" class="nav-link active"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="chat.html" class="nav-link"><span class="nav-icon">💬</span> Chat with Bot</a>
+      <a href="requests.html" class="nav-link"><span class="nav-icon">📋</span> My Requests</a>
+      <p class="nav-section-title">Academics</p>
+      <a href="attendance.html" class="nav-link"><span class="nav-icon">✅</span> Attendance</a>
+      <a href="status.html" class="nav-link"><span class="nav-icon">📄</span> Marksheet Status</a>
+      <a href="exam.html" class="nav-link"><span class="nav-icon">📘</span> Exam Info</a>
+      <a href="fees.html" class="nav-link"><span class="nav-icon">💳</span> Fee Information</a>
+      <a href="timetable.html" class="nav-link"><span class="nav-icon">📅</span> Timetable</a>
+      <a href="cgpa.html" class="nav-link"><span class="nav-icon">🎯</span> CGPA Calculator</a>
+      <p class="nav-section-title">Services</p>
+      <a href="leave.html" class="nav-link"><span class="nav-icon">📝</span> Leave Application</a>
+      <a href="od.html" class="nav-link"><span class="nav-icon">🏅</span> OD Request</a>
+      <a href="events.html" class="nav-link"><span class="nav-icon">🎉</span> Events</a>
+      <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
+      <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
+      <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
+      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>S</div>
+        <div class="user-info">
+          <h4 data-user-name>Student</h4>
+          <span data-user-id>22IT101</span>
+        </div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">Dashboard</h1>
+      </div>
+      <div class="topbar-right">
+        <button id="themeToggleBtn" class="theme-btn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme">🌙 <span class="theme-label">Dark</span></button>
+        <a href="notices.html" class="notif-btn">🔔<span class="notif-dot"></span></a>
+        <a href="profile.html" class="topbar-profile" style="text-decoration:none;">
+          <div class="topbar-avatar" data-user-initial>S</div>
+          <span class="topbar-name" data-user-name>Student</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- HERO BANNER -->
+      <div class="card mb-6" style="background:linear-gradient(135deg,#0d1a2a,#0a1e30);border:1px solid rgba(78,133,191,0.2);padding:28px 32px;">
+        <div class="flex items-center justify-between" style="flex-wrap:wrap;gap:16px;">
+          <div>
+            <p style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:4px;">Welcome back,</p>
+            <h2 style="color:#fff;font-size:26px;font-weight:800;" data-user-name>Student!</h2>
+            <p style="color:rgba(255,255,255,0.6);font-size:14px;margin-top:6px;">Here's what's happening on campus today.</p>
+          </div>
+          <div style="font-size:72px;line-height:1;">🏫</div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon si-blue">📋</div>
+          <div class="stat-info"><h3 id="statTotal">—</h3><p>My Requests</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-green">✅</div>
+          <div class="stat-info"><h3 id="statCompleted">—</h3><p>Completed</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-orange">⏳</div>
+          <div class="stat-info"><h3 id="statInProgress">—</h3><p>In Progress</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-purple">🔔</div>
+          <div class="stat-info"><h3 id="statNotices">—</h3><p>Notices</p></div>
+        </div>
+      </div>
+
+      <!-- QUICK ACCESS -->
+      <h2 class="section-title">Quick Access</h2>
+      <div class="grid-4 mb-8">
+        <a href="exam.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#2563eb,#60a5fa);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">📘</div>
+          <div style="font-weight:700;font-size:14px;">Exam Info</div>
+        </a>
+        <a href="fees.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">💳</div>
+          <div style="font-weight:700;font-size:14px;">Fee Information</div>
+        </a>
+        <a href="status.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">📄</div>
+          <div style="font-weight:700;font-size:14px;">Marksheet Status</div>
+        </a>
+        <a href="timetable.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#f97316,#fbbf24);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">📅</div>
+          <div style="font-weight:700;font-size:14px;">Timetable</div>
+        </a>
+        <a href="leave.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#ec4899,#fb7185);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">📝</div>
+          <div style="font-weight:700;font-size:14px;">Leave Application</div>
+        </a>
+        <a href="notices.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#f59e0b,#facc15);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">🔔</div>
+          <div style="font-weight:700;font-size:14px;">Notices</div>
+        </a>
+        <a href="library.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#06b6d4,#22d3ee);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">📚</div>
+          <div style="font-weight:700;font-size:14px;">Library</div>
+        </a>
+        <a href="chat.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">💬</div>
+          <div style="font-weight:700;font-size:14px;">Chat with Bot</div>
+        </a>
+        <a href="attendance.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#0d9488,#2dd4bf);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">✅</div>
+          <div style="font-weight:700;font-size:14px;">Attendance</div>
+        </a>
+        <a href="cgpa.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#4338ca,#a5b4fc);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">🎯</div>
+          <div style="font-weight:700;font-size:14px;">CGPA Calculator</div>
+        </a>
+        <a href="od.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#ea580c,#fb923c);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">🏅</div>
+          <div style="font-weight:700;font-size:14px;">OD Request</div>
+        </a>
+        <a href="events.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#be185d,#f472b6);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="font-size:32px;margin-bottom:10px;">🎉</div>
+          <div style="font-weight:700;font-size:14px;">Events</div>
+        </a>
+      </div>
+
+      <!-- BOTTOM PANELS -->
+      <div class="grid-2">
+        <!-- Events -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🎉 Upcoming Events</div>
+            </div>
+            <a href="events.html" class="link text-sm">View All</a>
+          </div>
+          <div class="event-item" style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+            <div style="width:50px;height:50px;background:rgba(78,133,191,0.12);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;">
+              <div style="font-size:14px;font-weight:800;color:#89AACC;">15</div>
+              <div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;">Tech Symposium 2026</div>
+              <div style="font-size:12px;color:var(--text-muted);">Main Auditorium · 10:00 AM</div>
+            </div>
+            <span class="badge badge-primary">Upcoming</span>
+          </div>
+          <div class="event-item" style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+            <div style="width:50px;height:50px;background:rgba(74,222,128,0.1);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;">
+              <div style="font-size:14px;font-weight:800;color:#4ade80;">20</div>
+              <div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;">Cultural Fest</div>
+              <div style="font-size:12px;color:var(--text-muted);">Open Ground · 11:00 AM</div>
+            </div>
+            <span class="badge badge-success">Open</span>
+          </div>
+          <div class="event-item" style="display:flex;gap:14px;align-items:center;padding:12px 0;">
+            <div style="width:50px;height:50px;background:rgba(245,158,11,0.1);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;">
+              <div style="font-size:14px;font-weight:800;color:#fbbf24;">25</div>
+              <div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;">Placement Training</div>
+              <div style="font-size:12px;color:var(--text-muted);">Seminar Hall · 09:30 AM</div>
+            </div>
+            <span class="badge badge-warning">Register</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <!-- Notifications -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🔔 Recent Notifications</div>
+              <a href="notices.html" class="link text-sm">View All</a>
+            </div>
+            <div id="notificationsPanel" style="display:flex;flex-direction:column;gap:10px;">
+              <div style="text-align:center;padding:16px;color:var(--text-muted);">Loading…</div>
+            </div>
+          </div>
+
+          <!-- Marksheet Status -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📄 Marksheet Status</div>
+            </div>
+            <div class="step-row"><div class="step-left"><div class="step-dot dot-success"></div><span style="font-size:13.5px;">Application Received</span></div><span class="badge badge-success">Done</span></div>
+            <div class="step-row"><div class="step-left"><div class="step-dot dot-success"></div><span style="font-size:13.5px;">Under Verification</span></div><span class="badge badge-success">Done</span></div>
+            <div class="step-row"><div class="step-left"><div class="step-dot dot-primary"></div><span style="font-size:13.5px;">Processing</span></div><span class="badge badge-primary">In Progress</span></div>
+            <div class="step-row"><div class="step-left"><div class="step-dot dot-muted"></div><span style="font-size:13.5px;">Ready for Collection</span></div><span class="badge badge-muted">Pending</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="app.js"></script>
+<script>
+if (!requireAuth()) throw new Error('redirect');
+populateUserInfo();
+
+
+async function loadDashboard() {
+  const [statsRes, noticesRes] = await Promise.all([
+    apiCall('/requests/stats'),
+    apiCall('/notices')
+  ]);
+  if (statsRes.ok) {
+    const s = statsRes.data.stats;
+    document.getElementById('statTotal').textContent      = s.total;
+    document.getElementById('statCompleted').textContent  = s.completed;
+    document.getElementById('statInProgress').textContent = s.inProgress;
+  }
+  if (noticesRes.ok) {
+    const notices = noticesRes.data.notices || [];
+    document.getElementById('statNotices').textContent = notices.length;
+    const panel = document.getElementById('notificationsPanel');
+    if (!notices.length) {
+      panel.innerHTML = '<p style="font-size:13.5px;color:var(--text-muted);text-align:center;padding:16px;">No notices at this time.</p>';
+    } else {
+      panel.innerHTML = notices.slice(0, 3).map(n => `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px;background:var(--bg2);border-radius:8px;">
+          <p style="font-size:13.5px;margin:0;">${n.title}</p>
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;margin-left:10px;">${timeAgo(n.createdAt)}</span>
+        </div>`).join('');
+    }
+  }
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

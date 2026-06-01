@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fee Information | CampusAssist</title>
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+<div class="app">
+  <div class="overlay" id="overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="dashboard.html" class="logo-wrap">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Main</p>
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="chat.html" class="nav-link"><span class="nav-icon">💬</span> Chat with Bot</a>
+      <a href="requests.html" class="nav-link"><span class="nav-icon">📋</span> My Requests</a>
+      <p class="nav-section-title">Academics</p>
+      <a href="attendance.html" class="nav-link"><span class="nav-icon">✅</span> Attendance</a>
+      <a href="status.html" class="nav-link"><span class="nav-icon">📄</span> Marksheet Status</a>
+      <a href="exam.html" class="nav-link"><span class="nav-icon">📘</span> Exam Info</a>
+      <a href="fees.html" class="nav-link active"><span class="nav-icon">💳</span> Fee Information</a>
+      <a href="timetable.html" class="nav-link"><span class="nav-icon">📅</span> Timetable</a>
+      <a href="cgpa.html" class="nav-link"><span class="nav-icon">🎯</span> CGPA Calculator</a>
+      <p class="nav-section-title">Services</p>
+      <a href="leave.html" class="nav-link"><span class="nav-icon">📝</span> Leave Application</a>
+      <a href="od.html" class="nav-link"><span class="nav-icon">🏅</span> OD Request</a>
+      <a href="events.html" class="nav-link"><span class="nav-icon">🎉</span> Events</a>
+      <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
+      <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
+      <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
+      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" data-user-initial>S</div>
+        <div class="user-info"><h4 data-user-name>Student</h4><span data-user-id>22IT101</span></div>
+      </div>
+      <a href="#" class="nav-link logout" onclick="event.preventDefault();logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title">Fee Information</h1>
+      </div>
+      <div class="topbar-right">
+        <button id="themeToggleBtn" class="theme-btn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme">🌙 <span class="theme-label">Dark</span></button>
+        <a href="notices.html" class="notif-btn">🔔<span class="notif-dot"></span></a>
+        <div class="topbar-profile">
+          <div class="topbar-avatar" data-user-initial>S</div>
+          <span class="topbar-name" data-user-name>Student</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h2>Fee Information</h2>
+          <p>Semester fee breakdown, payment status and history</p>
+        </div>
+        <button class="btn btn-primary" onclick="showToast('Receipt download coming soon','info')">⬇ Download Receipt</button>
+      </div>
+
+      <!-- Fee Status Summary -->
+      <div class="stats-grid mb-6">
+        <div class="stat-card">
+          <div class="stat-icon si-blue">💰</div>
+          <div class="stat-info"><h3 id="statTotal">₹55,000</h3><p>Total Fee Amount</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-green">✅</div>
+          <div class="stat-info"><h3 id="statPaid">₹55,000</h3><p>Amount Paid</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-orange">⏳</div>
+          <div class="stat-info"><h3 id="statBalance">₹0</h3><p>Balance Due</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-purple">📅</div>
+          <div class="stat-info"><h3 id="statDue">25 May</h3><p>Next Due Date</p></div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb-6">
+        <!-- Fee Breakdown -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💳 Semester Fee Breakdown</div>
+            <span id="feeStatus" class="badge badge-success">✅ Fully Paid</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr><th>Fee Component</th><th>Amount</th><th>Status</th></tr>
+              </thead>
+              <tbody id="feesBody">
+                <tr><td>Tuition Fee</td><td>₹45,000</td><td><span class="badge badge-success">Paid</span></td></tr>
+                <tr><td>Lab Fee</td><td>₹5,000</td><td><span class="badge badge-success">Paid</span></td></tr>
+                <tr><td>Library Fee</td><td>₹2,000</td><td><span class="badge badge-success">Paid</span></td></tr>
+                <tr><td>Exam Fee</td><td>₹3,000</td><td><span class="badge badge-success">Paid</span></td></tr>
+                <tr style="font-weight:700;background:var(--primary-bg,#eef2ff);">
+                  <td><strong>Total</strong></td>
+                  <td><strong>₹55,000</strong></td>
+                  <td><span class="badge badge-success">✅ Cleared</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="feeAlert" class="alert alert-success mt-4">
+            <span>🎉</span>
+            <div>All fees for this semester have been paid successfully. No dues outstanding.</div>
+          </div>
+        </div>
+
+        <!-- Payment History -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📜 Payment History</div>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr><th>Date</th><th>Description</th><th>Amount</th><th>Mode</th></tr>
+              </thead>
+              <tbody id="historyBody">
+                <tr>
+                  <td>05 Jan 2026</td>
+                  <td>Semester V – Tuition</td>
+                  <td style="color:var(--secondary);font-weight:600;">₹45,000</td>
+                  <td><span class="badge badge-primary">Online</span></td>
+                </tr>
+                <tr>
+                  <td>05 Jan 2026</td>
+                  <td>Semester V – Lab Fee</td>
+                  <td style="color:var(--secondary);font-weight:600;">₹5,000</td>
+                  <td><span class="badge badge-primary">Online</span></td>
+                </tr>
+                <tr>
+                  <td>10 Jan 2026</td>
+                  <td>Semester V – Library</td>
+                  <td style="color:var(--secondary);font-weight:600;">₹2,000</td>
+                  <td><span class="badge badge-muted">DD</span></td>
+                </tr>
+                <tr>
+                  <td>15 Jan 2026</td>
+                  <td>Semester V – Exam Fee</td>
+                  <td style="color:var(--secondary);font-weight:600;">₹3,000</td>
+                  <td><span class="badge badge-primary">Online</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="alert alert-warning mt-4">
+            <span>⚠️</span>
+            <div>Next semester fee payment deadline: <strong>25 May 2026</strong>. Late payment attracts a fine of ₹500.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Methods -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">💳 Online Payment Options</div>
+          <span class="badge badge-primary">Secure</span>
+        </div>
+        <div class="grid-3">
+          <div style="text-align:center;padding:20px;border-radius:10px;border:1px solid var(--border);">
+            <div style="font-size:36px;margin-bottom:8px;">🏦</div>
+            <div style="font-weight:700;margin-bottom:4px;">Net Banking</div>
+            <div style="font-size:13px;color:var(--text-muted);">All major banks supported</div>
+          </div>
+          <div style="text-align:center;padding:20px;border-radius:10px;border:1px solid var(--border);">
+            <div style="font-size:36px;margin-bottom:8px;">📱</div>
+            <div style="font-weight:700;margin-bottom:4px;">UPI</div>
+            <div style="font-size:13px;color:var(--text-muted);">GPay, PhonePe, Paytm</div>
+          </div>
+          <div style="text-align:center;padding:20px;border-radius:10px;border:1px solid var(--border);">
+            <div style="font-size:36px;margin-bottom:8px;">💳</div>
+            <div style="font-weight:700;margin-bottom:4px;">Card Payment</div>
+            <div style="font-size:13px;color:var(--text-muted);">Debit &amp; Credit cards</div>
+          </div>
+        </div>
+        <div style="margin-top:20px;text-align:center;">
+          <button class="btn btn-primary btn-lg" onclick="showToast('Payment portal will open when backend is connected','info')">Pay Fees Online →</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="app.js"></script>
+<script>
+if (!requireAuth()) throw new Error('redirect');
+populateUserInfo();
+
+const fmtDate = iso => new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+const fmtAmt  = n => '₹' + Number(n).toLocaleString('en-IN');
+
+async function loadFees() {
+  const res = await apiCall('/fees');
+  if (!res.ok) return;
+  const { fees } = res.data;
+
+  document.getElementById('statTotal').textContent   = fmtAmt(fees.total);
+  document.getElementById('statPaid').textContent    = fmtAmt(fees.amountPaid);
+  document.getElementById('statBalance').textContent = fmtAmt(fees.balance);
+  const due = new Date(fees.dueDate);
+  document.getElementById('statDue').textContent = due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+  const isPaid = fees.status === 'Paid';
+  const badge = document.getElementById('feeStatus');
+  badge.className = `badge ${isPaid ? 'badge-success' : 'badge-danger'}`;
+  badge.textContent = isPaid ? '✅ Fully Paid' : '⏳ Due';
+
+  document.getElementById('feesBody').innerHTML = [
+    ...fees.components.map(c => `
+      <tr>
+        <td>${c.name}</td>
+        <td>${fmtAmt(c.amount)}</td>
+        <td><span class="badge ${isPaid ? 'badge-success' : 'badge-warning'}">${isPaid ? 'Paid' : 'Pending'}</span></td>
+      </tr>`),
+    `<tr style="font-weight:700;background:var(--primary-bg,#eef2ff);">
+      <td><strong>Total</strong></td>
+      <td><strong>${fmtAmt(fees.total)}</strong></td>
+      <td><span class="badge ${isPaid ? 'badge-success' : 'badge-danger'}">${isPaid ? '✅ Cleared' : '⏳ Pending'}</span></td>
+    </tr>`
+  ].join('');
+
+  const modeClass = { Online: 'badge-primary', DD: 'badge-muted' };
+  document.getElementById('historyBody').innerHTML = fees.history.map(p => `
+    <tr>
+      <td>${fmtDate(p.date)}</td>
+      <td>${p.description}</td>
+      <td style="color:var(--secondary);font-weight:600;">${fmtAmt(p.amount)}</td>
+      <td><span class="badge ${modeClass[p.mode] || 'badge-muted'}">${p.mode}</span></td>
+    </tr>`).join('');
+
+  const alertEl = document.getElementById('feeAlert');
+  if (isPaid) {
+    alertEl.className = 'alert alert-success mt-4';
+    alertEl.innerHTML = '<span>🎉</span><div>All fees for this semester have been paid successfully. No dues outstanding.</div>';
+  } else {
+    alertEl.className = 'alert alert-warning mt-4';
+    alertEl.innerHTML = `<span>⚠️</span><div>Fee balance of ${fmtAmt(fees.balance)} is due by <strong>${fmtDate(fees.dueDate)}</strong>. Late payment attracts a fine of ₹${fees.lateFine}.</div>`;
+  }
+}
+
+loadFees();
+</script>
+</body>
+</html>

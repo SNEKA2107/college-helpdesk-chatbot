@@ -1,0 +1,425 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register | CampusAssist</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --primary:#4E85BF;--primary-dark:#2D6499;--primary-light:#89AACC;
+  --dark:#f0f0f0;--text:#d0d0d0;--text-muted:#888;
+  --bg:#080808;--surface:#111;--white:#111;--border:#252525;
+  --danger:#ef4444;--secondary:#4ade80;
+  --radius:12px;--ease:0.2s ease;
+  --auth-left:#050505;--auth-right:#0a0a0a;
+}
+html[data-theme="light"]{
+  --bg:#f0f4f8;--surface:#fff;--white:#fff;--border:#e2e8f0;
+  --dark:#0f172a;--text:#334155;--text-muted:#64748b;
+  --auth-left:#1e293b;--auth-right:#ffffff;
+}
+html[data-theme="night"]{
+  --bg:#0d0a07;--surface:#18120a;--white:#18120a;--border:#2e2214;
+  --dark:#f5e6c8;--text:#d4b896;--text-muted:#8a6e50;
+  --primary:#bf8a2e;--primary-light:#d4a84e;
+  --auth-left:#080604;--auth-right:#110e08;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;display:flex;color:var(--text);}
+a{text-decoration:none;color:inherit;}
+button{font-family:inherit;cursor:pointer;}
+
+.auth-layout{display:flex;min-height:100vh;width:100%;}
+
+.auth-left{
+  flex:1;
+  background:var(--auth-left);border-right:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  padding:60px 5%;position:relative;overflow:hidden;
+}
+.auth-left::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 600px 500px at 50% 40%,rgba(78,133,191,0.12) 0%,transparent 70%);
+}
+.auth-left-inner{position:relative;max-width:420px;width:100%;}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:40px;}
+.auth-brand-icon{
+  width:44px;height:44px;background:linear-gradient(90deg,#89AACC,#4E85BF);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+}
+.auth-brand h1{font-size:20px;font-weight:800;color:#e0e0e0;}
+.auth-brand span{font-size:12px;color:rgba(255,255,255,0.3);display:block;}
+.auth-headline h2{
+  font-size:34px;font-weight:800;color:#f0f0f0;line-height:1.2;margin-bottom:12px;
+}
+.auth-headline h2 em{
+  font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;
+  background:linear-gradient(90deg,#89AACC,#4E85BF);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.auth-headline p{font-size:15px;color:rgba(255,255,255,0.4);line-height:1.7;margin-bottom:30px;}
+.steps-list{display:flex;flex-direction:column;gap:16px;}
+.step-item{display:flex;align-items:center;gap:14px;}
+.step-num{
+  width:30px;height:30px;border-radius:50%;background:linear-gradient(90deg,#89AACC,#4E85BF);
+  color:#fff;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.step-item p{font-size:13.5px;color:rgba(255,255,255,0.45);}
+
+.auth-right{
+  width:520px;background:var(--auth-right);
+  display:flex;align-items:center;justify-content:center;
+  padding:48px;overflow-y:auto;
+}
+.auth-form-wrap{width:100%;}
+.auth-form-header{margin-bottom:28px;}
+.auth-form-header h2{font-size:24px;font-weight:800;color:#f0f0f0;}
+.auth-form-header p{font-size:14px;color:var(--text-muted);margin-top:5px;}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-group{margin-bottom:16px;}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px;}
+.input-wrap{position:relative;}
+.input-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;color:#555;pointer-events:none;}
+.form-input,.form-select{
+  width:100%;padding:10px 14px 10px 38px;
+  border:1.5px solid var(--border);border-radius:10px;
+  font-size:13.5px;color:var(--text);font-family:inherit;background:var(--white);
+  transition:border-color var(--ease),box-shadow var(--ease);outline:none;
+}
+.form-select{
+  appearance:none;
+  background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23888' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E") no-repeat right 13px center;
+  padding-right:32px;
+}
+.form-input::placeholder{color:#555;}
+.form-input:focus,.form-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(78,133,191,0.15);}
+.form-input.error{border-color:var(--danger);}
+.form-error{font-size:12px;color:var(--danger);margin-top:4px;display:none;}
+.form-error.show{display:block;}
+
+.pass-toggle{
+  position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  background:none;border:none;font-size:15px;cursor:pointer;color:#555;
+}
+.pass-input{padding-right:36px!important;}
+
+.password-strength{margin-top:6px;}
+.strength-bar{height:3px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:4px;}
+.strength-fill{height:100%;border-radius:4px;transition:width 0.3s ease,background 0.3s ease;width:0;}
+.strength-label{font-size:11px;color:var(--text-muted);}
+
+.terms-wrap{
+  display:flex;align-items:flex-start;gap:9px;
+  font-size:13px;color:var(--text-muted);margin-bottom:20px;
+}
+.terms-wrap input{accent-color:var(--primary);margin-top:2px;flex-shrink:0;}
+.terms-wrap a{color:var(--primary-light);font-weight:500;}
+
+.btn-submit{
+  width:100%;padding:13px;
+  background:linear-gradient(90deg,#89AACC,#4E85BF);color:#fff;
+  border:none;border-radius:var(--radius);
+  font-size:15px;font-weight:700;
+  transition:all var(--ease);
+}
+.btn-submit:hover{opacity:0.88;box-shadow:0 4px 18px rgba(78,133,191,0.3);transform:translateY(-1px);}
+.btn-submit.loading{opacity:0.7;pointer-events:none;}
+
+.auth-switch{text-align:center;font-size:14px;color:var(--text-muted);margin-top:18px;}
+.auth-switch a{color:var(--primary-light);font-weight:600;}
+.auth-switch a:hover{text-decoration:underline;}
+
+.success-state{display:none;text-align:center;padding:20px 0;}
+.success-state .success-icon{font-size:56px;margin-bottom:16px;}
+.success-state h3{font-size:22px;font-weight:800;color:#f0f0f0;margin-bottom:8px;}
+.success-state p{font-size:14px;color:var(--text-muted);margin-bottom:24px;}
+.success-state button{
+  display:inline-block;padding:12px 28px;
+  background:linear-gradient(90deg,#89AACC,#4E85BF);color:#fff;
+  border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer;
+}
+
+@media(max-width:900px){.auth-left{display:none;}.auth-right{width:100%;padding:40px 24px;}}
+@media(max-width:480px){.form-row{grid-template-columns:1fr;}.auth-right{padding:24px 16px;}}
+</style>
+<script>document.documentElement.setAttribute("data-theme",localStorage.getItem("ca_theme")||"dark")</script>
+</head>
+<body>
+
+<button id="themeToggleBtn" onclick="(function(b){var t=['dark','light','night'],ic={dark:'🌙 Dark',light:'☀️ Light',night:'🌑 Night'},c=localStorage.getItem('ca_theme')||'dark',n=t[(t.indexOf(c)+1)%3];localStorage.setItem('ca_theme',n);document.documentElement.setAttribute('data-theme',n);b.innerHTML=ic[n];})(this)" title="Switch theme" style="position:fixed;top:16px;right:16px;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:16px;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:6px;font-family:inherit;transition:all .2s;">🌙 <span style="font-size:12px;font-weight:600;">Dark</span></button>
+
+<div class="auth-layout">
+  <!-- LEFT -->
+  <div class="auth-left">
+    <div class="auth-left-inner">
+      <div class="auth-brand">
+        <div class="auth-brand-icon">🎓</div>
+        <div><h1>CampusAssist</h1><span>Smart College Helpdesk</span></div>
+      </div>
+      <div class="auth-headline">
+        <h2>Join <span>Campus</span>Assist Today</h2>
+        <p>Create your free student account and get instant access to all college services in one place.</p>
+      </div>
+      <div class="steps-list">
+        <div class="step-item"><div class="step-num">1</div><p>Fill in your student details</p></div>
+        <div class="step-item"><div class="step-num">2</div><p>Set a secure password</p></div>
+        <div class="step-item"><div class="step-num">3</div><p>Access your dashboard instantly</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+
+      <!-- FORM -->
+      <div id="formSection">
+        <div class="auth-form-header">
+          <h2>Create Account</h2>
+          <p>Register with your college student credentials</p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name</label>
+            <div class="input-wrap">
+              <span class="input-icon">👤</span>
+              <input type="text" id="firstName" class="form-input" placeholder="Sneka" required>
+            </div>
+            <span class="form-error" id="firstNameErr">Required</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name</label>
+            <div class="input-wrap">
+              <span class="input-icon">👤</span>
+              <input type="text" id="lastName" class="form-input" placeholder="S" required>
+            </div>
+            <span class="form-error" id="lastNameErr">Required</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Student ID / Register Number</label>
+          <div class="input-wrap">
+            <span class="input-icon">🎓</span>
+            <input type="text" id="studentId" class="form-input" placeholder="e.g. 22IT101" required>
+          </div>
+          <span class="form-error" id="studentIdErr">Required</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">College Email</label>
+          <div class="input-wrap">
+            <span class="input-icon">📧</span>
+            <input type="email" id="email" class="form-input" placeholder="you@college.edu" required>
+          </div>
+          <span class="form-error" id="emailErr">Enter a valid email</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <div class="input-wrap">
+              <span class="input-icon">🏫</span>
+              <select id="dept" class="form-select">
+                <option value="">Select Dept</option>
+                <option>IT</option>
+                <option>CSE</option>
+                <option>ECE</option>
+                <option>EEE</option>
+                <option>MECH</option>
+                <option>CIVIL</option>
+              </select>
+            </div>
+            <span class="form-error" id="deptErr">Required</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Semester</label>
+            <div class="input-wrap">
+              <span class="input-icon">📚</span>
+              <select id="semester" class="form-select">
+                <option value="">Select</option>
+                <option>1st</option><option>2nd</option><option>3rd</option>
+                <option>4th</option><option>5th</option><option>6th</option>
+                <option>7th</option><option>8th</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="password" class="form-input pass-input" placeholder="Min 8 characters" required oninput="checkStrength(this.value)">
+            <button class="pass-toggle" id="pt1" type="button" onclick="togglePass('password','pt1')">👁</button>
+          </div>
+          <div class="password-strength">
+            <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+            <span class="strength-label" id="strengthLabel">Enter a password</span>
+          </div>
+          <span class="form-error" id="passErr">Min 8 characters required</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="confirmPassword" class="form-input pass-input" placeholder="Repeat password" required>
+            <button class="pass-toggle" id="pt2" type="button" onclick="togglePass('confirmPassword','pt2')">👁</button>
+          </div>
+          <span class="form-error" id="confirmErr">Passwords do not match</span>
+        </div>
+
+        <label class="terms-wrap">
+          <input type="checkbox" id="terms">
+          I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+        </label>
+
+        <button class="btn-submit" id="regBtn" onclick="handleRegister()">Create My Account →</button>
+
+        <div class="auth-switch">
+          Already have an account? <a href="login.html">Login here</a>
+        </div>
+        <div class="auth-switch" style="margin-top:8px;">
+          <a href="index.html">← Back to Home</a>
+        </div>
+      </div>
+
+      <!-- SUCCESS STATE -->
+      <div class="success-state" id="successState">
+        <div class="success-icon">🎉</div>
+        <h3>Account Created!</h3>
+        <p>Welcome to CampusAssist! Your account has been created successfully. You can now log in.</p>
+        <button onclick="window.location.href='login.html'">Go to Login →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== THEME ===== */
+const THEMES=[{id:'dark',icon:'🌙',label:'Dark'},{id:'light',icon:'☀️',label:'Light'},{id:'night',icon:'🌑',label:'Night'}];
+function applyTheme(id){
+  document.documentElement.setAttribute('data-theme',id);
+  localStorage.setItem('ca_theme',id);
+  var btn=document.getElementById('themeToggleBtn');if(!btn)return;
+  var t=THEMES.find(function(x){return x.id===id;})||THEMES[0];
+  var next=THEMES[(THEMES.indexOf(t)+1)%THEMES.length];
+  btn.innerHTML=t.icon+' <span style="font-size:12px;font-weight:600;">'+t.label+'</span>';
+  btn.title='Switch to '+next.label+' mode';
+}
+function cycleTheme(){
+  var cur=localStorage.getItem('ca_theme')||'dark';
+  var idx=THEMES.findIndex(function(t){return t.id===cur;});
+  applyTheme(THEMES[(idx+1)%THEMES.length].id);
+}
+(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('ca_theme')||'dark');})();
+document.addEventListener('DOMContentLoaded',function(){applyTheme(localStorage.getItem('ca_theme')||'dark');});
+
+function togglePass(inputId, btnId) {
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  const isPass = inp.type === 'password';
+  inp.type = isPass ? 'text' : 'password';
+  btn.textContent = isPass ? '🙈' : '👁';
+}
+
+function checkStrength(pw) {
+  const fill  = document.getElementById('strengthFill');
+  const label = document.getElementById('strengthLabel');
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const levels = [
+    { w: '0%',   c: '#cbd5e1', l: 'Enter a password' },
+    { w: '25%',  c: '#ef4444', l: 'Weak' },
+    { w: '50%',  c: '#f59e0b', l: 'Fair' },
+    { w: '75%',  c: '#3b82f6', l: 'Good' },
+    { w: '100%', c: '#10b981', l: 'Strong' }
+  ];
+  const lvl = levels[score] || levels[0];
+  fill.style.width = lvl.w;
+  fill.style.background = lvl.c;
+  label.textContent = lvl.l;
+  label.style.color = lvl.c;
+}
+
+function clearError(id) {
+  const el = document.getElementById(id);
+  const err = document.getElementById(id + 'Err');
+  if (el) el.classList.remove('error');
+  if (err) err.classList.remove('show');
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  const err = document.getElementById(id + 'Err');
+  if (el) el.classList.add('error');
+  if (err) { if (msg) err.textContent = msg; err.classList.add('show'); }
+}
+
+async function handleRegister() {
+  const fields = ['firstName','lastName','studentId','email','dept','password','confirmPassword'];
+  fields.forEach(f => clearError(f));
+
+  let valid = true;
+
+  const fn  = document.getElementById('firstName').value.trim();
+  const ln  = document.getElementById('lastName').value.trim();
+  const sid = document.getElementById('studentId').value.trim();
+  const em  = document.getElementById('email').value.trim();
+  const dep = document.getElementById('dept').value;
+  const sem = document.getElementById('semester').value;
+  const pw  = document.getElementById('password').value;
+  const cpw = document.getElementById('confirmPassword').value;
+  const chk = document.getElementById('terms').checked;
+
+  if (!fn)  { showError('firstName'); valid = false; }
+  if (!ln)  { showError('lastName');  valid = false; }
+  if (!sid) { showError('studentId'); valid = false; }
+  if (!em || !/\S+@\S+\.\S+/.test(em)) { showError('email', 'Enter a valid email'); valid = false; }
+  if (!dep) { showError('dept'); valid = false; }
+  if (pw.length < 8) { showError('password', 'Min 8 characters required'); valid = false; }
+  if (pw !== cpw) { showError('confirmPassword', 'Passwords do not match'); valid = false; }
+  if (!chk) { alert('Please agree to the Terms of Service.'); valid = false; }
+
+  if (!valid) return;
+
+  const btn = document.getElementById('regBtn');
+  btn.textContent = 'Creating account…';
+  btn.classList.add('loading');
+
+  try {
+    const res = await fetch('http://localhost:5000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: fn + ' ' + ln, studentId: sid, email: em, password: pw, department: dep, semester: sem })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      localStorage.setItem('ca_token', data.token);
+      localStorage.setItem('ca_user', JSON.stringify(data.user));
+      document.getElementById('formSection').style.display = 'none';
+      document.getElementById('successState').style.display = 'block';
+    } else {
+      const msg = data.errors ? data.errors[0].msg : (data.message || 'Registration failed.');
+      alert(msg);
+      btn.textContent = 'Create My Account →';
+      btn.classList.remove('loading');
+    }
+  } catch (err) {
+    alert('Cannot connect to server. Make sure the backend is running.');
+    btn.textContent = 'Create My Account →';
+    btn.classList.remove('loading');
+  }
+}
+</script>
+</body>
+</html>

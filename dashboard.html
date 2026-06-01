@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -11,7 +11,7 @@
 <div class="app">
   <div class="overlay" id="overlay"></div>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR (desktop) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <a href="dashboard.html" class="logo-wrap">
@@ -54,6 +54,8 @@
 
   <!-- MAIN -->
   <div class="main-wrapper">
+
+    <!-- DESKTOP TOPBAR -->
     <header class="topbar">
       <div class="topbar-left">
         <button class="menu-btn" id="menuBtn">☰</button>
@@ -69,8 +71,92 @@
       </div>
     </header>
 
-    <main class="main-content">
-      <!-- HERO BANNER -->
+    <!-- MOBILE HEADER -->
+    <div class="mobile-header">
+      <div class="mobile-header-top">
+        <div>
+          <div class="mobile-greeting" id="mobileGreeting">Good Morning, <span data-user-first>Student</span> 👋</div>
+          <div class="mobile-subtitle">Welcome to CampusAssist</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <a href="notices.html" class="mobile-notif">🔔<span class="notif-dot"></span></a>
+          <a href="profile.html" class="mobile-avatar" data-user-initial>S</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE STATS 2x2 -->
+    <div class="mobile-stats">
+      <div class="mobile-stat-card ms-blue">
+        <span class="stat-emoji">📋</span>
+        <div class="stat-num" id="mStatTotal">—</div>
+        <div class="stat-lbl">My Requests</div>
+      </div>
+      <div class="mobile-stat-card ms-green">
+        <span class="stat-emoji">✅</span>
+        <div class="stat-num" id="mStatCompleted">—</div>
+        <div class="stat-lbl">Completed</div>
+      </div>
+      <div class="mobile-stat-card ms-orange">
+        <span class="stat-emoji">⏳</span>
+        <div class="stat-num" id="mStatInProgress">—</div>
+        <div class="stat-lbl">In Progress</div>
+      </div>
+      <div class="mobile-stat-card ms-purple">
+        <span class="stat-emoji">🔔</span>
+        <div class="stat-num" id="mStatNotices">—</div>
+        <div class="stat-lbl">Notices</div>
+      </div>
+    </div>
+
+    <!-- MOBILE QUICK ACTIONS -->
+    <div class="mobile-section-title">Quick Actions</div>
+    <div class="mobile-actions">
+      <a href="exam.html" class="mobile-action-card" style="background:linear-gradient(135deg,#1a3a6b,#2563eb);">
+        <div class="mobile-action-icon">📘</div>
+        <div class="mobile-action-label">Exam Info</div>
+      </a>
+      <a href="fees.html" class="mobile-action-card" style="background:linear-gradient(135deg,#064e3b,#10b981);">
+        <div class="mobile-action-icon">💳</div>
+        <div class="mobile-action-label">Fee Details</div>
+      </a>
+      <a href="leave.html" class="mobile-action-card" style="background:linear-gradient(135deg,#7c1d6f,#ec4899);">
+        <div class="mobile-action-icon">📝</div>
+        <div class="mobile-action-label">Leave</div>
+      </a>
+      <a href="timetable.html" class="mobile-action-card" style="background:linear-gradient(135deg,#7c2d12,#f97316);">
+        <div class="mobile-action-icon">📅</div>
+        <div class="mobile-action-label">Timetable</div>
+      </a>
+      <a href="library.html" class="mobile-action-card" style="background:linear-gradient(135deg,#0c4a6e,#06b6d4);">
+        <div class="mobile-action-icon">📚</div>
+        <div class="mobile-action-label">Library</div>
+      </a>
+      <a href="attendance.html" class="mobile-action-card" style="background:linear-gradient(135deg,#064e3b,#0d9488);">
+        <div class="mobile-action-icon">✅</div>
+        <div class="mobile-action-label">Attendance</div>
+      </a>
+      <a href="status.html" class="mobile-action-card" style="background:linear-gradient(135deg,#3b0764,#7c3aed);">
+        <div class="mobile-action-icon">📄</div>
+        <div class="mobile-action-label">Marksheet</div>
+      </a>
+      <a href="cgpa.html" class="mobile-action-card" style="background:linear-gradient(135deg,#1e1b4b,#4338ca);">
+        <div class="mobile-action-icon">🎯</div>
+        <div class="mobile-action-label">CGPA</div>
+      </a>
+      <a href="od.html" class="mobile-action-card" style="background:linear-gradient(135deg,#7c2d12,#ea580c);">
+        <div class="mobile-action-icon">🏅</div>
+        <div class="mobile-action-label">OD Request</div>
+      </a>
+    </div>
+
+    <!-- MOBILE NOTICES SECTION -->
+    <div class="mobile-section-title">Recent Notices</div>
+    <div style="padding:0 20px 8px;display:none;" class="mobile-section-title" id="mobileNoticesWrap"></div>
+    <div id="mobileNoticesPanel" style="padding:0 20px;display:none;flex-direction:column;gap:8px;"></div>
+
+    <!-- DESKTOP CONTENT -->
+    <main class="main-content desktop-only">
       <div class="card mb-6" style="background:linear-gradient(135deg,#0d1a2a,#0a1e30);border:1px solid rgba(78,133,191,0.2);padding:28px 32px;">
         <div class="flex items-center justify-between" style="flex-wrap:wrap;gap:16px;">
           <div>
@@ -81,142 +167,41 @@
           <div style="font-size:72px;line-height:1;">🏫</div>
         </div>
       </div>
-
-      <!-- STATS -->
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon si-blue">📋</div>
-          <div class="stat-info"><h3 id="statTotal">—</h3><p>My Requests</p></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon si-green">✅</div>
-          <div class="stat-info"><h3 id="statCompleted">—</h3><p>Completed</p></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon si-orange">⏳</div>
-          <div class="stat-info"><h3 id="statInProgress">—</h3><p>In Progress</p></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon si-purple">🔔</div>
-          <div class="stat-info"><h3 id="statNotices">—</h3><p>Notices</p></div>
-        </div>
+        <div class="stat-card"><div class="stat-icon si-blue">📋</div><div class="stat-info"><h3 id="statTotal">—</h3><p>My Requests</p></div></div>
+        <div class="stat-card"><div class="stat-icon si-green">✅</div><div class="stat-info"><h3 id="statCompleted">—</h3><p>Completed</p></div></div>
+        <div class="stat-card"><div class="stat-icon si-orange">⏳</div><div class="stat-info"><h3 id="statInProgress">—</h3><p>In Progress</p></div></div>
+        <div class="stat-card"><div class="stat-icon si-purple">🔔</div><div class="stat-info"><h3 id="statNotices">—</h3><p>Notices</p></div></div>
       </div>
-
-      <!-- QUICK ACCESS -->
       <h2 class="section-title">Quick Access</h2>
       <div class="grid-4 mb-8">
-        <a href="exam.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#2563eb,#60a5fa);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">📘</div>
-          <div style="font-weight:700;font-size:14px;">Exam Info</div>
-        </a>
-        <a href="fees.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">💳</div>
-          <div style="font-weight:700;font-size:14px;">Fee Information</div>
-        </a>
-        <a href="status.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">📄</div>
-          <div style="font-weight:700;font-size:14px;">Marksheet Status</div>
-        </a>
-        <a href="timetable.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#f97316,#fbbf24);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">📅</div>
-          <div style="font-weight:700;font-size:14px;">Timetable</div>
-        </a>
-        <a href="leave.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#ec4899,#fb7185);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">📝</div>
-          <div style="font-weight:700;font-size:14px;">Leave Application</div>
-        </a>
-        <a href="notices.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#f59e0b,#facc15);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">🔔</div>
-          <div style="font-weight:700;font-size:14px;">Notices</div>
-        </a>
-        <a href="library.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#06b6d4,#22d3ee);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">📚</div>
-          <div style="font-weight:700;font-size:14px;">Library</div>
-        </a>
-        <a href="chat.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">💬</div>
-          <div style="font-weight:700;font-size:14px;">Chat with Bot</div>
-        </a>
-        <a href="attendance.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#0d9488,#2dd4bf);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">✅</div>
-          <div style="font-weight:700;font-size:14px;">Attendance</div>
-        </a>
-        <a href="cgpa.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#4338ca,#a5b4fc);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">🎯</div>
-          <div style="font-weight:700;font-size:14px;">CGPA Calculator</div>
-        </a>
-        <a href="od.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#ea580c,#fb923c);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">🏅</div>
-          <div style="font-weight:700;font-size:14px;">OD Request</div>
-        </a>
-        <a href="events.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#be185d,#f472b6);color:#fff;border:none;transition:transform 0.2s ease,box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="font-size:32px;margin-bottom:10px;">🎉</div>
-          <div style="font-weight:700;font-size:14px;">Events</div>
-        </a>
+        <a href="exam.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#2563eb,#60a5fa);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">📘</div><div style="font-weight:700;font-size:14px;">Exam Info</div></a>
+        <a href="fees.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">💳</div><div style="font-weight:700;font-size:14px;">Fee Information</div></a>
+        <a href="status.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">📄</div><div style="font-weight:700;font-size:14px;">Marksheet Status</div></a>
+        <a href="timetable.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#f97316,#fbbf24);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">📅</div><div style="font-weight:700;font-size:14px;">Timetable</div></a>
+        <a href="leave.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#ec4899,#fb7185);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">📝</div><div style="font-weight:700;font-size:14px;">Leave Application</div></a>
+        <a href="notices.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#f59e0b,#facc15);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">🔔</div><div style="font-weight:700;font-size:14px;">Notices</div></a>
+        <a href="library.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#06b6d4,#22d3ee);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">📚</div><div style="font-weight:700;font-size:14px;">Library</div></a>
+        <a href="chat.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">💬</div><div style="font-weight:700;font-size:14px;">Chat with Bot</div></a>
+        <a href="attendance.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#0d9488,#2dd4bf);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">✅</div><div style="font-weight:700;font-size:14px;">Attendance</div></a>
+        <a href="cgpa.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#4338ca,#a5b4fc);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">🎯</div><div style="font-weight:700;font-size:14px;">CGPA Calculator</div></a>
+        <a href="od.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#ea580c,#fb923c);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">🏅</div><div style="font-weight:700;font-size:14px;">OD Request</div></a>
+        <a href="events.html" class="card" style="text-align:center;padding:24px;text-decoration:none;background:linear-gradient(135deg,#be185d,#f472b6);color:#fff;border:none;transition:transform 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"><div style="font-size:32px;margin-bottom:10px;">🎉</div><div style="font-weight:700;font-size:14px;">Events</div></a>
       </div>
-
-      <!-- BOTTOM PANELS -->
       <div class="grid-2">
-        <!-- Events -->
         <div class="card">
-          <div class="card-header">
-            <div>
-              <div class="card-title">🎉 Upcoming Events</div>
-            </div>
-            <a href="events.html" class="link text-sm">View All</a>
-          </div>
-          <div class="event-item" style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
-            <div style="width:50px;height:50px;background:rgba(78,133,191,0.12);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;">
-              <div style="font-size:14px;font-weight:800;color:#89AACC;">15</div>
-              <div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div>
-            </div>
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:14px;">Tech Symposium 2026</div>
-              <div style="font-size:12px;color:var(--text-muted);">Main Auditorium · 10:00 AM</div>
-            </div>
-            <span class="badge badge-primary">Upcoming</span>
-          </div>
-          <div class="event-item" style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
-            <div style="width:50px;height:50px;background:rgba(74,222,128,0.1);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;">
-              <div style="font-size:14px;font-weight:800;color:#4ade80;">20</div>
-              <div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div>
-            </div>
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:14px;">Cultural Fest</div>
-              <div style="font-size:12px;color:var(--text-muted);">Open Ground · 11:00 AM</div>
-            </div>
-            <span class="badge badge-success">Open</span>
-          </div>
-          <div class="event-item" style="display:flex;gap:14px;align-items:center;padding:12px 0;">
-            <div style="width:50px;height:50px;background:rgba(245,158,11,0.1);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;">
-              <div style="font-size:14px;font-weight:800;color:#fbbf24;">25</div>
-              <div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div>
-            </div>
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:14px;">Placement Training</div>
-              <div style="font-size:12px;color:var(--text-muted);">Seminar Hall · 09:30 AM</div>
-            </div>
-            <span class="badge badge-warning">Register</span>
-          </div>
+          <div class="card-header"><div><div class="card-title">🎉 Upcoming Events</div></div><a href="events.html" class="link text-sm">View All</a></div>
+          <div style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><div style="width:50px;height:50px;background:rgba(78,133,191,0.12);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;"><div style="font-size:14px;font-weight:800;color:#89AACC;">15</div><div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div></div><div style="flex:1;"><div style="font-weight:600;font-size:14px;">Tech Symposium 2026</div><div style="font-size:12px;color:var(--text-muted);">Main Auditorium · 10:00 AM</div></div><span class="badge badge-primary">Upcoming</span></div>
+          <div style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><div style="width:50px;height:50px;background:rgba(74,222,128,0.1);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;"><div style="font-size:14px;font-weight:800;color:#4ade80;">20</div><div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div></div><div style="flex:1;"><div style="font-weight:600;font-size:14px;">Cultural Fest</div><div style="font-size:12px;color:var(--text-muted);">Open Ground · 11:00 AM</div></div><span class="badge badge-success">Open</span></div>
+          <div style="display:flex;gap:14px;align-items:center;padding:12px 0;"><div style="width:50px;height:50px;background:rgba(245,158,11,0.1);border-radius:10px;text-align:center;padding-top:6px;flex-shrink:0;"><div style="font-size:14px;font-weight:800;color:#fbbf24;">25</div><div style="font-size:10px;color:var(--text-muted);font-weight:600;">JUN</div></div><div style="flex:1;"><div style="font-weight:600;font-size:14px;">Placement Training</div><div style="font-size:12px;color:var(--text-muted);">Seminar Hall · 09:30 AM</div></div><span class="badge badge-warning">Register</span></div>
         </div>
-
         <div style="display:flex;flex-direction:column;gap:20px;">
-          <!-- Notifications -->
           <div class="card">
-            <div class="card-header">
-              <div class="card-title">🔔 Recent Notifications</div>
-              <a href="notices.html" class="link text-sm">View All</a>
-            </div>
-            <div id="notificationsPanel" style="display:flex;flex-direction:column;gap:10px;">
-              <div style="text-align:center;padding:16px;color:var(--text-muted);">Loading…</div>
-            </div>
+            <div class="card-header"><div class="card-title">🔔 Recent Notifications</div><a href="notices.html" class="link text-sm">View All</a></div>
+            <div id="notificationsPanel" style="display:flex;flex-direction:column;gap:10px;"><div style="text-align:center;padding:16px;color:var(--text-muted);">Loading…</div></div>
           </div>
-
-          <!-- Marksheet Status -->
           <div class="card">
-            <div class="card-header">
-              <div class="card-title">📄 Marksheet Status</div>
-            </div>
+            <div class="card-header"><div class="card-title">📄 Marksheet Status</div></div>
             <div class="step-row"><div class="step-left"><div class="step-dot dot-success"></div><span style="font-size:13.5px;">Application Received</span></div><span class="badge badge-success">Done</span></div>
             <div class="step-row"><div class="step-left"><div class="step-dot dot-success"></div><span style="font-size:13.5px;">Under Verification</span></div><span class="badge badge-success">Done</span></div>
             <div class="step-row"><div class="step-left"><div class="step-dot dot-primary"></div><span style="font-size:13.5px;">Processing</span></div><span class="badge badge-primary">In Progress</span></div>
@@ -232,6 +217,24 @@
 if (!requireAuth()) throw new Error('redirect');
 populateUserInfo();
 
+// Mobile greeting based on time
+function setGreeting() {
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
+  const el = document.getElementById('mobileGreeting');
+  if (el) {
+    const user = getUser();
+    const firstName = user && user.name ? user.name.split(' ')[0] : 'Student';
+    el.innerHTML = g + ', <span style="color:var(--primary-light);">' + firstName + '</span> 👋';
+  }
+}
+setGreeting();
+
+// Set mobile avatar initial
+document.querySelectorAll('[data-user-first]').forEach(el => {
+  const user = getUser();
+  if (user && user.name) el.textContent = user.name.split(' ')[0];
+});
 
 async function loadDashboard() {
   const [statsRes, noticesRes] = await Promise.all([
@@ -240,13 +243,22 @@ async function loadDashboard() {
   ]);
   if (statsRes.ok) {
     const s = statsRes.data.stats;
+    // Desktop
     document.getElementById('statTotal').textContent      = s.total;
     document.getElementById('statCompleted').textContent  = s.completed;
     document.getElementById('statInProgress').textContent = s.inProgress;
+    // Mobile
+    document.getElementById('mStatTotal').textContent      = s.total;
+    document.getElementById('mStatCompleted').textContent  = s.completed;
+    document.getElementById('mStatInProgress').textContent = s.inProgress;
   }
   if (noticesRes.ok) {
     const notices = noticesRes.data.notices || [];
-    document.getElementById('statNotices').textContent = notices.length;
+    const count = notices.length;
+    document.getElementById('statNotices').textContent  = count;
+    document.getElementById('mStatNotices').textContent = count;
+
+    // Desktop panel
     const panel = document.getElementById('notificationsPanel');
     if (!notices.length) {
       panel.innerHTML = '<p style="font-size:13.5px;color:var(--text-muted);text-align:center;padding:16px;">No notices at this time.</p>';
@@ -256,6 +268,21 @@ async function loadDashboard() {
           <p style="font-size:13.5px;margin:0;">${n.title}</p>
           <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;margin-left:10px;">${timeAgo(n.createdAt)}</span>
         </div>`).join('');
+    }
+
+    // Mobile notices
+    const mPanel = document.getElementById('mobileNoticesPanel');
+    if (mPanel) {
+      mPanel.style.display = 'flex';
+      if (!notices.length) {
+        mPanel.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">No notices.</p>';
+      } else {
+        mPanel.innerHTML = notices.slice(0, 3).map(n => `
+          <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+            <div style="font-size:13.5px;font-weight:600;color:var(--dark);margin-bottom:4px;">${n.title}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${timeAgo(n.createdAt)}</div>
+          </div>`).join('');
+      }
     }
   }
 }

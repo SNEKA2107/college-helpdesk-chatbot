@@ -244,6 +244,38 @@ document.addEventListener('DOMContentLoaded', function () {
   topbarRight.appendChild(btn);
 });
 
+// Inject bottom navigation on all authenticated pages (mobile only)
+document.addEventListener('DOMContentLoaded', function () {
+  if (!localStorage.getItem('ca_token')) return;
+  if (document.querySelector('.bottom-nav')) return;
+
+  const page = window.location.pathname.split('/').pop() || 'index.html';
+  const isActive = (p) => page === p ? 'active' : '';
+
+  const nav = document.createElement('nav');
+  nav.className = 'bottom-nav';
+  nav.innerHTML = `
+    <a href="dashboard.html" class="bn-item ${isActive('dashboard.html')}">
+      <span class="bn-icon">🏠</span>
+      <span class="bn-label">Home</span>
+    </a>
+    <a href="requests.html" class="bn-item ${isActive('requests.html')}">
+      <span class="bn-icon">📋</span>
+      <span class="bn-label">Requests</span>
+    </a>
+    <a href="chat.html" class="bn-fab" title="Chat with Bot">💬</a>
+    <a href="notices.html" class="bn-item ${isActive('notices.html')}">
+      <span class="bn-icon">🔔</span>
+      <span class="bn-label">Notices</span>
+    </a>
+    <a href="profile.html" class="bn-item ${isActive('profile.html')}">
+      <span class="bn-icon">👤</span>
+      <span class="bn-label">Profile</span>
+    </a>
+  `;
+  document.body.appendChild(nav);
+});
+
 function requireAuth() {
   const token = localStorage.getItem('ca_token');
   if (!token) { window.location.href = 'login.html'; return false; }

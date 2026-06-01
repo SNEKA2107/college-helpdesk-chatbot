@@ -229,6 +229,21 @@ function logout() {
   window.location.href = 'login.html';
 }
 
+// Inject logout button into topbar on all authenticated pages
+document.addEventListener('DOMContentLoaded', function () {
+  if (!localStorage.getItem('ca_token')) return;
+  const topbarRight = document.querySelector('.topbar-right');
+  if (!topbarRight) return;
+  if (topbarRight.querySelector('.topbar-logout-btn')) return;
+  const btn = document.createElement('button');
+  btn.className = 'topbar-logout-btn';
+  btn.title = 'Logout';
+  btn.innerHTML = '🚪 Logout';
+  btn.style.cssText = 'background:var(--danger);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-left:8px;';
+  btn.onclick = logout;
+  topbarRight.appendChild(btn);
+});
+
 function requireAuth() {
   const token = localStorage.getItem('ca_token');
   if (!token) { window.location.href = 'login.html'; return false; }

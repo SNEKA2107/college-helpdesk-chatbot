@@ -915,16 +915,23 @@ img { max-width: 100%; }
   font-weight: 600;
 }
 
+/* ===== DESKTOP LAYOUT (min-width: 769px) ===== */
+@media (min-width: 769px) {
+  .sidebar { transform: none !important; }
+  .main-wrapper { margin-left: var(--sidebar-w) !important; }
+  .topbar { display: flex !important; }
+  .desktop-only { display: block !important; }
+  .stats-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 20px !important; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr) !important; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr) !important; }
+  .grid-2 { grid-template-columns: repeat(2, 1fr) !important; }
+  .form-row { grid-template-columns: 1fr 1fr !important; }
+  .main-content { padding: 28px !important; padding-bottom: 28px !important; }
+  /* Make all cards visible on desktop — disable GSAP opacity:0 start */
+  .card, .stat-card, .step-row { opacity: 1 !important; transform: none !important; }
+}
+
 /* ===== RESPONSIVE ===== */
-@media (max-width: 1200px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 1024px) {
-  .grid-4 { grid-template-columns: repeat(2, 1fr); }
-  .grid-3 { grid-template-columns: repeat(2, 1fr); }
-}
-
 @media (max-width: 768px) {
   .menu-btn { display: flex !important; }
 

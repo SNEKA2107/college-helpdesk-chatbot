@@ -396,7 +396,8 @@ async function handleRegister() {
   btn.classList.add('loading');
 
   try {
-    const res = await fetch('http://localhost:5000/api/auth/register', {
+    const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000/api' : '/api';
+    const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: fn + ' ' + ln, studentId: sid, email: em, password: pw, department: dep, semester: sem })

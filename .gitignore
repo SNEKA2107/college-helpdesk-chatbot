@@ -9,4 +9,9 @@ test-screenshots/
 test-login.js
 open-login.js
 *.png
+!icons/*.png
 .claude/
+debug-*.png
+live-site.png
+login-*.png
+test-screenshots/

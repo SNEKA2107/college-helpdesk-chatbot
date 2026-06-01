@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: campusassist
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install --omit=dev
+    startCommand: node backend/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false

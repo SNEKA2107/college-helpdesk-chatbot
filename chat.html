@@ -235,6 +235,20 @@ function clearChat() {
   addMsg('Hello again! 👋 How can I help you today? Type <b>help</b> to see all topics.', 'bot');
 }
 
+// ── Notification Sound ───────────────────────────────────────────────────────
+function playSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine'; o.frequency.value = 520;
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+
 // ── Text-to-Speech ──────────────────────────────────────────────────────────
 let ttsEnabled = false;
 

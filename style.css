@@ -171,14 +171,14 @@ img { max-width: 100%; }
   width: var(--sidebar-w);
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   position: fixed;
   left: 0; top: 0;
   z-index: 100;
   transition: transform var(--ease);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -221,6 +221,7 @@ img { max-width: 100%; }
 .sidebar-nav {
   flex: 1;
   padding: 12px 10px;
+  overflow-y: auto;
 }
 
 .nav-section-title {

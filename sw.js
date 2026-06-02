@@ -1,4 +1,4 @@
-const CACHE = 'campusassist-v1';
+const CACHE = 'campusassist-v2';
 const STATIC = ['/', '/style.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', function (e) {

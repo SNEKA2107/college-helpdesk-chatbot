@@ -1181,11 +1181,11 @@ img { max-width: 100%; }
 
 /* Mobile page content padding */
 @media (max-width: 768px) {
-  .bottom-nav { display: flex; }
-  .mobile-header { display: block; }
-  .mobile-stats { display: grid; }
-  .mobile-section-title { display: block; }
-  .mobile-actions { display: grid; }
+  .bottom-nav { display: flex !important; }
+  .mobile-header { display: block !important; }
+  .mobile-stats { display: grid !important; }
+  .mobile-section-title { display: block !important; }
+  .mobile-actions { display: grid !important; }
 
   /* Hide desktop topbar on mobile */
   .topbar { display: none !important; }

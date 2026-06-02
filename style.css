@@ -929,6 +929,13 @@ img { max-width: 100%; }
   .main-content { padding: 28px !important; padding-bottom: 28px !important; }
   /* Make all cards visible on desktop — disable GSAP opacity:0 start */
   .card, .stat-card, .step-row { opacity: 1 !important; transform: none !important; }
+  /* Explicitly hide all mobile-only sections on desktop */
+  .mobile-header,
+  .mobile-stats,
+  .mobile-section-title,
+  .mobile-actions,
+  .mobile-notices-panel,
+  .bottom-nav { display: none !important; }
 }
 
 /* ===== RESPONSIVE ===== */

@@ -10,11 +10,15 @@ const genToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '
 
 // POST /api/auth/register
 router.post('/register', [
-  body('name').notEmpty().trim().withMessage('Name is required'),
-  body('studentId').notEmpty().trim().withMessage('Student ID is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('department').notEmpty().withMessage('Department is required'),
+  body('name').isString().notEmpty().trim().withMessage('Name is required'),
+  body('studentId').isString().notEmpty().trim().withMessage('Student ID is required'),
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('password')
+    .isString()
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/[a-zA-Z]/).withMessage('Password must contain at least one letter')
+    .matches(/[\d@$!%*?&_\-#]/).withMessage('Password must contain at least one digit or special character'),
+  body('department').isString().notEmpty().withMessage('Department is required'),
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
@@ -24,8 +28,7 @@ router.post('/register', [
   try {
     const existingUser = await User.findOne({ $or: [{ email }, { studentId: studentId.toUpperCase() }] });
     if (existingUser) {
-      const field = existingUser.email === email ? 'Email' : 'Student ID';
-      return res.status(409).json({ success: false, message: `${field} is already registered.` });
+      return res.status(409).json({ success: false, message: 'An account with this email or Student ID already exists.' });
     }
 
     const user = await User.create({ name, studentId, email, password, department, semester });
@@ -39,8 +42,8 @@ router.post('/register', [
 
 // POST /api/auth/login
 router.post('/login', [
-  body('studentId').notEmpty().withMessage('Student ID is required'),
-  body('password').notEmpty().withMessage('Password is required'),
+  body('studentId').isString().notEmpty().withMessage('Student ID is required'),
+  body('password').isString().notEmpty().withMessage('Password is required'),
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
@@ -99,6 +102,9 @@ router.put('/profile', protect, async (req, res) => {
   const { name, phone, semester, photo, parentName, motherName, parentPhone, parentEmail, parentOccupation, parentAddress } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: 'Name is required.' });
+  }
+  if (photo !== undefined && typeof photo === 'string' && photo.length > 7 * 1024 * 1024) {
+    return res.status(400).json({ success: false, message: 'Photo is too large. Please use an image under 5 MB.' });
   }
   try {
     const update = {

@@ -136,7 +136,7 @@
 
 <script src="app.js"></script>
 <script>
-if (!requireAuth()) throw new Error('redirect');
+if (!requireAdmin()) throw new Error('redirect');
 populateUserInfo();
 
 let _currentStudents = [];

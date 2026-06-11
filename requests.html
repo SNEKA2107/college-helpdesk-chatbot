@@ -52,7 +52,7 @@
       <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
       <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
       <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
-      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+      
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -85,7 +85,7 @@
           <h2>My Requests</h2>
           <p>Track all your document and service requests</p>
         </div>
-        <button class="btn btn-primary" onclick="openModal()">+ New Request</button>
+        <button id="newReqBtn" class="btn btn-primary" onclick="openModal()" disabled>+ New Request</button>
       </div>
 
       <!-- Filter Tabs -->
@@ -202,6 +202,7 @@ async function loadRequests() {
   } else {
     document.getElementById('reqList').innerHTML = '<p style="color:var(--danger);text-align:center;padding:32px 0;">Failed to load requests. Please refresh.</p>';
   }
+  document.getElementById('newReqBtn').disabled = false;
 }
 
 loadRequests();

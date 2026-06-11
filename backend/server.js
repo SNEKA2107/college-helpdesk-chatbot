@@ -9,10 +9,24 @@ require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 const app = express();
 
+// ===== TRUST PROXY — required for correct IP resolution behind Render/Nginx =====
+app.set('trust proxy', 1);
+
 // ===== SECURITY HEADERS =====
 app.use(helmet({
   crossOriginResourcePolicy: false,
-  contentSecurityPolicy: false,   // frontend loads CDN fonts + GSAP
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+      styleSrc:    ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc:     ["'self'", "https://fonts.gstatic.com"],
+      imgSrc:      ["'self'", "data:", "blob:"],
+      connectSrc:  ["'self'"],
+      objectSrc:   ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  },
 }));
 
 // ===== CORS =====
@@ -25,9 +39,11 @@ const allowedOrigins = [
   'http://127.0.0.1:5000',
 ];
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? true
-    : (origin, cb) => cb(null, true),
+  origin: (origin, cb) => {
+    // Allow same-origin requests (no Origin header) and allow listed origins
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('CORS: origin not allowed'));
+  },
   credentials: true
 }));
 
@@ -38,10 +54,20 @@ app.use(morgan('dev'));
 // ===== RATE LIMITING =====
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: parseInt(process.env.AUTH_RATE_LIMIT || '20'),
   message: { success: false, message: 'Too many attempts. Try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// Global limiter — all /api/* routes (authenticated or not)
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,       // 1 minute window
+  max: 150,                   // 150 req/min per IP is generous for normal use
+  message: { success: false, message: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
 });
 
 // ===== MONGODB CONNECTION =====
@@ -59,6 +85,8 @@ mongoose.connect(process.env.MONGO_URI, {
   });
 
 // ===== ROUTES =====
+app.use('/api/', globalLimiter);   // global rate limit first
+
 const authRouter = require('./routes/auth');
 app.use('/api/auth/login',    authLimiter, authRouter);
 app.use('/api/auth/register', authLimiter, authRouter);

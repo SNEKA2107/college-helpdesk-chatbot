@@ -66,7 +66,7 @@
       <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
       <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
       <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
-      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+      
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -146,11 +146,15 @@ function formatDate(d) {
 
 function isRegistered(id) { return registered.includes(id); }
 
-function toggleRegister(id) {
+async function toggleRegister(id) {
   if (isRegistered(id)) {
+    const res = await apiCall(`/events/${id}/register`, { method: 'DELETE' });
+    if (!res.ok) { showToast(res.error || 'Failed to unregister', 'error'); return; }
     registered = registered.filter(r => r !== id);
     showToast('Unregistered from event', 'info');
   } else {
+    const res = await apiCall(`/events/${id}/register`, { method: 'POST', body: JSON.stringify({}) });
+    if (!res.ok) { showToast(res.error || 'Registration failed', 'error'); return; }
     registered.push(id);
     showToast('Registered successfully! Check OD Request if you need OD.', 'success');
   }

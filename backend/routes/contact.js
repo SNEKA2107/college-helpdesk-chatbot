@@ -10,6 +10,12 @@ router.post('/', protect, async (req, res) => {
   if (!department || !subject || !message) {
     return res.status(400).json({ success: false, message: 'Department, subject, and message are required.' });
   }
+  if (typeof subject === 'string' && subject.length > 200) {
+    return res.status(400).json({ success: false, message: 'Subject must be 200 characters or fewer.' });
+  }
+  if (typeof message === 'string' && message.length > 2000) {
+    return res.status(400).json({ success: false, message: 'Message must be 2000 characters or fewer.' });
+  }
   try {
     const contact = await Contact.create({
       student:   req.user._id,

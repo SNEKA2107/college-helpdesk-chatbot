@@ -38,6 +38,10 @@ router.post('/payment', protect, async (req, res) => {
   if (!amount || !mode) {
     return res.status(400).json({ success: false, message: 'Amount and mode are required.' });
   }
+  const parsedAmount = Number(amount);
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || parsedAmount > 500000) {
+    return res.status(400).json({ success: false, message: 'Amount must be a positive number not exceeding ₹5,00,000.' });
+  }
   try {
     const fee = await Fee.findOne({ student: req.user._id });
     if (!fee) return res.status(404).json({ success: false, message: 'No fee record found.' });

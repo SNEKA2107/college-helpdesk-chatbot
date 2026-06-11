@@ -32,7 +32,7 @@
       <a href="notices.html" class="nav-link"><span class="nav-icon">🔔</span> Notices</a>
       <a href="library.html" class="nav-link"><span class="nav-icon">📚</span> Library</a>
       <a href="contact.html" class="nav-link"><span class="nav-icon">☎</span> Contact Office</a>
-      <a href="student-search.html" class="nav-link"><span class="nav-icon">🔍</span> Student Search</a>
+      
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -237,6 +237,12 @@ async function submitLeave() {
   if (!fromDate)  { showToast('Please select From Date', 'error'); return; }
   if (!toDate)    { showToast('Please select To Date', 'error'); return; }
   if (!reason)    { showToast('Please enter a reason', 'error'); return; }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const from  = new Date(fromDate); from.setHours(0,0,0,0);
+  const to    = new Date(toDate);   to.setHours(0,0,0,0);
+  if (from < today) { showToast('From Date cannot be in the past', 'error'); return; }
+  if (to < from)    { showToast('To Date cannot be before From Date', 'error'); return; }
 
   const btn = document.querySelector('#leaveForm .btn-primary');
   btn.textContent = 'Submitting…';

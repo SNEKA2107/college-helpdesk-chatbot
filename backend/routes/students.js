@@ -23,8 +23,8 @@ router.get('/', protect, adminOnly, async (req, res) => {
   }
 });
 
-// GET /api/students/search/:query
-router.get('/search/:query', protect, async (req, res) => {
+// GET /api/students/search/:query  — admin only (prevents student enumeration)
+router.get('/search/:query', protect, adminOnly, async (req, res) => {
   try {
     const q = req.params.query;
     const students = await User.find({
@@ -40,8 +40,8 @@ router.get('/search/:query', protect, async (req, res) => {
   }
 });
 
-// GET /api/students/:id — Single student
-router.get('/:id', protect, async (req, res) => {
+// GET /api/students/:id — admin only (prevents IDOR on other students' PII)
+router.get('/:id', protect, adminOnly, async (req, res) => {
   try {
     const student = await User.findById(req.params.id).select('-password');
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });

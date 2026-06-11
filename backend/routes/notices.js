@@ -17,6 +17,11 @@ router.get('/', protect, async (req, res) => {
   }
 });
 
+// Strip HTML tags to prevent stored XSS
+function stripHtml(str) {
+  return typeof str === 'string' ? str.replace(/<[^>]*>/g, '') : str;
+}
+
 // POST /api/notices — Create notice (admin)
 router.post('/', protect, adminOnly, async (req, res) => {
   const { title, content, category, pinned, expiresAt } = req.body;
@@ -25,7 +30,8 @@ router.post('/', protect, adminOnly, async (req, res) => {
   }
   try {
     const notice = await Notice.create({
-      title, content,
+      title:    stripHtml(title),
+      content:  stripHtml(content),
       category: category || 'general',
       postedBy: req.user.name,
       pinned: !!pinned,
@@ -40,7 +46,10 @@ router.post('/', protect, adminOnly, async (req, res) => {
 // PUT /api/notices/:id — Edit notice (admin)
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
-    const notice = await Notice.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const update = { ...req.body };
+    if (update.title)   update.title   = stripHtml(update.title);
+    if (update.content) update.content = stripHtml(update.content);
+    const notice = await Notice.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!notice) return res.status(404).json({ success: false, message: 'Notice not found' });
     res.json({ success: true, notice });
   } catch (err) {

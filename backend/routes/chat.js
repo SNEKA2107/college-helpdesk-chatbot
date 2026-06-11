@@ -33,6 +33,9 @@ router.post('/', protect, async (req, res) => {
   if (!message || !message.trim()) {
     return res.status(400).json({ success: false, message: 'Message is required' });
   }
+  if (message.length > 1000) {
+    return res.status(400).json({ success: false, message: 'Message must be 1000 characters or fewer.' });
+  }
 
   // Use Claude AI if API key is configured
   if (process.env.ANTHROPIC_API_KEY) {

@@ -43,6 +43,16 @@ router.get('/today', protect, async (req, res) => {
   }
 });
 
+// GET /api/timetable/all — Admin: list every timetable for editing
+router.get('/all', protect, adminOnly, async (req, res) => {
+  try {
+    const timetables = await Timetable.find().sort({ updatedAt: -1 });
+    res.json({ success: true, timetables });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/timetable — Admin: create timetable
 router.post('/', protect, adminOnly, async (req, res) => {
   try {

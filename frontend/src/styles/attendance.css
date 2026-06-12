@@ -1,0 +1,34 @@
+.overall-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; display: flex; align-items: center; gap: 28px; margin-bottom: 24px; }
+.overall-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; border: 5px solid; }
+.overall-circle.good { border-color: #4ade80; background: rgba(74,222,128,0.08); }
+.overall-circle.warn { border-color: #eab308; background: rgba(234,179,8,0.08); }
+.overall-circle.low { border-color: #f87171; background: rgba(248,113,113,0.08); }
+.overall-pct { font-size: 26px; font-weight: 800; }
+.overall-circle.good .overall-pct { color: #4ade80; }
+.overall-circle.warn .overall-pct { color: #eab308; }
+.overall-circle.low .overall-pct { color: #f87171; }
+.overall-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.overall-info h3 { font-size: 20px; font-weight: 800; color: var(--dark); margin: 0 0 6px; }
+.overall-info p { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; }
+.overall-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+.o-stat { text-align: center; }
+.o-stat-val { font-size: 18px; font-weight: 700; color: var(--dark); }
+.o-stat-lbl { font-size: 12px; color: var(--text-muted); }
+.subject-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 12px; }
+.subj-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.subj-name { font-weight: 700; color: var(--dark); }
+.subj-pct { font-size: 15px; font-weight: 800; }
+.pct-good { color: #4ade80; }
+.pct-warn { color: #eab308; }
+.pct-low { color: #f87171; }
+.progress-bar { width: 100%; height: 7px; background: #1e293b; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.fill-good { background: #4ade80; }
+.fill-warn { background: #eab308; }
+.fill-low { background: #f87171; }
+.subj-counts { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: var(--text-muted); }
+.badge-present { background: rgba(74,222,128,0.15); color: #4ade80; }
+.badge-absent { background: rgba(248,113,113,0.15); color: #f87171; }
+.badge-late { background: rgba(234,179,8,0.15); color: #eab308; }
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }

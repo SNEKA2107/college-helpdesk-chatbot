@@ -3,7 +3,7 @@ services:
     name: campusassist
     env: node
     plan: free
-    buildCommand: cd backend && npm install --omit=dev
+    buildCommand: cd backend && npm install --omit=dev && cd ../frontend && npm install --include=dev && npm run build
     startCommand: node backend/server.js
     envVars:
       - key: NODE_ENV

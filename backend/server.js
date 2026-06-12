@@ -40,6 +40,10 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
+  'http://localhost:5173',   // Vite dev server (React frontend)
+  'http://localhost:4173',   // Vite preview server
+  'https://localhost',       // Capacitor Android WebView
+  'capacitor://localhost',   // Capacitor iOS WebView
 ].filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
@@ -108,7 +112,12 @@ app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/events',     require('./routes/events'));
 
 // ===== STATIC FILES =====
-app.use(express.static(path.join(__dirname, '..')));
+// Serve the React build when present (frontend/dist), otherwise the legacy static site at repo root
+const distDir = path.join(__dirname, '..', 'frontend', 'dist');
+const webRoot = require('fs').existsSync(path.join(distDir, 'index.html'))
+  ? distDir
+  : path.join(__dirname, '..');
+app.use(express.static(webRoot));
 
 // ===== 404 HANDLER (API routes only) =====
 app.use('/api', (req, res) => {
@@ -117,7 +126,7 @@ app.use('/api', (req, res) => {
 
 // ===== SPA FALLBACK =====
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'index.html'));
+  res.sendFile(path.join(webRoot, 'index.html'));
 });
 
 // ===== ERROR HANDLER =====
@@ -131,5 +140,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 CampusAssist backend running on http://localhost:${PORT}`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📁 Static files: ${require('path').join(__dirname, '..')}`);
+  console.log(`📁 Static files: ${webRoot}`);
 });

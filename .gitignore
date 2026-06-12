@@ -10,6 +10,7 @@ test-login.js
 open-login.js
 *.png
 !icons/*.png
+!frontend/public/icons/*.png
 .claude/
 debug-*.png
 live-site.png

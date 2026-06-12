@@ -1,0 +1,5 @@
+.photo-wrap{position:relative;width:100px;height:100px;margin:0 auto 16px;cursor:pointer;}
+.photo-wrap img{width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--primary);}
+.photo-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:22px;}
+.photo-wrap:hover .photo-overlay{opacity:1;}
+.parent-detail-row{display:flex;justify-content:space-between;padding:10px;background:var(--bg2);border-radius:8px;}

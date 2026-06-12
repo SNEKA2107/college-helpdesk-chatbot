@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Counter  = require('./Counter');
 
 const requestSchema = new mongoose.Schema({
   student:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -19,12 +20,13 @@ const requestSchema = new mongoose.Schema({
   completedAt: { type: Date },
 }, { timestamps: true });
 
-requestSchema.pre('save', function(next) {
+requestSchema.pre('save', async function() {
   if (!this.refNumber) {
     const prefix = this.type.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
-    this.refNumber = `${prefix}-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
+    const year   = new Date().getFullYear();
+    const seq    = await Counter.next(`request-${year}`);
+    this.refNumber = `${prefix}-${year}-${String(seq).padStart(4, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('Request', requestSchema);

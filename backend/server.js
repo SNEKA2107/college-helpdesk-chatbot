@@ -32,17 +32,19 @@ app.use(helmet({
 // ===== CORS =====
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://127.0.0.1:5500',
+  process.env.RENDER_EXTERNAL_URL,  // Render sets this to the service's own URL
+  'https://college-helpdesk-chatbot-l4bk.onrender.com',
   'http://localhost:5500',
   'http://127.0.0.1:3000',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
-];
+].filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
     // Allow same-origin requests (no Origin header) and allow listed origins
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('CORS: origin not allowed'));
+    cb(null, false);  // deny without throwing — a thrown error becomes a 500
   },
   credentials: true
 }));

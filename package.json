@@ -1,0 +1,12 @@
+{
+  "name": "campusassist",
+  "version": "1.0.0",
+  "description": "CampusAssist College Helpdesk",
+  "scripts": {
+    "start": "node backend/server.js",
+    "build": "node generate-icons.js && cd backend && npm install --omit=dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

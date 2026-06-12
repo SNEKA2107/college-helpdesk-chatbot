@@ -1,0 +1,272 @@
+[
+  {
+    "method": "POST",
+    "path": "/api/auth/register",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "access": "public"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/me",
+    "access": "auth"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/auth/change-password",
+    "access": "auth"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/auth/profile",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/students",
+    "access": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/students/search/test",
+    "access": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/students/6a16d5a5705bf2a863713a93",
+    "access": "admin"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/students/6a16d5a5705bf2a863713a93",
+    "access": "auth-own-or-admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requests/stats",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requests",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requests",
+    "access": "auth"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/requests/6a2a7448649de8b1cea84d64/status",
+    "access": "admin"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/requests/6a2a7448649de8b1cea84d64",
+    "access": "auth-own"
+  },
+  {
+    "method": "GET",
+    "path": "/api/leave",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/leave",
+    "access": "auth"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/leave/000000000000000000000000/status",
+    "access": "admin"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/leave/000000000000000000000000",
+    "access": "auth-own"
+  },
+  {
+    "method": "GET",
+    "path": "/api/notices",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/notices",
+    "access": "admin"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/notices/6a2a7448649de8b1cea84d6a",
+    "access": "admin"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/notices/6a2a7448649de8b1cea84d6a",
+    "access": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/chat",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/exam",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/exam/schedule",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/exam/practicals",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/exam",
+    "access": "admin"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/exam/6a16ff6b70c6cbcb3ed65a19",
+    "access": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/fees",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/fees/payment",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/fees/all",
+    "access": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/library",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/library/borrowed",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/library/hours",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/library/renew/6a16ff6c70c6cbcb3ed65a34",
+    "access": "auth-own"
+  },
+  {
+    "method": "POST",
+    "path": "/api/library",
+    "access": "admin"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/library/6a16ff6c70c6cbcb3ed65a2d",
+    "access": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/timetable",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/timetable/today",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/timetable",
+    "access": "admin"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/timetable/6a16ff6c70c6cbcb3ed65a38",
+    "access": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/contact",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/contact",
+    "access": "admin"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/contact/6a2a7448649de8b1cea84d67/resolve",
+    "access": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/attendance/summary",
+    "access": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/attendance",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/attendance",
+    "access": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/attendance/bulk",
+    "access": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/events",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/events/000000000000000000000000/register",
+    "access": "auth"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/events/000000000000000000000000/register",
+    "access": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/events",
+    "access": "admin"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/events/000000000000000000000000",
+    "access": "admin"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/events/000000000000000000000000",
+    "access": "admin"
+  }
+]

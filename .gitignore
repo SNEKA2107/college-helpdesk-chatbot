@@ -16,3 +16,6 @@ debug-*.png
 live-site.png
 login-*.png
 test-screenshots/
+
+# real auth tokens for test runners (template lives in automated_test/)
+input.json

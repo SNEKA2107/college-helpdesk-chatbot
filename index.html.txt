@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CampusAssist</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <div class="sidebar">
+    <h2>CampusAssist</h2>
+    <p>College Helpdesk</p>
+    <a href="index.html">Dashboard</a>
+    <a href="chat.html">Chat with Bot</a>
+    <a href="requests.html">My Requests</a>
+    <a href="status.html">Marksheet/DD Status</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="contact.html">Contact Office</a>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <h2>Smart College Helpdesk Chatbot</h2>
+      <span>🔔 Student</span>
+    </div>
+
+    <div class="cards">
+      <div class="card">💬 Chat with Bot</div>
+      <div class="card">📄 Marksheet Status</div>
+      <div class="card">📢 Notifications</div>
+    </div>
+
+    <div class="content">
+      <div class="chat-section">
+        <h3>Chat with Helpdesk Bot</h3>
+        <div id="chatBox" class="chat-box">
+          <div class="bot">Hello! How can I help you?</div>
+        </div>
+
+        <div class="quick-buttons">
+          <button onclick="quickMsg('exam')">Exam</button>
+          <button onclick="quickMsg('fees')">Fees</button>
+          <button onclick="quickMsg('marksheet status')">Marksheet Status</button>
+        </div>
+
+        <div class="input-area">
+          <input id="userInput" type="text" placeholder="Type your message...">
+          <button onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+
+      <div class="status-section">
+        <h3>Marksheet Request Status</h3>
+        <p>✅ DD Submitted</p>
+        <p>✅ Under Verification</p>
+        <p>🔵 Processing</p>
+        <p>⚪ Ready for Collection</p>
+
+        <h3>Notifications</h3>
+        <p>🔔 Your DD has been received by office.</p>
+        <p>🔔 Your marksheet request is under verification.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

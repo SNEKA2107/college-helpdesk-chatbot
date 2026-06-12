@@ -1,0 +1,5 @@
+{
+  "baseUrl": "http://localhost:5000",
+  "student": "<JWT token for a regular student account>",
+  "admin":   "<JWT token for an admin account>"
+}

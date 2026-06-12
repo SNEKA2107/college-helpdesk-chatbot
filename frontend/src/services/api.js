@@ -8,8 +8,11 @@ function resolveApiBase() {
   if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
     return PROD_API;
   }
-  const { hostname, port } = window.location;
+  const { protocol, hostname, port } = window.location;
   const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  // Capacitor WebViews serve the app at https://localhost (Android) or capacitor://localhost (iOS)
+  // with no local backend — never point those at http://localhost:5000 (blocked as mixed content)
+  if (isLocal && (protocol === 'https:' || protocol === 'capacitor:')) return PROD_API;
   // Vite dev/preview server → local backend; production web build is served by the backend itself
   if (isLocal && port !== '5000') return 'http://localhost:5000/api';
   return '/api';

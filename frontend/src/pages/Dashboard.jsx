@@ -37,19 +37,70 @@ function greeting() {
   return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
 }
 
+// Per-row accent palette — preserves the original 3-row Upcoming Events look (blue / green / amber)
+const EVENT_ACCENTS = [
+  { box: 'rgba(78,133,191,0.12)', color: '#89AACC' },
+  { box: 'rgba(74,222,128,0.1)',  color: '#4ade80' },
+  { box: 'rgba(245,158,11,0.1)',  color: '#fbbf24' },
+];
+
+// Event category → existing badge class (only classes present in the stylesheet)
+const EV_BADGE = {
+  Technical: 'badge-primary', Cultural: 'badge-warning', Sports: 'badge-success',
+  Workshop: 'badge-warning', Seminar: 'badge-muted', Other: 'badge-muted',
+};
+
+// Marksheet stepper — driven by the real Request.status enum (no schema change)
+const STATUS_ORDER = ['Submitted', 'Under Review', 'Processing', 'Ready for Collection', 'Completed'];
+const MARKSHEET_STEPS = [
+  { label: 'Application Received', reachedAt: 0 },
+  { label: 'Under Verification',   reachedAt: 1 },
+  { label: 'Processing',           reachedAt: 2 },
+  { label: 'Ready for Collection', reachedAt: 3 },
+];
+
+function marksheetSteps(status) {
+  const rejected = status === 'Rejected';
+  const cur = STATUS_ORDER.indexOf(status);
+  return MARKSHEET_STEPS.map((step, idx) => {
+    if (rejected) {
+      if (idx === 0) return { ...step, dot: 'dot-success', badge: 'badge-success', text: 'Done' };
+      if (idx === MARKSHEET_STEPS.length - 1) return { ...step, dot: 'dot-muted', badge: 'badge-danger', text: 'Rejected' };
+      return { ...step, dot: 'dot-muted', badge: 'badge-muted', text: 'Pending' };
+    }
+    if (cur > step.reachedAt) return { ...step, dot: 'dot-success', badge: 'badge-success', text: 'Done' };
+    if (cur === step.reachedAt) return { ...step, dot: 'dot-primary', badge: 'badge-primary', text: 'In Progress' };
+    return { ...step, dot: 'dot-muted', badge: 'badge-muted', text: 'Pending' };
+  });
+}
+
 export default function Dashboard() {
   const user = getUser();
   const firstName = user?.name ? user.name.split(' ')[0] : 'Student';
   const [stats, setStats] = useState(null);
   const [notices, setNotices] = useState(null);
+  const [events, setEvents] = useState(null);
+  const [requests, setRequests] = useState(null);
 
   useEffect(() => {
     apiCall('/requests/stats').then(res => { if (res.ok) setStats(res.data.stats); });
     apiCall('/notices').then(res => { if (res.ok) setNotices(res.data.notices || []); });
+    apiCall('/events').then(res => { if (res.ok) setEvents(res.data.events || []); });
+    apiCall('/requests').then(res => { if (res.ok) setRequests(res.data.requests || []); });
   }, []);
 
   const statVal = key => (stats ? stats[key] : '—');
   const noticeCount = notices ? notices.length : '—';
+
+  // Upcoming events from the Event collection — today onward, soonest first, max 3
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const upcomingEvents = (events || [])
+    .filter(e => new Date(e.date) >= startOfToday)
+    .slice(0, 3);
+
+  // Latest marksheet request for the (now real) status stepper — student's own data
+  const latestMarksheet = (requests || []).find(r => r.type === 'Marksheet') || null;
 
   const mobileExtras = (
     <>
@@ -142,27 +193,25 @@ export default function Dashboard() {
       <div className="grid-2">
         <div className="card">
           <div className="card-header"><div><div className="card-title">🎉 Upcoming Events</div></div><Link to="/events" className="link text-sm">View All</Link></div>
-          <div style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ width: 50, height: 50, background: 'rgba(78,133,191,0.12)', borderRadius: 10, textAlign: 'center', paddingTop: 6, flexShrink: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#89AACC' }}>15</div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>JUN</div>
-            </div>
-            <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 14 }}>Tech Symposium 2026</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Main Auditorium · 10:00 AM</div></div>
-            <span className="badge badge-primary">Upcoming</span>
-          </div>
-          <div style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ width: 50, height: 50, background: 'rgba(74,222,128,0.1)', borderRadius: 10, textAlign: 'center', paddingTop: 6, flexShrink: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#4ade80' }}>20</div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>JUN</div>
-            </div>
-            <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 14 }}>Cultural Fest</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Open Ground · 11:00 AM</div></div>
-            <span className="badge badge-success">Open</span>
-          </div>
-          <div style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 0' }}>
-            <div style={{ width: 50, height: 50, background: 'rgba(245,158,11,0.1)', borderRadius: 10, textAlign: 'center', paddingTop: 6, flexShrink: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#fbbf24' }}>25</div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>JUN</div>
-            </div>
-            <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 14 }}>Placement Training</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Seminar Hall · 09:30 AM</div></div>
-            <span className="badge badge-warning">Register</span>
-          </div>
+          {!events && <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)' }}>Loading…</div>}
+          {events && !upcomingEvents.length && (
+            <p style={{ fontSize: 13.5, color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>No upcoming events.</p>
+          )}
+          {upcomingEvents.map((ev, i) => {
+            const accent = EVENT_ACCENTS[i % EVENT_ACCENTS.length];
+            const d = new Date(ev.date);
+            const isLast = i === upcomingEvents.length - 1;
+            return (
+              <div key={ev._id} style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 0', borderBottom: isLast ? 'none' : '1px solid var(--border)' }}>
+                <div style={{ width: 50, height: 50, background: accent.box, borderRadius: 10, textAlign: 'center', paddingTop: 6, flexShrink: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: accent.color }}>{d.getDate()}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>{d.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase()}</div>
+                </div>
+                <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 14 }}>{ev.title}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{ev.venue}{ev.time ? ` · ${ev.time}` : ''}</div></div>
+                <span className={`badge ${EV_BADGE[ev.category] || 'badge-primary'}`}>{ev.category}</span>
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -183,10 +232,13 @@ export default function Dashboard() {
           </div>
           <div className="card">
             <div className="card-header"><div className="card-title">📄 Marksheet Status</div></div>
-            <div className="step-row"><div className="step-left"><div className="step-dot dot-success"></div><span style={{ fontSize: 13.5 }}>Application Received</span></div><span className="badge badge-success">Done</span></div>
-            <div className="step-row"><div className="step-left"><div className="step-dot dot-success"></div><span style={{ fontSize: 13.5 }}>Under Verification</span></div><span className="badge badge-success">Done</span></div>
-            <div className="step-row"><div className="step-left"><div className="step-dot dot-primary"></div><span style={{ fontSize: 13.5 }}>Processing</span></div><span className="badge badge-primary">In Progress</span></div>
-            <div className="step-row"><div className="step-left"><div className="step-dot dot-muted"></div><span style={{ fontSize: 13.5 }}>Ready for Collection</span></div><span className="badge badge-muted">Pending</span></div>
+            {!requests && <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)' }}>Loading…</div>}
+            {requests && !latestMarksheet && (
+              <p style={{ fontSize: 13.5, color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>No marksheet request yet.</p>
+            )}
+            {latestMarksheet && marksheetSteps(latestMarksheet.status).map(s => (
+              <div className="step-row" key={s.label}><div className="step-left"><div className={`step-dot ${s.dot}`}></div><span style={{ fontSize: 13.5 }}>{s.label}</span></div><span className={`badge ${s.badge}`}>{s.text}</span></div>
+            ))}
           </div>
         </div>
       </div>

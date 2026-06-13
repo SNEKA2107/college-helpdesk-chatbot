@@ -1,0 +1,55 @@
+name: Project Summary
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  project-summary:
+    name: Generate Project Summary
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Generate Project Summary
+        run: |
+          TIMESTAMP="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          # 📌 College Helpdesk Chatbot - Project Summary
+
+          ## Project Information
+          - **Project Name:** College Helpdesk Chatbot
+          - **Frontend:** React
+          - **Backend:** Java
+          - **Deployment:** GitHub Pages
+
+          ## Features
+          - Student Login
+          - Staff/Admin Dashboard
+          - Helpdesk Ticket Management
+          - Chatbot Assistance
+
+          ## Workflow Details
+          - **Branch Name:** ${{ github.ref_name }}
+          - **Triggered By:** ${{ github.actor }}
+          - **Commit ID:** ${{ github.sha }}
+          - **Workflow Run Number:** ${{ github.run_number }}
+          - **Repository Name:** ${{ github.repository }}
+          - **Execution Timestamp:** ${TIMESTAMP}
+
+          ## Deployment Information
+          - **Deployment URL:** https://sneka2107.github.io/college-helpdesk-chatbot
+          - **Deployment Status:** Success
+
+          ## Future Enhancements
+          - Selenium End-to-End Testing
+          - Automated Build Validation
+          - Continuous Integration and Deployment
+          - Regression Testing
+          EOF
+
+          echo "✅ Project summary generated successfully."

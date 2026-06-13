@@ -11,6 +11,8 @@ open-login.js
 *.png
 !icons/*.png
 !frontend/public/icons/*.png
+# Android branding assets (launcher icons + splash screens) must be tracked
+!frontend/android/app/src/main/res/**/*.png
 .claude/
 debug-*.png
 live-site.png

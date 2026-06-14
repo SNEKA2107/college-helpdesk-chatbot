@@ -39,7 +39,7 @@ export default function StudentsTab({ data, loaded, reload }) {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <select className="form-select" style={{ paddingLeft: 14, width: 150 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-            {FILTERS.map(f => <option key={f}>{f}{f === 'Pending' && pendingCount ? ` (${pendingCount})` : ''}</option>)}
+            {FILTERS.map(f => <option key={f} value={f}>{f}{f === 'Pending' && pendingCount ? ` (${pendingCount})` : ''}</option>)}
           </select>
           <input
             type="text" className="form-input" placeholder="Search by name or ID…" style={{ width: 200 }}

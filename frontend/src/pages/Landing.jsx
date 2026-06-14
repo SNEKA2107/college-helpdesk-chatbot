@@ -26,24 +26,26 @@ const HIW_STEPS = [
   { num: '03', title: 'Track & Get Help', text: 'Track your requests, chat with the helpdesk bot, apply for leave, and stay on top of everything.' },
 ];
 
+// Honest capability highlights (not fabricated individual reviews).
 const TESTIMONIALS = [
-  { stars: '★★★★★', text: '"CampusAssist saved me so much time. I used to visit the admin office 3 times a week — now I do everything online from my phone!"', initial: 'S', name: 'Sneka S', dept: 'IT Department, 5th Semester' },
-  { stars: '★★★★★', text: '"The chatbot instantly gave me all the exam info I needed. Tracking my marksheet request is also super convenient and transparent."', initial: 'P', name: 'Priya R', dept: 'CSE Department, 5th Semester' },
-  { stars: '★★★★☆', text: '"Applying for leave online and getting it approved without physically running to every department is a game changer for our college."', initial: 'A', name: 'Arjun M', dept: 'ECE Department, 3rd Semester' },
+  { stars: '★★★★★', text: '"Submit and track document requests, leave and OD online — no more queuing at the admin office."', initial: '📄', name: 'Requests & Leave', dept: 'Student workflow' },
+  { stars: '★★★★★', text: '"Ask the campus bot about exams, fees and library hours and get instant answers, any time."', initial: '💬', name: 'AI Chatbot', dept: 'Always available' },
+  { stars: '★★★★★', text: '"Check attendance, marks, CGPA, timetable and fees from one personalized dashboard."', initial: '🎯', name: 'Student Dashboard', dept: 'All-in-one' },
 ];
 
 const HERO_CARDS = [
-  { icon: '📘', title: 'Exam Schedule', text: 'Semester exams starting June 15' },
-  { icon: '💳', title: 'Fees Paid ✅', text: '₹55,000 cleared for semester' },
-  { icon: '📄', title: 'Marksheet', text: 'Processing · Est. 3 days' },
+  { icon: '📘', title: 'Exam Schedule', text: 'View dates & hall tickets' },
+  { icon: '💳', title: 'Fee Status', text: 'Track payments & dues' },
+  { icon: '📄', title: 'Marksheet', text: 'Track request status' },
   { icon: '💬', title: 'Bot Support', text: 'Available 24 / 7 for help' },
 ];
 
+// Product attributes — true statements, not invented metrics.
 const STATS = [
-  { value: '500+', label: 'Active Students' },
-  { value: '50+', label: 'Faculty & Staff' },
-  { value: '99%', label: 'Satisfaction Rate' },
-  { value: '24/7', label: 'Bot Support' },
+  { value: 'All-in-One', label: 'Campus Services' },
+  { value: 'Real-Time', label: 'Request Tracking' },
+  { value: 'Secure', label: 'Auth & Roles' },
+  { value: '24/7', label: 'AI Chatbot' },
 ];
 
 function smoothScroll(e, selector) {
@@ -217,9 +219,9 @@ export default function Landing() {
             </div>
             <div className="hero-trust">
               <div className="trust-avatars">
-                <span>S</span><span>P</span><span>R</span><span>A</span>
+                <span>📘</span><span>💳</span><span>📝</span><span>💬</span>
               </div>
-              <p className="hero-trust-text">Trusted by 500+ students this semester</p>
+              <p className="hero-trust-text">All your campus services in one place</p>
             </div>
           </div>
           <div className="hero-visual">

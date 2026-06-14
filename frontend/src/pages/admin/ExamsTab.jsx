@@ -1,40 +1,61 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { apiCall } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
+import { DEPARTMENTS, SEMESTERS } from './shared';
 
 const rowInputStyle = { padding: '6px 8px', fontSize: 12.5 };
 const SCHED_COLS = '130px 1fr 90px 110px 30px';
 const PRAC_COLS = '130px 1fr 80px 90px 30px';
+const STATUS_BADGE = { draft: 'badge-warning', published: 'badge-success', archived: 'badge-muted' };
 
 const emptySched = () => ({ date: '', subject: '', code: '', session: '' });
 const emptyPrac = () => ({ date: '', subject: '', lab: '', time: '' });
+const blankForm = { department: '', year: '', section: '', semester: '', academicYear: '', theoryStart: '', theoryEnd: '', hallTicketAvailable: '' };
 
 export default function ExamsTab({ data, setData }) {
   const showToast = useToast();
-  const exam = data.exam;
-  const [form, setForm] = useState({ semester: '', academicYear: '', theoryStart: '', theoryEnd: '', hallTicketAvailable: '' });
+  const exams = data.exams || [];
+  const [selectedId, setSelectedId] = useState('');
+  const [form, setForm] = useState({ ...blankForm });
   const [schedule, setSchedule] = useState([emptySched()]);
   const [practicals, setPracticals] = useState([emptyPrac()]);
   const [instructions, setInstructions] = useState('');
 
-  useEffect(() => {
+  const current = exams.find(e => e._id === selectedId) || null;
+
+  function loadExam(id) {
+    setSelectedId(id);
+    const ex = exams.find(e => e._id === id);
+    if (!ex) {
+      setForm({ ...blankForm });
+      setSchedule([emptySched()]); setPracticals([emptyPrac()]); setInstructions('');
+      return;
+    }
     setForm({
-      semester: exam?.semester || '',
-      academicYear: exam?.academicYear || '',
-      theoryStart: exam?.theoryStart || '',
-      theoryEnd: exam?.theoryEnd || '',
-      hallTicketAvailable: exam?.hallTicketAvailable || '',
+      department: ex.department || '', year: ex.year || '', section: ex.section || '',
+      semester: ex.semester || '', academicYear: ex.academicYear || '',
+      theoryStart: ex.theoryStart || '', theoryEnd: ex.theoryEnd || '', hallTicketAvailable: ex.hallTicketAvailable || '',
     });
-    setSchedule(exam?.schedule?.length ? exam.schedule.map(s => ({ ...s })) : [emptySched()]);
-    setPracticals(exam?.practicals?.length ? exam.practicals.map(p => ({ ...p })) : [emptyPrac()]);
-    setInstructions((exam?.instructions || []).join('\n'));
-  }, [exam]);
+    setSchedule(ex.schedule?.length ? ex.schedule.map(s => ({ ...s })) : [emptySched()]);
+    setPracticals(ex.practicals?.length ? ex.practicals.map(p => ({ ...p })) : [emptyPrac()]);
+    setInstructions((ex.instructions || []).join('\n'));
+  }
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setRow = (setter) => (i, k, v) => setter(rows => rows.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
   const removeRow = (setter) => (i) => setter(rows => rows.filter((_, idx) => idx !== i));
   const setSchedRow = setRow(setSchedule);
   const setPracRow = setRow(setPracticals);
+
+  function upsertExam(saved, select = true) {
+    setData(d => {
+      const list = d.exams || [];
+      const idx = list.findIndex(e => e._id === saved._id);
+      const exams = idx >= 0 ? list.map((e, i) => (i === idx ? saved : e)) : [saved, ...list];
+      return { ...d, exams };
+    });
+    if (select) setSelectedId(saved._id);
+  }
 
   async function saveExam() {
     const semester = form.semester.trim();
@@ -57,35 +78,63 @@ export default function ExamsTab({ data, setData }) {
     }
 
     const body = {
+      department: form.department.trim(), year: form.year.trim(), section: form.section.trim(),
       semester, academicYear,
-      theoryStart: form.theoryStart,
-      theoryEnd: form.theoryEnd,
-      hallTicketAvailable: form.hallTicketAvailable,
-      schedule: sched,
-      practicals: pracs,
+      theoryStart: form.theoryStart, theoryEnd: form.theoryEnd, hallTicketAvailable: form.hallTicketAvailable,
+      schedule: sched, practicals: pracs,
       instructions: instructions.split('\n').map(l => l.trim()).filter(Boolean),
     };
-    const res = exam?._id
-      ? await apiCall(`/exam/${exam._id}`, { method: 'PUT', body: JSON.stringify(body) })
+    const res = selectedId
+      ? await apiCall(`/exam/${selectedId}`, { method: 'PUT', body: JSON.stringify(body) })
       : await apiCall('/exam', { method: 'POST', body: JSON.stringify(body) });
     if (res.ok) {
-      setData(d => ({ ...d, exam: res.data.exam }));
-      showToast('Exam schedule published — students can see it now', 'success');
+      upsertExam(res.data.exam);
+      showToast(selectedId ? 'Exam schedule updated' : 'Draft saved — publish it to make it visible', 'success');
     } else {
       showToast(res.error || 'Failed to save exam schedule', 'error');
     }
   }
 
+  async function publishExam() {
+    if (!selectedId) { showToast('Save the schedule first', 'error'); return; }
+    const res = await apiCall(`/exam/${selectedId}/publish`, { method: 'PUT' });
+    if (res.ok) { upsertExam(res.data.exam); showToast('Exam schedule published', 'success'); }
+    else showToast(res.error || 'Failed to publish', 'error');
+  }
+  async function archiveExam() {
+    if (!selectedId) return;
+    const res = await apiCall(`/exam/${selectedId}/archive`, { method: 'PUT' });
+    if (res.ok) { upsertExam(res.data.exam); showToast('Exam schedule archived', 'success'); }
+    else showToast(res.error || 'Failed to archive', 'error');
+  }
+
+  const cohortLabel = (e) =>
+    `[${e.status || 'published'}] ${e.department || 'All depts'} · ${e.semester} sem${e.year ? ` · ${e.year} yr` : ''}${e.section ? ` · Sec ${e.section}` : ''} · ${e.academicYear}`;
+
   return (
     <div>
       <div className="page-header mb-6">
-        <div className="page-header-text"><h2>Exam Information</h2><p>Publish the exam schedule students see on the Exam Info page</p></div>
-        <span className="badge badge-primary">{exam ? 'Editing published schedule' : 'New schedule'}</span>
+        <div className="page-header-text"><h2>Exam Information</h2><p>Create per-cohort exam schedules; publish to make them visible to that cohort</p></div>
+        <span className="badge badge-primary">{selectedId ? 'Editing' : 'New schedule'}</span>
       </div>
 
       <div className="card mb-6">
         <div className="card-header"><div className="card-title">📑 Exam Details</div></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 14 }}>
+          <div className="form-group"><label className="form-label">Edit Existing</label>
+            <select className="form-select" style={{ paddingLeft: 14 }} value={selectedId} onChange={e => loadExam(e.target.value)}>
+              <option value="">➕ New schedule</option>
+              {exams.map(e => <option key={e._id} value={e._id}>{cohortLabel(e)}</option>)}
+            </select></div>
+          <div className="form-group"><label className="form-label">Department</label>
+            <select className="form-select" style={{ paddingLeft: 14 }} value={form.department} onChange={e => setField('department', e.target.value)}>
+              <option value="">All departments</option>
+              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select></div>
+          <div className="form-group"><label className="form-label">Year</label>
+            <input type="text" className="form-input" placeholder="e.g. III (optional)" value={form.year} onChange={e => setField('year', e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Section</label>
+            <input type="text" className="form-input" placeholder="blank = all" value={form.section} onChange={e => setField('section', e.target.value)} /></div>
           <div className="form-group"><label className="form-label">Semester *</label>
             <input type="text" className="form-input" placeholder="e.g. V" value={form.semester} onChange={e => setField('semester', e.target.value)} /></div>
           <div className="form-group"><label className="form-label">Academic Year *</label>
@@ -97,6 +146,22 @@ export default function ExamsTab({ data, setData }) {
           <div className="form-group"><label className="form-label">Hall Ticket From</label>
             <input type="date" className="form-input" value={form.hallTicketAvailable} onChange={e => setField('hallTicketAvailable', e.target.value)} /></div>
         </div>
+
+        {current && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Status:</span>
+            <span className={`badge ${STATUS_BADGE[current.status] || 'badge-muted'}`}>{current.status || 'published'}</span>
+            {current.status !== 'published' && (
+              <button className="btn btn-sm" style={{ background: 'var(--secondary)', color: '#fff', padding: '4px 12px' }} onClick={publishExam}>📢 Publish</button>
+            )}
+            {current.status !== 'archived' && (
+              <button className="btn btn-sm btn-outline" style={{ padding: '4px 12px' }} onClick={archiveExam}>🗄 Archive</button>
+            )}
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              {current.status === 'published' ? 'Visible to this cohort.' : current.status === 'draft' ? 'Draft — not visible to students yet.' : 'Archived — hidden from students.'}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="grid-2 mb-6">
@@ -150,7 +215,9 @@ export default function ExamsTab({ data, setData }) {
           placeholder={'Carry your Hall Ticket and College ID Card to every exam.\nReach the exam hall 30 minutes early.'}
           value={instructions} onChange={e => setInstructions(e.target.value)}
         />
-        <button className="btn btn-primary btn-full" style={{ marginTop: 14 }} onClick={saveExam}>Save &amp; Publish Exam Schedule</button>
+        <button className="btn btn-primary btn-full" style={{ marginTop: 14 }} onClick={saveExam}>
+          {selectedId ? 'Save Changes' : 'Save Draft'}
+        </button>
       </div>
     </div>
   );

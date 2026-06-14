@@ -6,6 +6,9 @@ const paymentSchema = new mongoose.Schema({
   amount:      { type: Number, required: true },
   mode:        { type: String, enum: ['Online', 'DD', 'Cash', 'NEFT'], required: true },
   txn:         { type: String, default: 'MANUAL' },
+  // CRIT-05: student-recorded payments start unverified; an admin confirms them.
+  verified:    { type: Boolean, default: false },
+  recordedBy:  { type: String, default: 'Student' },
 }, { _id: false });
 
 const feeSchema = new mongoose.Schema({
@@ -24,8 +27,14 @@ const feeSchema = new mongoose.Schema({
   history:  [paymentSchema],
 }, { timestamps: true });
 
+// All recorded payments (verified or not) — used to cap further recording.
 feeSchema.virtual('amountPaid').get(function () {
   return this.history.reduce((sum, p) => sum + p.amount, 0);
+});
+
+// Only admin-verified payments count toward "paid" — keeps the cleared status trustworthy.
+feeSchema.virtual('verifiedPaid').get(function () {
+  return this.history.reduce((sum, p) => sum + (p.verified ? p.amount : 0), 0);
 });
 
 feeSchema.virtual('balance').get(function () {
@@ -33,7 +42,7 @@ feeSchema.virtual('balance').get(function () {
 });
 
 feeSchema.virtual('status').get(function () {
-  return this.amountPaid >= this.total ? 'Paid' : 'Pending';
+  return this.verifiedPaid >= this.total ? 'Paid' : 'Pending';
 });
 
 module.exports = mongoose.model('Fee', feeSchema);

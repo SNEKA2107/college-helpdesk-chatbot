@@ -11,10 +11,16 @@ export default function TimetableTab({ data, setData }) {
   const [existingId, setExistingId] = useState('');
   const [dept, setDept] = useState('IT');
   const [sem, setSem] = useState('2nd');
-  const [year, setYear] = useState('');
+  const [studyYear, setStudyYear] = useState('');   // cohort study-year (e.g. II) — optional
+  const [section, setSection] = useState('');        // section (e.g. A) — optional
+  const [year, setYear] = useState('');              // academic year (e.g. 2025–2026)
   const [slotsText, setSlotsText] = useState(DEFAULT_SLOTS);
   // grid = { slots: string[], cells: { [day]: string[] } } or null while hidden
   const [grid, setGrid] = useState(null);
+  const [conflicts, setConflicts] = useState([]);
+
+  const current = data.timetables.find(t => t._id === existingId) || null;
+  const STATUS_BADGE = { draft: 'badge-warning', published: 'badge-success', archived: 'badge-muted' };
 
   function buildGrid(prefill, slotsOverride) {
     const slots = (slotsOverride ?? slotsText).split(',').map(s => s.trim()).filter(Boolean);
@@ -33,6 +39,8 @@ export default function TimetableTab({ data, setData }) {
     if (!t) return;
     setDept(t.department);
     setSem(t.semester);
+    setStudyYear(t.year || '');
+    setSection(t.section || '');
     setYear(t.academicYear);
     const slotsValue = (t.slots || []).join(', ');
     setSlotsText(slotsValue);
@@ -52,7 +60,7 @@ export default function TimetableTab({ data, setData }) {
       schedule[day] = (grid?.cells[day] || []).map(v => v.trim() || '-');
     });
 
-    const body = { department: dept, semester: sem, academicYear, slots, schedule };
+    const body = { department: dept, semester: sem, year: studyYear.trim(), section: section.trim(), academicYear, slots, schedule };
     const res = existingId
       ? await apiCall(`/timetable/${existingId}`, { method: 'PUT', body: JSON.stringify(body) })
       : await apiCall('/timetable', { method: 'POST', body: JSON.stringify(body) });
@@ -66,9 +74,40 @@ export default function TimetableTab({ data, setData }) {
         return { ...d, timetables };
       });
       setExistingId(saved._id);
-      showToast('Timetable saved — students can see it now', 'success');
+      setConflicts([]);
+      showToast(existingId ? 'Timetable updated' : 'Draft saved — publish it to make it visible to students', 'success');
     } else {
       showToast(res.error || 'Failed to save timetable', 'error');
+    }
+  }
+
+  function applySaved(saved) {
+    setData(d => ({ ...d, timetables: d.timetables.map(t => (t._id === saved._id ? saved : t)) }));
+  }
+
+  async function publishTimetable() {
+    if (!existingId) { showToast('Save the timetable first', 'error'); return; }
+    setConflicts([]);
+    const res = await apiCall(`/timetable/${existingId}/publish`, { method: 'PUT' });
+    if (res.ok) {
+      applySaved(res.data.timetable);
+      showToast('Timetable published — visible to students now', 'success');
+    } else if (res.data?.conflicts?.length) {
+      setConflicts(res.data.conflicts);
+      showToast('Cannot publish — conflicts detected', 'error');
+    } else {
+      showToast(res.error || 'Failed to publish', 'error');
+    }
+  }
+
+  async function archiveTimetable() {
+    if (!existingId) return;
+    const res = await apiCall(`/timetable/${existingId}/archive`, { method: 'PUT' });
+    if (res.ok) {
+      applySaved(res.data.timetable);
+      showToast('Timetable archived — hidden from students', 'success');
+    } else {
+      showToast(res.error || 'Failed to archive', 'error');
     }
   }
 
@@ -85,7 +124,9 @@ export default function TimetableTab({ data, setData }) {
             <select className="form-select" style={{ paddingLeft: 14 }} value={existingId} onChange={e => onExistingChange(e.target.value)}>
               <option value="">➕ New timetable</option>
               {data.timetables.map(t => (
-                <option key={t._id} value={t._id}>{t.department} · {t.semester} sem · {t.academicYear}</option>
+                <option key={t._id} value={t._id}>
+                  [{t.status || 'published'}] {t.department} · {t.semester} sem{t.year ? ` · ${t.year} yr` : ''}{t.section ? ` · Sec ${t.section}` : ''} · {t.academicYear}
+                </option>
               ))}
             </select></div>
           <div className="form-group"><label className="form-label">Department *</label>
@@ -96,12 +137,41 @@ export default function TimetableTab({ data, setData }) {
             <select className="form-select" style={{ paddingLeft: 14 }} value={sem} onChange={e => setSem(e.target.value)}>
               {SEMESTERS.map(s => <option key={s}>{s}</option>)}
             </select></div>
+          <div className="form-group"><label className="form-label">Year</label>
+            <input type="text" className="form-input" placeholder="e.g. II (optional)" value={studyYear} onChange={e => setStudyYear(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Section</label>
+            <input type="text" className="form-input" placeholder="e.g. A — blank = all" value={section} onChange={e => setSection(e.target.value)} /></div>
           <div className="form-group"><label className="form-label">Academic Year *</label>
             <input type="text" className="form-input" placeholder="e.g. 2025–2026" value={year} onChange={e => setYear(e.target.value)} /></div>
         </div>
         <div className="form-group"><label className="form-label">Period Slots (comma separated)</label>
           <input type="text" className="form-input" value={slotsText} onChange={e => setSlotsText(e.target.value)} /></div>
         <button className="btn btn-secondary" onClick={() => buildGrid()}>Build / Reset Grid</button>
+
+        {current && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Status:</span>
+            <span className={`badge ${STATUS_BADGE[current.status] || 'badge-muted'}`}>{current.status || 'published'}</span>
+            {current.status !== 'published' && (
+              <button className="btn btn-sm" style={{ background: 'var(--secondary)', color: '#fff', padding: '4px 12px' }} onClick={publishTimetable}>📢 Publish</button>
+            )}
+            {current.status !== 'archived' && (
+              <button className="btn btn-sm btn-outline" style={{ padding: '4px 12px' }} onClick={archiveTimetable}>🗄 Archive</button>
+            )}
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              {current.status === 'published' ? 'Visible to students in this cohort.' : current.status === 'draft' ? 'Draft — not visible to students yet.' : 'Archived — hidden from students.'}
+            </span>
+          </div>
+        )}
+
+        {conflicts.length > 0 && (
+          <div className="alert alert-danger" style={{ marginTop: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+            <strong>⚠️ Cannot publish — {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''}:</strong>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+              {conflicts.map((c, i) => <li key={i}>{c.message}</li>)}
+            </ul>
+          </div>
+        )}
       </div>
 
       {grid && (

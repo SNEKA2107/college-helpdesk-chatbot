@@ -110,6 +110,9 @@ app.use('/api/timetable',   require('./routes/timetable'));
 app.use('/api/contact',    require('./routes/contact'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/events',     require('./routes/events'));
+app.use('/api/marks',      require('./routes/marks'));
+app.use('/api/calendar',   require('./routes/calendar'));
+app.use('/api/audit',      require('./routes/audit'));
 
 // ===== STATIC FILES =====
 // Serve the React build when present (frontend/dist), otherwise the legacy static site at repo root

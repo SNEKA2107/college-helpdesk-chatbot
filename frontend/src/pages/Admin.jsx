@@ -11,6 +11,11 @@ import ExamsTab from './admin/ExamsTab';
 import AttendanceTab from './admin/AttendanceTab';
 import EventsTab from './admin/EventsTab';
 import TimetableTab from './admin/TimetableTab';
+import AccountTab from './admin/AccountTab';
+import FeesTab from './admin/FeesTab';
+import MarksTab from './admin/MarksTab';
+import CalendarTab from './admin/CalendarTab';
+import AuditTab from './admin/AuditTab';
 
 const NAV_SECTIONS = [
   {
@@ -22,6 +27,7 @@ const NAV_SECTIONS = [
       { id: 'notices', icon: '🔔', label: 'Notices', title: 'Notices' },
       { id: 'messages', icon: '✉️', label: 'Messages', title: 'Messages' },
       { id: 'students', icon: '👥', label: 'Students', title: 'Students' },
+      { id: 'account', icon: '👤', label: 'My Account', title: 'My Account' },
     ],
   },
   {
@@ -31,13 +37,17 @@ const NAV_SECTIONS = [
       { id: 'attendance', icon: '✅', label: 'Attendance', title: 'Attendance' },
       { id: 'events', icon: '🎉', label: 'Events', title: 'Campus Events' },
       { id: 'timetable', icon: '🗓️', label: 'Timetable', title: 'Class Timetable' },
+      { id: 'marks', icon: '🎯', label: 'Marks', title: 'Marks Management' },
+      { id: 'calendar', icon: '📆', label: 'Calendar', title: 'Academic Calendar' },
+      { id: 'fees', icon: '💳', label: 'Fee Verification', title: 'Fee Verification' },
+      { id: 'audit', icon: '📜', label: 'Audit Log', title: 'Admin Audit Log' },
     ],
   },
 ];
 
 const ALL_TABS = NAV_SECTIONS.flatMap(s => s.tabs);
 
-const EMPTY_DATA = { requests: [], leaves: [], notices: [], students: [], messages: [], events: [], exam: null, timetables: [] };
+const EMPTY_DATA = { requests: [], leaves: [], notices: [], students: [], messages: [], events: [], exam: null, exams: [], timetables: [], audit: [] };
 
 export default function Admin() {
   const user = getUser();
@@ -47,15 +57,16 @@ export default function Admin() {
   const [loaded, setLoaded] = useState(false);
 
   const loadAdminData = useCallback(async () => {
-    const [rRes, lRes, nRes, sRes, mRes, eRes, xRes, tRes] = await Promise.all([
+    const [rRes, lRes, nRes, sRes, mRes, eRes, xRes, tRes, aRes] = await Promise.all([
       apiCall('/requests'),
       apiCall('/leave'),
       apiCall('/notices'),
       apiCall('/students'),
       apiCall('/contact'),
       apiCall('/events'),
-      apiCall('/exam'),
+      apiCall('/exam/all'),
       apiCall('/timetable/all'),
+      apiCall('/audit'),
     ]);
     setData(prev => ({
       requests: rRes.ok ? rRes.data.requests || [] : prev.requests,
@@ -64,8 +75,10 @@ export default function Admin() {
       students: sRes.ok ? sRes.data.students || [] : prev.students,
       messages: mRes.ok ? mRes.data.messages || [] : prev.messages,
       events: eRes.ok ? eRes.data.events || [] : prev.events,
-      exam: xRes.ok ? xRes.data.exam : null, // 404 = nothing published yet
+      exams: xRes.ok ? xRes.data.exams || [] : prev.exams,
+      exam: prev.exam,
       timetables: tRes.ok ? tRes.data.timetables || [] : prev.timetables,
+      audit: aRes.ok ? aRes.data.logs || [] : prev.audit,
     }));
     setLoaded(true);
   }, []);
@@ -143,6 +156,11 @@ export default function Admin() {
           {tab === 'attendance' && <AttendanceTab {...tabProps} />}
           {tab === 'events' && <EventsTab {...tabProps} />}
           {tab === 'timetable' && <TimetableTab {...tabProps} />}
+          {tab === 'account' && <AccountTab {...tabProps} />}
+          {tab === 'fees' && <FeesTab {...tabProps} />}
+          {tab === 'marks' && <MarksTab {...tabProps} />}
+          {tab === 'calendar' && <CalendarTab {...tabProps} />}
+          {tab === 'audit' && <AuditTab {...tabProps} />}
         </main>
       </div>
     </div>

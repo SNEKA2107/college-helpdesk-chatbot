@@ -4,6 +4,7 @@ import { apiCall } from '../services/api';
 import { getUser } from '../services/auth';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../utils/format';
+import { validateUploadFile, readFileAsDataURL, previewDataUrl } from '../utils/file';
 
 const LEAVE_TYPES = ['Medical Leave', 'Personal Leave', 'On Duty (OD) – Event', 'On Duty (OD) – Training', 'Emergency Leave', 'Family Function'];
 const DEPTS = ['IT', 'CSE', 'ECE', 'EEE', 'MECH'];
@@ -30,6 +31,23 @@ export default function Leave() {
     leaveType: '', fromDate: '', toDate: '', reason: '',
   });
   const set = (key, value) => setForm(f => ({ ...f, [key]: value }));
+  // Supporting document (optional), held as a base64 data URL until submit.
+  const [doc, setDoc] = useState(null); // { document, documentName, documentType }
+
+  async function onPickDocument(e) {
+    const file = e.target.files?.[0];
+    if (!file) { setDoc(null); return; }
+    const check = validateUploadFile(file);
+    if (!check.ok) { showToast(check.error, 'error'); e.target.value = ''; setDoc(null); return; }
+    try {
+      const dataUrl = await readFileAsDataURL(file);
+      setDoc({ document: dataUrl, documentName: file.name, documentType: file.type });
+    } catch (err) {
+      showToast(err.message || 'Could not read the file', 'error');
+      e.target.value = '';
+      setDoc(null);
+    }
+  }
 
   async function loadHistory() {
     const result = await apiCall('/leave');
@@ -54,7 +72,7 @@ export default function Leave() {
     setSubmitting(true);
     const result = await apiCall('/leave', {
       method: 'POST',
-      body: JSON.stringify({ leaveType, fromDate, toDate, reason: reason.trim() }),
+      body: JSON.stringify({ leaveType, fromDate, toDate, reason: reason.trim(), ...(doc || {}) }),
     });
     setSubmitting(false);
     if (result.ok) {
@@ -67,10 +85,17 @@ export default function Leave() {
 
   function resetForm() {
     setForm(f => ({ ...f, leaveType: '', fromDate: '', toDate: '', reason: '' }));
+    setDoc(null);
     setSubmitted(false);
   }
 
   const dayCount = l => Math.ceil((new Date(l.toDate) - new Date(l.fromDate)) / 86400000) + 1;
+
+  async function viewMyDocument(id) {
+    const res = await apiCall(`/leave/${id}/document`);
+    if (res.ok && res.data.document) previewDataUrl(res.data.document);
+    else showToast(res.error || 'Document not available', 'error');
+  }
 
   return (
     <Layout title="Leave Application">
@@ -139,7 +164,10 @@ export default function Leave() {
 
               <div className="form-group">
                 <label className="form-label">Supporting Document (optional)</label>
-                <input type="file" className="form-input" accept=".pdf,.jpg,.png" style={{ padding: 8 }} />
+                <input type="file" className="form-input" accept=".pdf,.jpg,.jpeg,.png" style={{ padding: 8 }} onChange={onPickDocument} />
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                  {doc ? `📎 ${doc.documentName} attached` : 'PDF, JPG or PNG · max 3 MB. Medical leave requires a doctor’s certificate.'}
+                </div>
               </div>
 
               <div className="alert alert-warning mb-4">
@@ -178,6 +206,11 @@ export default function Leave() {
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text)', marginTop: 4 }}>{l.reason}</div>
                 {l.remarks && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>Remarks: {l.remarks}</div>}
+                {l.documentName && (
+                  <button className="btn btn-sm btn-outline" style={{ marginTop: 8, padding: '4px 10px', fontSize: 12 }} onClick={() => viewMyDocument(l._id)}>
+                    📎 View document
+                  </button>
+                )}
               </div>
             ))}
           </div>

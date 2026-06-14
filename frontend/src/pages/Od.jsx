@@ -4,6 +4,7 @@ import { apiCall } from '../services/api';
 import { getUser } from '../services/auth';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../utils/format';
+import { validateUploadFile, readFileAsDataURL, previewDataUrl } from '../utils/file';
 
 const OD_TYPES = [
   'Technical Symposium', 'Hackathon / Coding Contest', 'Industrial Visit', 'Guest Lecture / Seminar',
@@ -42,6 +43,28 @@ export default function Od() {
     odType: '', eventName: '', venue: '', fromDate: '', toDate: '', reason: '',
   });
   const set = (key, value) => setForm(f => ({ ...f, [key]: value }));
+  const [doc, setDoc] = useState(null); // { document, documentName, documentType }
+
+  async function onPickDocument(e) {
+    const file = e.target.files?.[0];
+    if (!file) { setDoc(null); return; }
+    const check = validateUploadFile(file);
+    if (!check.ok) { showToast(check.error, 'error'); e.target.value = ''; setDoc(null); return; }
+    try {
+      const dataUrl = await readFileAsDataURL(file);
+      setDoc({ document: dataUrl, documentName: file.name, documentType: file.type });
+    } catch (err) {
+      showToast(err.message || 'Could not read the file', 'error');
+      e.target.value = '';
+      setDoc(null);
+    }
+  }
+
+  async function viewMyDocument(id) {
+    const res = await apiCall(`/leave/${id}/document`);
+    if (res.ok && res.data.document) previewDataUrl(res.data.document);
+    else showToast(res.error || 'Document not available', 'error');
+  }
 
   async function loadHistory() {
     const result = await apiCall('/leave');
@@ -60,7 +83,7 @@ export default function Od() {
     const fullReason = `${form.odType} — ${form.eventName.trim()} at ${form.venue.trim()}. ${form.reason.trim()}`.trim();
     const result = await apiCall('/leave', {
       method: 'POST',
-      body: JSON.stringify({ leaveType: 'On Duty (OD) – Event', fromDate: form.fromDate, toDate: form.toDate, reason: fullReason }),
+      body: JSON.stringify({ leaveType: 'On Duty (OD) – Event', fromDate: form.fromDate, toDate: form.toDate, reason: fullReason, ...(doc || {}) }),
     });
     setSubmitting(false);
     if (result.ok) {
@@ -73,6 +96,7 @@ export default function Od() {
 
   function resetOD() {
     setForm(f => ({ ...f, odType: '', eventName: '', venue: '', fromDate: '', toDate: '', reason: '' }));
+    setDoc(null);
     setSubmitted(false);
   }
 
@@ -159,7 +183,10 @@ export default function Od() {
 
               <div className="form-group">
                 <label className="form-label">Supporting Document (invitation / brochure)</label>
-                <input type="file" className="form-input" accept=".pdf,.jpg,.png" style={{ padding: 8 }} />
+                <input type="file" className="form-input" accept=".pdf,.jpg,.jpeg,.png" style={{ padding: 8 }} onChange={onPickDocument} />
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                  {doc ? `📎 ${doc.documentName} attached` : 'PDF, JPG or PNG · max 3 MB. Attach the official invitation / brochure.'}
+                </div>
               </div>
 
               <div className="alert alert-warning mb-4">
@@ -199,6 +226,11 @@ export default function Od() {
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text)', marginTop: 4 }}>{l.reason}</div>
                   {l.remarks && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>Remarks: {l.remarks}</div>}
+                  {l.documentName && (
+                    <button className="btn btn-sm btn-outline" style={{ marginTop: 8, padding: '4px 10px', fontSize: 12 }} onClick={() => viewMyDocument(l._id)}>
+                      📎 View document
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

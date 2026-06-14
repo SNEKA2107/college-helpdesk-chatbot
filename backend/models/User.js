@@ -8,6 +8,10 @@ const userSchema = new mongoose.Schema({
   password:   { type: String, required: true, minlength: 8 },
   department: { type: String, required: true, enum: ['IT','CSE','AIML','AIDS','Bioinformatics','ECE','EEE','MECH','CIVIL','Admin'] },
   semester:   { type: String, default: '' },
+  // Phase-1 foundation: cohort fields used to assign the correct segmented timetable.
+  // Optional/back-compatible — existing users default to ''.
+  year:       { type: String, default: '' },
+  section:    { type: String, default: '' },
   role:       { type: String, enum: ['student','admin'], default: 'student' },
   phone:      { type: String, default: '' },
   photo:      { type: String, default: '' },
@@ -18,6 +22,9 @@ const userSchema = new mongoose.Schema({
   parentOccupation: { type: String, default: '' },
   parentAddress:    { type: String, default: '' },
   isActive:   { type: Boolean, default: true },
+  // Phase 2 (H4): registration approval. Default 'approved' so existing users and admin
+  // accounts keep working; new student registrations are explicitly set to 'pending'.
+  approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {

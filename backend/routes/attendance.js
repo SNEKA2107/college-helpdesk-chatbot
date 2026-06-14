@@ -64,16 +64,27 @@ router.post('/', protect, adminOnly, async (req, res) => {
     const student = await User.findOne({ studentId: studentId.toUpperCase() });
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
 
-    const record = await Attendance.create({
-      student:  student._id,
-      studentId: studentId.toUpperCase(),
-      subject,
-      date:     new Date(date),
-      status:   status || 'Present',
-      markedBy: req.user.name,
+    // CRIT-04: idempotent mark — one record per student+subject+day. Re-marking the
+    // same slot updates the status instead of creating a duplicate.
+    const day = Attendance.startOfDayUTC(date);
+    const result = await Attendance.findOneAndUpdate(
+      { student: student._id, subject, date: day },
+      {
+        $set: { status: status || 'Present', markedBy: req.user.name },
+        $setOnInsert: { studentId: studentId.toUpperCase() },
+      },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, rawResult: true }
+    );
+    const created = !result.lastErrorObject?.updatedExisting;
+    res.status(created ? 201 : 200).json({
+      success: true,
+      message: created ? 'Attendance marked' : 'Attendance updated for this day',
+      record: result.value,
     });
-    res.status(201).json({ success: true, message: 'Attendance marked', record });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Attendance already recorded for this student, subject, and date.' });
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -85,20 +96,31 @@ router.post('/bulk', protect, adminOnly, async (req, res) => {
     return res.status(400).json({ success: false, message: 'records array is required.' });
   }
   try {
-    const created = [];
+    // CRIT-04: idempotent bulk marking — upsert per student+subject+day so re-running
+    // a class roster never produces duplicates. Reports created/updated/skipped counts.
+    let createdCount = 0, updatedCount = 0, skipped = 0;
     for (const r of records) {
+      if (!r.studentId || !r.subject || !r.date) { skipped++; continue; }
       const student = await User.findOne({ studentId: r.studentId.toUpperCase() });
-      if (!student) continue;
-      created.push(await Attendance.create({
-        student:   student._id,
-        studentId: r.studentId.toUpperCase(),
-        subject:   r.subject,
-        date:      new Date(r.date),
-        status:    r.status || 'Present',
-        markedBy:  req.user.name,
-      }));
+      if (!student) { skipped++; continue; }
+      const day = Attendance.startOfDayUTC(r.date);
+      const result = await Attendance.findOneAndUpdate(
+        { student: student._id, subject: r.subject, date: day },
+        {
+          $set: { status: r.status || 'Present', markedBy: req.user.name },
+          $setOnInsert: { studentId: r.studentId.toUpperCase() },
+        },
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, rawResult: true }
+      );
+      if (result.lastErrorObject?.updatedExisting) updatedCount++; else createdCount++;
     }
-    res.status(201).json({ success: true, message: `${created.length} records created`, created });
+    res.status(201).json({
+      success: true,
+      message: `${createdCount} created, ${updatedCount} updated${skipped ? `, ${skipped} skipped` : ''}`,
+      created: createdCount,
+      updated: updatedCount,
+      skipped,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -15,9 +15,10 @@ const QUICK_ACCESS = [
   { to: '/library',    icon: '📚', label: 'Library',          bg: 'linear-gradient(135deg,#06b6d4,#22d3ee)' },
   { to: '/chat',       icon: '💬', label: 'Chat with Bot',    bg: 'linear-gradient(135deg,#4f46e5,#818cf8)' },
   { to: '/attendance', icon: '✅', label: 'Attendance',       bg: 'linear-gradient(135deg,#0d9488,#2dd4bf)' },
-  { to: '/cgpa',       icon: '🎯', label: 'CGPA Calculator',  bg: 'linear-gradient(135deg,#4338ca,#a5b4fc)' },
+  { to: '/cgpa',       icon: '🎯', label: 'Marks & CGPA',     bg: 'linear-gradient(135deg,#4338ca,#a5b4fc)' },
   { to: '/od',         icon: '🏅', label: 'OD Request',       bg: 'linear-gradient(135deg,#ea580c,#fb923c)' },
   { to: '/events',     icon: '🎉', label: 'Events',           bg: 'linear-gradient(135deg,#be185d,#f472b6)' },
+  { to: '/calendar',   icon: '📆', label: 'Academic Calendar', bg: 'linear-gradient(135deg,#0891b2,#67e8f9)' },
 ];
 
 const MOBILE_ACTIONS = [
@@ -192,7 +193,7 @@ export default function Dashboard() {
 
       <div className="grid-2">
         <div className="card">
-          <div className="card-header"><div><div className="card-title">🎉 Upcoming Events</div></div><Link to="/events" className="link text-sm">View All</Link></div>
+          <div className="card-header"><div><div className="card-title">🎉 Upcoming Events</div><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Campus-wide</div></div><Link to="/events" className="link text-sm">View All</Link></div>
           {!events && <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)' }}>Loading…</div>}
           {events && !upcomingEvents.length && (
             <p style={{ fontSize: 13.5, color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>No upcoming events.</p>
@@ -216,7 +217,7 @@ export default function Dashboard() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div className="card">
-            <div className="card-header"><div className="card-title">🔔 Recent Notifications</div><Link to="/notices" className="link text-sm">View All</Link></div>
+            <div className="card-header"><div><div className="card-title">🔔 Recent Notifications</div><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Campus-wide</div></div><Link to="/notices" className="link text-sm">View All</Link></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {!notices && <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)' }}>Loading…</div>}
               {notices && !notices.length && (

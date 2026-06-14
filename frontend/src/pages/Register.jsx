@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../services/api';
-import { setSession } from '../services/auth';
 import AuthThemeButton from '../components/AuthThemeButton';
 import s from '../styles/Register.module.css';
 
@@ -29,7 +28,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     firstName: '', lastName: '', studentId: '', email: '',
-    dept: '', semester: '', password: '', confirmPassword: '', terms: false,
+    dept: '', semester: '', year: '', section: '', password: '', confirmPassword: '', terms: false,
   });
   const [errors, setErrors] = useState({});
   const [showPass, setShowPass] = useState({ pw: false, cpw: false });
@@ -64,11 +63,13 @@ export default function Register() {
           password: form.password,
           department: form.dept,
           semester: form.semester,
+          year: form.year,
+          section: form.section,
         }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setSession(data.user, data.token);
+        // H4: account is pending admin approval — do NOT log in automatically.
         setSuccess(true);
       } else {
         alert(data.errors ? data.errors[0].msg : (data.message || 'Registration failed.'));
@@ -181,6 +182,25 @@ export default function Register() {
                   </div>
                 </div>
 
+                <div className={s.formRow}>
+                  <div className={s.formGroup}>
+                    <label className={s.formLabel}>Year <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                    <div className={s.inputWrap}>
+                      <span className={s.inputIcon}>📈</span>
+                      <input type="text" className={s.formInput} placeholder="e.g. II"
+                        value={form.year} onChange={e => set('year', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className={s.formGroup}>
+                    <label className={s.formLabel}>Section <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                    <div className={s.inputWrap}>
+                      <span className={s.inputIcon}>🔤</span>
+                      <input type="text" className={s.formInput} placeholder="e.g. A"
+                        value={form.section} onChange={e => set('section', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
                 <div className={s.formGroup}>
                   <label className={s.formLabel}>Password</label>
                   <div className={s.inputWrap}>
@@ -231,10 +251,10 @@ export default function Register() {
               </div>
             ) : (
               <div className={s.successState}>
-                <div className={s.successIcon}>🎉</div>
-                <h3>Account Created!</h3>
-                <p>Welcome to CampusAssist! Your account has been created successfully. You can now log in.</p>
-                <button onClick={() => navigate('/dashboard')}>Go to Dashboard →</button>
+                <div className={s.successIcon}>⏳</div>
+                <h3>Registration Submitted!</h3>
+                <p>Your account is <strong>pending admin approval</strong>. You’ll be able to log in once the college office approves your registration.</p>
+                <button onClick={() => navigate('/login')}>Go to Login →</button>
               </div>
             )}
           </div>

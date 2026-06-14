@@ -4,15 +4,14 @@ import { apiCall } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../utils/format';
 
-const INSTRUCTIONS_LEFT = [
-  <>Carry your <strong>Hall Ticket and College ID Card</strong> to every exam. Entry denied without both.</>,
-  <>Reach the exam hall at least <strong>30 minutes before</strong> the scheduled time.</>,
-  <><strong>Mobile phones, smartwatches, and electronic devices</strong> are strictly prohibited in the exam hall.</>,
-];
-const INSTRUCTIONS_RIGHT = [
-  <>Only <strong>blue or black ball-point pens</strong> are allowed. Pencils only for diagrams.</>,
-  <>Follow all <strong>college examination regulations</strong> as per the student handbook.</>,
-  <>Any malpractice will result in <strong>immediate disqualification</strong> and disciplinary action.</>,
+// Shown only when the admin has not entered any instructions for this exam.
+const DEFAULT_INSTRUCTIONS = [
+  'Carry your Hall Ticket and College ID Card to every exam. Entry denied without both.',
+  'Reach the exam hall at least 30 minutes before the scheduled time.',
+  'Mobile phones, smartwatches, and electronic devices are strictly prohibited in the exam hall.',
+  'Only blue or black ball-point pens are allowed. Pencils only for diagrams.',
+  'Follow all college examination regulations as per the student handbook.',
+  'Any malpractice will result in immediate disqualification and disciplinary action.',
 ];
 
 export default function Exam() {
@@ -25,6 +24,11 @@ export default function Exam() {
 
   const hallReady = exam && new Date() >= new Date(exam.hallTicketAvailable);
 
+  // Instructions are admin-managed (exam.instructions); fall back to defaults only when empty.
+  const instructions = (exam?.instructions?.length ? exam.instructions : DEFAULT_INSTRUCTIONS);
+  const mid = Math.ceil(instructions.length / 2);
+  const instructionCols = [instructions.slice(0, mid), instructions.slice(mid)];
+
   return (
     <Layout title="Exam Info">
       <div className="page-header">
@@ -32,18 +36,20 @@ export default function Exam() {
           <h2>Exam Information</h2>
           <p>Semester exam schedule, practical exams, and hall ticket</p>
         </div>
-        <button className="btn btn-primary" onClick={() => showToast('Hall Ticket download available from June 10', 'info')}>
+        <button className="btn btn-primary" onClick={() => (hallReady ? window.print() : showToast(`Hall ticket will be available from ${formatDate(exam?.hallTicketAvailable)}`, 'info'))}>
           ⬇ Download Hall Ticket
         </button>
       </div>
 
-      <div className="alert alert-warning mb-6">
-        <span>⚠️</span>
-        <div>
-          <strong>Reminder:</strong> Semester Theory Examinations begin on{' '}
-          <strong>{exam ? formatDate(exam.theoryStart) : 'June 15, 2026'}</strong>. Ensure your fees are paid and hall ticket is downloaded.
+      {exam && (
+        <div className="alert alert-warning mb-6">
+          <span>⚠️</span>
+          <div>
+            <strong>Reminder:</strong> Semester Theory Examinations begin on{' '}
+            <strong>{formatDate(exam.theoryStart)}</strong>. Ensure your fees are paid and hall ticket is downloaded.
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid-3 mb-6">
         <div className="card" style={{ textAlign: 'center', borderTop: '3px solid var(--primary)' }}>
@@ -104,7 +110,7 @@ export default function Exam() {
       <div className="card">
         <div className="card-header"><div className="card-title">📋 Important Instructions</div></div>
         <div className="grid-2">
-          {[INSTRUCTIONS_LEFT, INSTRUCTIONS_RIGHT].map((col, ci) => (
+          {instructionCols.map((col, ci) => (
             <div key={ci}>
               {col.map((text, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>

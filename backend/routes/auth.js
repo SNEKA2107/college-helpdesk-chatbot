@@ -23,7 +23,7 @@ router.post('/register', [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
-  const { name, studentId, email, password, department, semester } = req.body;
+  const { name, studentId, email, password, department, semester, year, section } = req.body;
 
   try {
     const existingUser = await User.findOne({ $or: [{ email }, { studentId: studentId.toUpperCase() }] });
@@ -31,10 +31,15 @@ router.post('/register', [
       return res.status(409).json({ success: false, message: 'An account with this email or Student ID already exists.' });
     }
 
-    const user = await User.create({ name, studentId, email, password, department, semester });
-    const token = genToken(user._id);
+    // H4: new students await admin approval — no token issued, no auto-login.
+    const user = await User.create({ name, studentId, email, password, department, semester, year, section, approvalStatus: 'pending' });
 
-    res.status(201).json({ success: true, message: 'Account created successfully', token, user });
+    res.status(201).json({
+      success: true,
+      pending: true,
+      message: 'Registration submitted. Your account is pending admin approval — you will be able to log in once approved.',
+      user: { name: user.name, studentId: user.studentId, approvalStatus: user.approvalStatus },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -58,6 +63,14 @@ router.post('/login', [
 
     if (!user.isActive) {
       return res.status(403).json({ success: false, message: 'Account is deactivated. Contact the admin.' });
+    }
+
+    // H4: block login until a student's registration is approved.
+    if (user.approvalStatus === 'pending') {
+      return res.status(403).json({ success: false, message: 'Your registration is pending admin approval. Please try again once it is approved.' });
+    }
+    if (user.approvalStatus === 'rejected') {
+      return res.status(403).json({ success: false, message: 'Your registration was not approved. Please contact the college office.' });
     }
 
     const token = genToken(user._id);
@@ -99,7 +112,7 @@ router.put('/change-password', protect, [
 
 // PUT /api/auth/profile — update own profile
 router.put('/profile', protect, async (req, res) => {
-  const { name, phone, semester, photo, parentName, motherName, parentPhone, parentEmail, parentOccupation, parentAddress } = req.body;
+  const { name, phone, semester, year, section, photo, parentName, motherName, parentPhone, parentEmail, parentOccupation, parentAddress } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: 'Name is required.' });
   }
@@ -119,6 +132,10 @@ router.put('/profile', protect, async (req, res) => {
       parentAddress: (parentAddress || '').trim(),
     };
     if (photo !== undefined) update.photo = photo;
+    // Cohort fields are only touched when explicitly sent, so a partial profile
+    // save never wipes a student's year/section.
+    if (year !== undefined) update.year = (year || '').trim();
+    if (section !== undefined) update.section = (section || '').trim();
     const user = await User.findByIdAndUpdate(req.user._id, update, { new: true, runValidators: true });
     res.json({ success: true, message: 'Profile updated successfully.', user });
   } catch (err) {

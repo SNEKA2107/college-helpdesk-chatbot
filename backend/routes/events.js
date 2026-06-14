@@ -1,6 +1,7 @@
 const express = require('express');
 const Event   = require('../models/Event');
 const { protect, adminOnly } = require('../middleware/auth');
+const { logAudit } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -52,6 +53,7 @@ router.delete('/:id/register', protect, async (req, res) => {
 router.post('/', protect, adminOnly, async (req, res) => {
   try {
     const event = await Event.create(req.body);
+    await logAudit(req, 'event.create', 'Event', event._id, { title: event.title, category: event.category });
     res.status(201).json({ success: true, event });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

@@ -1,6 +1,7 @@
 const express = require('express');
 const Notice  = require('../models/Notice');
 const { protect, adminOnly } = require('../middleware/auth');
+const { logAudit } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -37,6 +38,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
       pinned: !!pinned,
       expiresAt: expiresAt ? new Date(expiresAt) : undefined
     });
+    await logAudit(req, 'notice.create', 'Notice', notice._id, { title: notice.title, category: notice.category });
     res.status(201).json({ success: true, message: 'Notice created', notice });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

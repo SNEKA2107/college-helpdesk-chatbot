@@ -36,7 +36,8 @@ export async function apiCall(endpoint, options = {}) {
       return { ok: false, error: 'Session expired. Please log in again.' };
     }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Request failed');
+    // On non-2xx, still surface the parsed body (e.g. 409 conflict details) via `data`.
+    if (!res.ok) return { ok: false, error: data.message || 'Request failed', data };
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: err.message };

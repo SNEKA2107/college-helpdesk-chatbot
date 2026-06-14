@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema({
   // Phase 2 (H4): registration approval. Default 'approved' so existing users and admin
   // accounts keep working; new student registrations are explicitly set to 'pending'.
   approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
+  // Approval audit trail. All optional/nullable for backward compatibility with rows
+  // created before these fields existed.
+  approvedBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // admin who decided
+  approvedAt:      { type: Date, default: null },   // when the approve/reject decision was made
+  rejectionReason: { type: String, default: '' },   // optional reason shown to a rejected student
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {

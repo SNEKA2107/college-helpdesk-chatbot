@@ -39,7 +39,11 @@ router.get('/pending', protect, adminOnly, async (req, res) => {
 // PUT /api/students/:id/approve — admin: approve a pending registration
 router.put('/:id/approve', protect, adminOnly, async (req, res) => {
   try {
-    const student = await User.findByIdAndUpdate(req.params.id, { approvalStatus: 'approved' }, { new: true }).select('-password');
+    const student = await User.findByIdAndUpdate(
+      req.params.id,
+      { approvalStatus: 'approved', approvedBy: req.user._id, approvedAt: new Date(), rejectionReason: '' },
+      { new: true },
+    ).select('-password');
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
     await logAudit(req, 'registration.approve', 'User', student._id, { studentId: student.studentId, name: student.name });
     res.json({ success: true, message: 'Registration approved', student });
@@ -48,12 +52,17 @@ router.put('/:id/approve', protect, adminOnly, async (req, res) => {
   }
 });
 
-// PUT /api/students/:id/reject — admin: reject a pending registration
+// PUT /api/students/:id/reject — admin: reject a pending registration (optional reason)
 router.put('/:id/reject', protect, adminOnly, async (req, res) => {
   try {
-    const student = await User.findByIdAndUpdate(req.params.id, { approvalStatus: 'rejected' }, { new: true }).select('-password');
+    const reason = (req.body && typeof req.body.reason === 'string' ? req.body.reason : '').trim();
+    const student = await User.findByIdAndUpdate(
+      req.params.id,
+      { approvalStatus: 'rejected', approvedBy: req.user._id, approvedAt: new Date(), rejectionReason: reason },
+      { new: true },
+    ).select('-password');
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
-    await logAudit(req, 'registration.reject', 'User', student._id, { studentId: student.studentId, name: student.name });
+    await logAudit(req, 'registration.reject', 'User', student._id, { studentId: student.studentId, name: student.name, reason });
     res.json({ success: true, message: 'Registration rejected', student });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

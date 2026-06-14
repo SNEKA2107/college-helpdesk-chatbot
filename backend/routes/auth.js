@@ -70,7 +70,8 @@ router.post('/login', [
       return res.status(403).json({ success: false, message: 'Your registration is pending admin approval. Please try again once it is approved.' });
     }
     if (user.approvalStatus === 'rejected') {
-      return res.status(403).json({ success: false, message: 'Your registration was not approved. Please contact the college office.' });
+      const reason = user.rejectionReason ? ` Reason: ${user.rejectionReason}.` : '';
+      return res.status(403).json({ success: false, message: `Your registration was not approved.${reason} Please contact the college office.` });
     }
 
     const token = genToken(user._id);

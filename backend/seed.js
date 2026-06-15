@@ -13,6 +13,7 @@ const Book       = require('./models/Book');
 const BorrowedBook = require('./models/BorrowedBook');
 const Timetable  = require('./models/Timetable');
 const Event      = require('./models/Event');
+const { buildExam } = require('./utils/demoExams');
 
 // ── Relative-date helpers ───────────────────────────────────────────────────
 // All demo dates are computed relative to the day the seed runs, so a freshly
@@ -87,60 +88,14 @@ async function seed() {
   // Each department gets its OWN published exam so a student only ever sees their
   // cohort's schedule (resolveExamForUser in routes/exam.js scopes by department +
   // semester). No institution-wide (blank-department) exam is seeded, so there is
-  // no cross-department leakage.
-  const EXAM_INSTRUCTIONS = [
-    'Carry your Hall Ticket and College ID Card to every exam. Entry is denied without both.',
-    'Reach the exam hall at least 30 minutes before the scheduled time.',
-    'Mobile phones, smartwatches and electronic devices are strictly prohibited.',
-    'Only blue or black ball-point pens are allowed. Pencils only for diagrams.',
-    'Follow all college examination regulations as per the student handbook.',
-    'Any malpractice results in immediate disqualification and disciplinary action.',
-  ];
-  // Build a published, relative-dated exam for one cohort.
-  const buildExam = (department, subjects, practicals) => ({
-    department, semester: '5th', academicYear: ACADEMIC_YEAR,
-    status: 'published', publishedAt: dRel(-1),
-    theoryStart: ymd(14), theoryEnd: ymd(14 + (subjects.length - 1) * 2), hallTicketAvailable: ymd(9),
-    schedule: subjects.map((s, i) => ({ date: ymd(14 + i * 2), subject: s.subject, code: s.code, session: i % 2 ? 'Afternoon (2 PM)' : 'Morning (10 AM)' })),
-    practicals: practicals.map((p, i) => ({ date: ymd(9 + i), subject: p.subject, lab: p.lab, time: i % 2 ? '2 PM' : '9 AM' })),
-    instructions: EXAM_INSTRUCTIONS,
-  });
-
+  // no cross-department leakage. Cohort definitions live in utils/demoExams.js
+  // (shared with scripts/refresh-demo-data.js).
+  const examHelpers = { ymd, dRel, academicYear: ACADEMIC_YEAR };
   const examCount = await Exam.countDocuments();
   if (examCount === 0) {
-    const csSubjects = [
-      { subject: 'Java Programming',        code: '21CS301' }, { subject: 'Database Management Systems', code: '21CS302' },
-      { subject: 'Computer Networks',       code: '21CS303' }, { subject: 'Operating Systems',           code: '21CS304' },
-      { subject: 'Theory of Computation',   code: '21CS305' }, { subject: 'Mathematics – III',           code: '21MA301' },
-      { subject: 'Open Elective',           code: '21OE301' },
-    ];
-    const csPracticals = [
-      { subject: 'Java Programming Lab', lab: 'Lab 1' }, { subject: 'DBMS Lab', lab: 'Lab 2' }, { subject: 'Networks Lab', lab: 'Lab 3' },
-    ];
-    const eceSubjects = [
-      { subject: 'Digital Signal Processing',  code: '21EC301' }, { subject: 'Analog Communication',       code: '21EC302' },
-      { subject: 'Microprocessors & Controllers', code: '21EC303' }, { subject: 'Electromagnetic Fields',   code: '21EC304' },
-      { subject: 'Control Systems',            code: '21EC305' }, { subject: 'Mathematics – III',           code: '21MA301' },
-      { subject: 'Open Elective',              code: '21OE301' },
-    ];
-    const ecePracticals = [
-      { subject: 'DSP Lab', lab: 'Lab 1' }, { subject: 'Communication Lab', lab: 'Lab 2' }, { subject: 'Microprocessor Lab', lab: 'Lab 3' },
-    ];
-    const civilSubjects = [
-      { subject: 'Structural Analysis',    code: '21CE301' }, { subject: 'Surveying – II',            code: '21CE302' },
-      { subject: 'Concrete Technology',    code: '21CE303' }, { subject: 'Fluid Mechanics',           code: '21CE304' },
-      { subject: 'Geotechnical Engineering', code: '21CE305' }, { subject: 'Mathematics – III',        code: '21MA301' },
-      { subject: 'Open Elective',          code: '21OE301' },
-    ];
-    const civilPracticals = [
-      { subject: 'Survey Field Lab', lab: 'Field' }, { subject: 'Concrete & Materials Lab', lab: 'Materials Lab' }, { subject: 'Geotechnical Lab', lab: 'Soil Lab' },
-    ];
-
     await Exam.insertMany([
-      buildExam('IT',    csSubjects,    csPracticals),
-      buildExam('CSE',   csSubjects,    csPracticals),
-      buildExam('ECE',   eceSubjects,   ecePracticals),
-      buildExam('CIVIL', civilSubjects, civilPracticals),
+      buildExam('IT', examHelpers), buildExam('CSE', examHelpers),
+      buildExam('ECE', examHelpers), buildExam('CIVIL', examHelpers),
     ]);
     console.log('✅ 4 cohort exam schedules seeded (IT, CSE, ECE, CIVIL)');
   } else {

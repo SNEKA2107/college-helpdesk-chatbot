@@ -23,6 +23,7 @@ const Notice = require('../models/Notice');
 const Exam   = require('../models/Exam');
 const Fee    = require('../models/Fee');
 const BorrowedBook = require('../models/BorrowedBook');
+const { buildExam, DEMO_EXAM_DEPARTMENTS } = require('../utils/demoExams');
 
 const DAY = 24 * 60 * 60 * 1000;
 const BASE = new Date(); BASE.setHours(0, 0, 0, 0);
@@ -31,23 +32,6 @@ const ymd   = (o) => dRel(o).toISOString().slice(0, 10);
 const human = (o) => dRel(o).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 const ACADEMIC_YEAR = BASE.getMonth() >= 5 ? `${BASE.getFullYear()}–${BASE.getFullYear() + 1}` : `${BASE.getFullYear() - 1}–${BASE.getFullYear()}`;
 const isPast = (v) => v && new Date(v) < BASE;
-
-// Re-base a list of {date} sub-docs and the header dates so the earliest theory
-// date lands ~14 days out, preserving the original spacing between papers.
-function shiftExam(exam) {
-  const dates = [exam.theoryStart, ...(exam.schedule || []).map(s => s.date)].filter(Boolean).map(d => new Date(d));
-  if (!dates.length) return false;
-  const earliest = new Date(Math.min(...dates));
-  const deltaDays = Math.round((dRel(14) - earliest) / DAY);
-  if (deltaDays === 0) return false;
-  const shift = (s) => (s ? ymd(Math.round((new Date(s) - BASE) / DAY) + deltaDays) : s);
-  exam.theoryStart = shift(exam.theoryStart);
-  exam.theoryEnd = shift(exam.theoryEnd);
-  exam.hallTicketAvailable = shift(exam.hallTicketAvailable);
-  exam.schedule = (exam.schedule || []).map(s => ({ ...s.toObject?.() ?? s, date: shift(s.date) }));
-  exam.practicals = (exam.practicals || []).map(p => ({ ...p.toObject?.() ?? p, date: shift(p.date) }));
-  return true;
-}
 
 (async () => {
   if (!process.env.MONGO_URI) { console.error('❌ MONGO_URI not set in backend/.env'); process.exit(1); }
@@ -68,28 +52,24 @@ function shiftExam(exam) {
     if (n) { log.push(`notice: "${n.title}" → refresh dates`); if (apply) await Notice.updateOne({ _id: n._id }, { $set: u.set, $currentDate: { createdAt: false } }); }
   }
 
-  // 2) EXAMS — re-base dates + remove cross-department leakage.
-  const exams = await Exam.find();
-  for (const e of exams) {
-    const changed = shiftExam(e);
-    // An institution-wide (blank-department) exam leaks to everyone — tag it to IT.
-    if (e.department === '' || e.department == null) { e.department = 'IT'; log.push(`exam ${e._id}: blank department → 'IT' (stop leakage)`); }
-    if (!e.semester) e.semester = '5th';
-    if (!e.academicYear) e.academicYear = ACADEMIC_YEAR;
-    if (changed) log.push(`exam ${e._id} (${e.department}): dates re-based forward`);
-    if (apply) await e.save();
+  // 2) EXAMS — make each demo cohort department-accurate, current, and leak-free.
+  const examHelpers = { ymd, dRel, academicYear: ACADEMIC_YEAR };
+  // Retire any institution-wide (blank-department) exam — it leaks to every student.
+  const blanks = await Exam.find({ $or: [{ department: '' }, { department: null }] });
+  for (const b of blanks) {
+    log.push(`exam ${b._id}: blank-department exam → archived (was leaking to all students)`);
+    if (apply) { b.status = 'archived'; await b.save(); }
   }
-  // Ensure each demo cohort has a published exam (clone IT's if missing).
-  const itExam = await Exam.findOne({ department: 'IT', status: 'published' });
-  for (const dept of ['CSE', 'ECE', 'CIVIL']) {
-    const exists = await Exam.findOne({ department: dept });
-    if (!exists && itExam) {
-      log.push(`exam: missing ${dept} cohort → clone from IT`);
-      if (apply) {
-        const clone = itExam.toObject(); delete clone._id; delete clone.createdAt; delete clone.updatedAt;
-        clone.department = dept;
-        await Exam.create(clone);
-      }
+  // Upsert the canonical department-accurate exam per demo cohort (idempotent).
+  for (const dept of DEMO_EXAM_DEPARTMENTS) {
+    const doc = buildExam(dept, examHelpers);
+    const existing = await Exam.findOne({ department: dept, status: { $ne: 'archived' } });
+    if (existing) {
+      log.push(`exam ${dept}: refreshed to department-accurate subjects + current dates`);
+      if (apply) { Object.assign(existing, doc); await existing.save(); }
+    } else {
+      log.push(`exam ${dept}: created department-accurate cohort exam`);
+      if (apply) await Exam.create(doc);
     }
   }
 

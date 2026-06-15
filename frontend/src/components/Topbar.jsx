@@ -18,8 +18,8 @@ export default function Topbar({ title, onMenuClick }) {
         <button className="theme-btn" onClick={cycle} title={`Switch to ${next.label} mode`}>
           {current.icon} <span className="theme-label">{current.label}</span>
         </button>
-        <Link to="/notices" className="notif-btn" style={{ position: 'relative' }}>
-          🔔<span className="notif-dot"></span>
+        <Link to="/notices" className="notif-btn" style={{ position: 'relative' }} title={unread > 0 ? `${unread} unread notice${unread > 1 ? 's' : ''}` : 'Notices'}>
+          🔔
           {unread > 0 && (
             <span className="notif-count" style={{
               position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff',

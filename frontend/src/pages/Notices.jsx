@@ -77,7 +77,7 @@ export default function Notices() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span className={`badge ${meta.badge}`}>{meta.label}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(n.createdAt)}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(n.publishedAt || n.createdAt)}</span>
                     {!isRead && <span style={{ width: 8, height: 8, background: 'var(--primary)', borderRadius: '50%', display: 'inline-block' }} title="Unread"></span>}
                   </div>
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--dark)', marginBottom: 6 }}>{n.title}</h3>

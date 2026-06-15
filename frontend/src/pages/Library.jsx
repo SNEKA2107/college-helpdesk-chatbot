@@ -4,7 +4,6 @@ import { apiCall } from '../services/api';
 import { formatDate } from '../utils/format';
 
 const STATUS_CLASSES = { Available: 'badge-success', Borrowed: 'badge-danger', Reserved: 'badge-warning' };
-const CATEGORIES = [['IT', 'IT'], ['AI', 'AI / ML'], ['Java', 'Java'], ['DBMS', 'DBMS'], ['Python', 'Python'], ['Math', 'Maths']];
 
 const RULES = [
   { icon: '📚', title: 'Borrowing Limit', text: 'Students can borrow up to 3 books at a time for a period of 14 days.' },
@@ -17,11 +16,16 @@ export default function Library() {
   const [borrowed, setBorrowed] = useState(null);
   const [search, setSearch] = useState('');
   const [stats, setStats] = useState({ total: '…', available: '…' });
+  // Category filter options are derived from the actual catalog so every chip
+  // returns results (no hardcoded categories that don't exist in the data).
+  const [categories, setCategories] = useState([]);
+  const [activeCat, setActiveCat] = useState('');
 
   useEffect(() => {
     apiCall('/library').then(res => {
       if (!res.ok) return;
       setBooks(res.data.books);
+      setCategories([...new Set(res.data.books.map(b => b.category).filter(Boolean))].sort());
       setStats({
         total: res.data.books.length.toLocaleString('en-IN'),
         available: res.data.books.filter(b => b.status === 'Available').length.toLocaleString('en-IN'),
@@ -31,13 +35,16 @@ export default function Library() {
   }, []);
 
   async function searchBooks(query) {
+    setActiveCat('');
     const res = await apiCall(`/library?search=${encodeURIComponent(query.trim())}`);
     if (res.ok) setBooks(res.data.books);
   }
 
   async function searchByCategory(cat) {
-    setSearch(cat);
-    const res = await apiCall(`/library?category=${encodeURIComponent(cat)}`);
+    setSearch('');
+    setActiveCat(cat);
+    // Empty cat = "All Books" → reload the full catalog.
+    const res = await apiCall(cat ? `/library?category=${encodeURIComponent(cat)}` : '/library');
     if (res.ok) setBooks(res.data.books);
   }
 
@@ -76,8 +83,9 @@ export default function Library() {
             <button className="btn btn-primary" onClick={() => searchBooks(search)}>Search</button>
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            {CATEGORIES.map(([cat, label]) => (
-              <button key={cat} className="btn btn-secondary btn-sm" onClick={() => searchByCategory(cat)}>{label}</button>
+            <button className={`btn btn-sm ${activeCat === '' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => searchByCategory('')}>All Books</button>
+            {categories.map(cat => (
+              <button key={cat} className={`btn btn-sm ${activeCat === cat ? 'btn-primary' : 'btn-secondary'}`} onClick={() => searchByCategory(cat)}>{cat}</button>
             ))}
           </div>
           <div className="table-wrap">

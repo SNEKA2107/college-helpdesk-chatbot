@@ -12,6 +12,19 @@ const Fee        = require('./models/Fee');
 const Book       = require('./models/Book');
 const BorrowedBook = require('./models/BorrowedBook');
 const Timetable  = require('./models/Timetable');
+const Event      = require('./models/Event');
+
+// ── Relative-date helpers ───────────────────────────────────────────────────
+// All demo dates are computed relative to the day the seed runs, so a freshly
+// seeded database always looks current (no past-due fees, no "exam already
+// started", no expired notices). Offsets are in days from today.
+const DAY = 24 * 60 * 60 * 1000;
+const BASE = new Date(); BASE.setHours(0, 0, 0, 0);
+const dRel  = (offset) => new Date(BASE.getTime() + offset * DAY);   // Date object
+const ymd   = (offset) => dRel(offset).toISOString().slice(0, 10);    // 'YYYY-MM-DD'
+const human = (offset) => dRel(offset).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+// Current academic year, e.g. seeded in June 2026 → '2026–2027'.
+const ACADEMIC_YEAR = BASE.getMonth() >= 5 ? `${BASE.getFullYear()}–${BASE.getFullYear() + 1}` : `${BASE.getFullYear() - 1}–${BASE.getFullYear()}`;
 
 async function seed() {
   await mongoose.connect(process.env.MONGO_URI);
@@ -46,13 +59,13 @@ async function seed() {
   const noticeCount = await Notice.countDocuments();
   if (noticeCount === 0) {
     await Notice.insertMany([
-      { title: 'Fee Payment Deadline – Final Reminder', content: 'This is the final reminder for Semester V fee payment. The last date is May 25, 2026. Students who fail to pay will not be allowed to write semester examinations. Contact the accounts office immediately.', category: 'urgent', postedBy: 'Admin', pinned: true },
-      { title: 'Semester V Examination Schedule Released', content: 'The official semester V examination schedule has been published. Theory exams begin June 15, 2026. Hall tickets can be downloaded from the student portal from June 10 onwards.', category: 'exam', postedBy: 'Exam Cell', pinned: false },
-      { title: 'Internal Marks Published', content: 'Internal assessment marks for Semester V have been published. Students who wish to apply for re-evaluation must submit a request to the department within 3 working days.', category: 'general', postedBy: 'Academic Section', pinned: false },
-      { title: 'College Holiday – May 30, 2026', content: 'College will remain closed on May 30, 2026 on account of the state-level public holiday. All classes and lab sessions on that day stand cancelled.', category: 'holiday', postedBy: 'Admin', pinned: false },
-      { title: 'Scholarship Application Open', content: 'Applications for Merit-cum-Means Scholarship 2026–27 are now open. Eligible students (income below ₹2.5 LPA, GPA ≥ 7.5) can apply. Last date: June 5, 2026.', category: 'fee', postedBy: 'Admin', pinned: false },
+      { title: 'Fee Payment Deadline – Final Reminder', content: `This is the final reminder for Semester V fee payment. The last date is ${human(21)}. Students who fail to pay will not be allowed to write semester examinations. Contact the accounts office immediately.`, category: 'urgent', postedBy: 'Admin', pinned: true, status: 'published', publishedAt: dRel(0), expiresAt: dRel(22) },
+      { title: 'Semester V Examination Schedule Released', content: `The official semester V examination schedule has been published. Theory exams begin ${human(14)}. Hall tickets can be downloaded from the student portal from ${human(9)} onwards.`, category: 'exam', postedBy: 'Exam Cell', pinned: false, status: 'published', publishedAt: dRel(-1), expiresAt: dRel(28) },
+      { title: 'Internal Marks Published', content: 'Internal assessment marks for Semester V have been published. Students who wish to apply for re-evaluation must submit a request to the department within 3 working days.', category: 'general', postedBy: 'Academic Section', pinned: false, status: 'published', publishedAt: dRel(-2) },
+      { title: `College Holiday – ${human(15)}`, content: `College will remain closed on ${human(15)} on account of the state-level public holiday. All classes and lab sessions on that day stand cancelled.`, category: 'holiday', postedBy: 'Admin', pinned: false, status: 'published', publishedAt: dRel(-1), expiresAt: dRel(16) },
+      { title: 'Scholarship Application Open', content: `Applications for the Merit-cum-Means Scholarship ${ACADEMIC_YEAR} are now open. Eligible students (family income below ₹2.5 LPA, GPA ≥ 7.5) can apply. Last date: ${human(20)}.`, category: 'fee', postedBy: 'Admin', pinned: false, status: 'published', publishedAt: dRel(-3), expiresAt: dRel(21) },
     ]);
-    console.log('✅ 5 notices seeded');
+    console.log('✅ 5 notices seeded (relative dates)');
   } else {
     console.log('ℹ️  Notices already exist, skipping');
   }
@@ -70,38 +83,66 @@ async function seed() {
     console.log('ℹ️  Requests already exist, skipping');
   }
 
-  // ── Exam Schedule ──────────────────────────────────────
+  // ── Exam Schedules (cohort-specific) ───────────────────
+  // Each department gets its OWN published exam so a student only ever sees their
+  // cohort's schedule (resolveExamForUser in routes/exam.js scopes by department +
+  // semester). No institution-wide (blank-department) exam is seeded, so there is
+  // no cross-department leakage.
+  const EXAM_INSTRUCTIONS = [
+    'Carry your Hall Ticket and College ID Card to every exam. Entry is denied without both.',
+    'Reach the exam hall at least 30 minutes before the scheduled time.',
+    'Mobile phones, smartwatches and electronic devices are strictly prohibited.',
+    'Only blue or black ball-point pens are allowed. Pencils only for diagrams.',
+    'Follow all college examination regulations as per the student handbook.',
+    'Any malpractice results in immediate disqualification and disciplinary action.',
+  ];
+  // Build a published, relative-dated exam for one cohort.
+  const buildExam = (department, subjects, practicals) => ({
+    department, semester: '5th', academicYear: ACADEMIC_YEAR,
+    status: 'published', publishedAt: dRel(-1),
+    theoryStart: ymd(14), theoryEnd: ymd(14 + (subjects.length - 1) * 2), hallTicketAvailable: ymd(9),
+    schedule: subjects.map((s, i) => ({ date: ymd(14 + i * 2), subject: s.subject, code: s.code, session: i % 2 ? 'Afternoon (2 PM)' : 'Morning (10 AM)' })),
+    practicals: practicals.map((p, i) => ({ date: ymd(9 + i), subject: p.subject, lab: p.lab, time: i % 2 ? '2 PM' : '9 AM' })),
+    instructions: EXAM_INSTRUCTIONS,
+  });
+
   const examCount = await Exam.countDocuments();
   if (examCount === 0) {
-    await Exam.create({
-      semester: 'V', academicYear: '2025–2026',
-      theoryStart: '2026-06-15', theoryEnd: '2026-06-28', hallTicketAvailable: '2026-06-10',
-      schedule: [
-        { date: '2026-06-15', subject: 'Java Programming',       code: '21CS301', session: 'Morning (10 AM)' },
-        { date: '2026-06-17', subject: 'Database Management',    code: '21CS302', session: 'Morning (10 AM)' },
-        { date: '2026-06-19', subject: 'Computer Networks',      code: '21CS303', session: 'Afternoon (2 PM)' },
-        { date: '2026-06-21', subject: 'Artificial Intelligence', code: '21CS304', session: 'Morning (10 AM)' },
-        { date: '2026-06-23', subject: 'Mathematics – III',      code: '21MA301', session: 'Morning (10 AM)' },
-        { date: '2026-06-25', subject: 'Python Programming',     code: '21CS305', session: 'Afternoon (2 PM)' },
-        { date: '2026-06-28', subject: 'Open Elective',          code: '21OE301', session: 'Morning (10 AM)' },
-      ],
-      practicals: [
-        { date: '2026-06-10', subject: 'Computer Networks Lab', lab: 'Lab 3', time: '9 AM' },
-        { date: '2026-06-11', subject: 'Java Programming Lab',  lab: 'Lab 1', time: '9 AM' },
-        { date: '2026-06-12', subject: 'DBMS Lab',              lab: 'Lab 2', time: '2 PM' },
-        { date: '2026-06-13', subject: 'Data Science Lab',      lab: 'Lab 4', time: '9 AM' },
-        { date: '2026-06-14', subject: 'AI Lab',                lab: 'Lab 1', time: '2 PM' },
-      ],
-      instructions: [
-        'Carry your Hall Ticket and College ID Card to every exam.',
-        'Reach the exam hall at least 30 minutes before scheduled time.',
-        'Mobile phones and electronic devices are strictly prohibited.',
-        'Only blue or black ball-point pens are allowed. Pencils only for diagrams.',
-        'Follow all college examination regulations.',
-        'Any malpractice results in immediate disqualification.',
-      ],
-    });
-    console.log('✅ Exam schedule seeded');
+    const csSubjects = [
+      { subject: 'Java Programming',        code: '21CS301' }, { subject: 'Database Management Systems', code: '21CS302' },
+      { subject: 'Computer Networks',       code: '21CS303' }, { subject: 'Operating Systems',           code: '21CS304' },
+      { subject: 'Theory of Computation',   code: '21CS305' }, { subject: 'Mathematics – III',           code: '21MA301' },
+      { subject: 'Open Elective',           code: '21OE301' },
+    ];
+    const csPracticals = [
+      { subject: 'Java Programming Lab', lab: 'Lab 1' }, { subject: 'DBMS Lab', lab: 'Lab 2' }, { subject: 'Networks Lab', lab: 'Lab 3' },
+    ];
+    const eceSubjects = [
+      { subject: 'Digital Signal Processing',  code: '21EC301' }, { subject: 'Analog Communication',       code: '21EC302' },
+      { subject: 'Microprocessors & Controllers', code: '21EC303' }, { subject: 'Electromagnetic Fields',   code: '21EC304' },
+      { subject: 'Control Systems',            code: '21EC305' }, { subject: 'Mathematics – III',           code: '21MA301' },
+      { subject: 'Open Elective',              code: '21OE301' },
+    ];
+    const ecePracticals = [
+      { subject: 'DSP Lab', lab: 'Lab 1' }, { subject: 'Communication Lab', lab: 'Lab 2' }, { subject: 'Microprocessor Lab', lab: 'Lab 3' },
+    ];
+    const civilSubjects = [
+      { subject: 'Structural Analysis',    code: '21CE301' }, { subject: 'Surveying – II',            code: '21CE302' },
+      { subject: 'Concrete Technology',    code: '21CE303' }, { subject: 'Fluid Mechanics',           code: '21CE304' },
+      { subject: 'Geotechnical Engineering', code: '21CE305' }, { subject: 'Mathematics – III',        code: '21MA301' },
+      { subject: 'Open Elective',          code: '21OE301' },
+    ];
+    const civilPracticals = [
+      { subject: 'Survey Field Lab', lab: 'Field' }, { subject: 'Concrete & Materials Lab', lab: 'Materials Lab' }, { subject: 'Geotechnical Lab', lab: 'Soil Lab' },
+    ];
+
+    await Exam.insertMany([
+      buildExam('IT',    csSubjects,    csPracticals),
+      buildExam('CSE',   csSubjects,    csPracticals),
+      buildExam('ECE',   eceSubjects,   ecePracticals),
+      buildExam('CIVIL', civilSubjects, civilPracticals),
+    ]);
+    console.log('✅ 4 cohort exam schedules seeded (IT, CSE, ECE, CIVIL)');
   } else {
     console.log('ℹ️  Exam schedule already exists, skipping');
   }
@@ -109,24 +150,26 @@ async function seed() {
   // ── Fee Record ─────────────────────────────────────────
   const feeCount = await Fee.countDocuments({ student: student._id });
   if (feeCount === 0) {
+    const txnDate = (offset) => dRel(offset).toISOString().slice(0, 10).replace(/-/g, '');
     await Fee.create({
       student: student._id, studentId: student.studentId,
-      semester: 'V', academicYear: '2025–2026',
+      semester: '5th', academicYear: ACADEMIC_YEAR,
       components: [
         { name: 'Tuition Fee', amount: 45000 },
         { name: 'Lab Fee',     amount: 5000  },
         { name: 'Library Fee', amount: 2000  },
         { name: 'Exam Fee',    amount: 3000  },
       ],
-      total: 55000, dueDate: '2026-05-25', lateFine: 500,
+      // Due date is in the near future (upcoming, not overdue).
+      total: 55000, dueDate: ymd(21), lateFine: 500,
       history: [
-        { date: '2026-01-05', description: 'Semester V – Tuition Fee', amount: 45000, mode: 'Online', txn: 'TXN202601050001' },
-        { date: '2026-01-05', description: 'Semester V – Lab Fee',     amount: 5000,  mode: 'Online', txn: 'TXN202601050002' },
-        { date: '2026-01-10', description: 'Semester V – Library Fee', amount: 2000,  mode: 'DD',     txn: 'DD202601100001'  },
-        { date: '2026-01-15', description: 'Semester V – Exam Fee',    amount: 3000,  mode: 'Online', txn: 'TXN202601150001' },
+        { date: ymd(-150), description: 'Semester V – Tuition Fee', amount: 45000, mode: 'Online', txn: `TXN${txnDate(-150)}001` },
+        { date: ymd(-150), description: 'Semester V – Lab Fee',     amount: 5000,  mode: 'Online', txn: `TXN${txnDate(-150)}002` },
+        { date: ymd(-145), description: 'Semester V – Library Fee', amount: 2000,  mode: 'DD',     txn: `DD${txnDate(-145)}001`  },
+        { date: ymd(-140), description: 'Semester V – Exam Fee',    amount: 3000,  mode: 'Online', txn: `TXN${txnDate(-140)}001` },
       ],
     });
-    console.log('✅ Fee record seeded');
+    console.log('✅ Fee record seeded (relative dates)');
   } else {
     console.log('ℹ️  Fee record already exists, skipping');
   }
@@ -150,10 +193,10 @@ async function seed() {
     const cnBook    = books.find(b => b.title === 'Computer Networks');
     const cleanBook = books.find(b => b.title === 'Clean Code');
     await BorrowedBook.insertMany([
-      { student: student._id, studentId: student.studentId, book: cnBook._id,    title: cnBook.title,    author: cnBook.author,    borrowedDate: '2026-06-08', dueDate: '2026-06-22', status: 'Active' },
-      { student: student._id, studentId: student.studentId, book: cleanBook._id, title: cleanBook.title, author: cleanBook.author, borrowedDate: '2026-06-01', dueDate: '2026-06-15', status: 'Active' },
+      { student: student._id, studentId: student.studentId, book: cnBook._id,    title: cnBook.title,    author: cnBook.author,    borrowedDate: ymd(-7), dueDate: ymd(7), status: 'Active' },
+      { student: student._id, studentId: student.studentId, book: cleanBook._id, title: cleanBook.title, author: cleanBook.author, borrowedDate: ymd(-12), dueDate: ymd(2), status: 'Active' },
     ]);
-    console.log('✅ 2 borrowed books seeded');
+    console.log('✅ 2 borrowed books seeded (relative dates)');
   } else {
     console.log('ℹ️  Books already exist, skipping');
   }
@@ -188,6 +231,20 @@ async function seed() {
     console.log('✅ Timetable seeded');
   } else {
     console.log('ℹ️  Timetable already exists, skipping');
+  }
+
+  // ── Events (upcoming) ──────────────────────────────────
+  // Future-dated so the dashboard "Upcoming Events" panel is always populated.
+  const eventCount = await Event.countDocuments();
+  if (eventCount === 0) {
+    await Event.insertMany([
+      { title: 'TechFest 2026 – National Symposium', category: 'Technical', date: dRel(7),  time: '9:00 AM', venue: 'Main Auditorium',  organizer: 'Department of IT',   description: 'A national-level technical symposium with paper presentations, coding contests and project expos.', seats: 300 },
+      { title: 'Cultural Night – Rhythms',           category: 'Cultural',  date: dRel(14), time: '5:00 PM', venue: 'Open Air Theatre', organizer: 'Cultural Committee', description: 'An evening of music, dance and drama performances by students across departments.', seats: 500 },
+      { title: 'AI & Cloud Hands-on Workshop',       category: 'Workshop',  date: dRel(21), time: '10:00 AM', venue: 'Seminar Hall B',   organizer: 'CSE Department',    description: 'A practical workshop on building and deploying AI applications on the cloud.', seats: 120 },
+    ]);
+    console.log('✅ 3 upcoming events seeded (relative dates)');
+  } else {
+    console.log('ℹ️  Events already exist, skipping');
   }
 
   console.log('\n🎓 Seed complete! You can now start the backend with: npm run dev');

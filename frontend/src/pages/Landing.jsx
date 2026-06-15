@@ -26,11 +26,11 @@ const HIW_STEPS = [
   { num: '03', title: 'Track & Get Help', text: 'Track your requests, chat with the helpdesk bot, apply for leave, and stay on top of everything.' },
 ];
 
-// Honest capability highlights (not fabricated individual reviews).
-const TESTIMONIALS = [
-  { stars: '★★★★★', text: '"Submit and track document requests, leave and OD online — no more queuing at the admin office."', initial: '📄', name: 'Requests & Leave', dept: 'Student workflow' },
-  { stars: '★★★★★', text: '"Ask the campus bot about exams, fees and library hours and get instant answers, any time."', initial: '💬', name: 'AI Chatbot', dept: 'Always available' },
-  { stars: '★★★★★', text: '"Check attendance, marks, CGPA, timetable and fees from one personalized dashboard."', initial: '🎯', name: 'Student Dashboard', dept: 'All-in-one' },
+// Honest product highlights — capability descriptions, NOT fabricated reviews or ratings.
+const HIGHLIGHTS = [
+  { icon: '📄', title: 'Requests & Leave', tag: 'Student workflow', text: 'Submit and track document requests, leave and OD applications online — no more queuing at the admin office.' },
+  { icon: '💬', title: 'AI Chatbot', tag: 'Always available', text: 'Ask the campus bot about exams, fees and library hours and get instant, data-backed answers any time.' },
+  { icon: '🎯', title: 'Student Dashboard', tag: 'All-in-one', text: 'Check attendance, marks, CGPA, timetable and fees from a single personalized dashboard.' },
 ];
 
 const HERO_CARDS = [
@@ -174,7 +174,7 @@ export default function Landing() {
           <div className="nav-links">
             <a href="#features" onClick={e => smoothScroll(e, '#features')}>Features</a>
             <a href="#how" onClick={e => smoothScroll(e, '#how')}>How It Works</a>
-            <a href="#testimonials" onClick={e => smoothScroll(e, '#testimonials')}>Reviews</a>
+            <a href="#testimonials" onClick={e => smoothScroll(e, '#testimonials')}>Highlights</a>
             <Link to="/contact">Contact</Link>
           </div>
           <div className="nav-actions">
@@ -197,7 +197,7 @@ export default function Landing() {
       <div className={`mobile-menu${menuOpen ? ' open' : ''}`}>
         <a href="#features" onClick={e => { smoothScroll(e, '#features'); setMenuOpen(false); }}>Features</a>
         <a href="#how" onClick={e => { smoothScroll(e, '#how'); setMenuOpen(false); }}>How It Works</a>
-        <a href="#testimonials" onClick={e => { smoothScroll(e, '#testimonials'); setMenuOpen(false); }}>Reviews</a>
+        <a href="#testimonials" onClick={e => { smoothScroll(e, '#testimonials'); setMenuOpen(false); }}>Highlights</a>
         <Link to="/contact">Contact</Link>
         <div className="m-btns">
           <button className="btn-nav-login" onClick={() => navigate('/login')} style={{ flex: 1, borderRadius: 8, padding: 11, color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent' }}>Login</button>
@@ -283,23 +283,22 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+      {/* HIGHLIGHTS */}
       <section className="testimonials" id="testimonials">
         <div className="section-head">
-          <span className="section-label">Testimonials</span>
-          <h2>What <em>Students</em> Say</h2>
-          <p>Hear from students who use CampusAssist every day.</p>
+          <span className="section-label">Highlights</span>
+          <h2>Built for <em>Real Student Needs</em></h2>
+          <p>Every capability below maps to an everyday campus task — no fluff.</p>
         </div>
         <div className="testimonials-grid">
-          {TESTIMONIALS.map(t => (
-            <div key={t.name} className="testi-card">
-              <div className="testi-stars">{t.stars}</div>
-              <p>{t.text}</p>
+          {HIGHLIGHTS.map(h => (
+            <div key={h.title} className="testi-card">
+              <p>{h.text}</p>
               <div className="testi-author">
-                <div className="testi-avatar">{t.initial}</div>
+                <div className="testi-avatar">{h.icon}</div>
                 <div className="testi-author-info">
-                  <h4>{t.name}</h4>
-                  <span>{t.dept}</span>
+                  <h4>{h.title}</h4>
+                  <span>{h.tag}</span>
                 </div>
               </div>
             </div>
@@ -312,7 +311,7 @@ export default function Landing() {
         <div className="cta-glow"></div>
         <div className="cta-inner">
           <h2>Ready to <em>Get Started?</em></h2>
-          <p>Join hundreds of students already using CampusAssist to manage their college life effortlessly.</p>
+          <p>Bring all your campus services together in one secure student portal — built for the way you actually study.</p>
           <div className="cta-actions">
             <button className="btn-cta-primary" onClick={() => navigate('/register')}>Register Now — It's Free</button>
             <button className="btn-cta-outline" onClick={() => navigate('/login')}>Already a member? Login</button>

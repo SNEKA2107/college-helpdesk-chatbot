@@ -24,7 +24,7 @@ export default function OverviewTab({ data, loaded, showTab }) {
         </div>
         <div className="stat-card">
           <div className="stat-icon si-green">🔔</div>
-          <div className="stat-info"><h3>{loaded ? data.notices.length : '—'}</h3><p>Active Notices</p></div>
+          <div className="stat-info"><h3>{loaded ? data.notices.filter(n => (n.status || 'published') === 'published').length : '—'}</h3><p>Active Notices</p></div>
         </div>
       </div>
 

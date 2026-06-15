@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { apiCall } from '../services/api';
 import { getUser } from '../services/auth';
-import { timeAgo } from '../utils/format';
+import { timeAgo, formatDate } from '../utils/format';
+
+// Priority/category badge for the notice list (reuses existing badge classes).
+const NOTICE_BADGE = { urgent: 'badge-danger', exam: 'badge-primary', fee: 'badge-warning', holiday: 'badge-info', general: 'badge-muted' };
+// Date a notice went live — publishedAt when present, else the legacy createdAt.
+const noticeDate = n => n.publishedAt || n.createdAt;
 
 const QUICK_ACCESS = [
   { to: '/exam',       icon: '📘', label: 'Exam Info',        bg: 'linear-gradient(135deg,#2563eb,#60a5fa)' },
@@ -114,7 +119,7 @@ export default function Dashboard() {
             <div className="mobile-subtitle">Welcome to CampusAssist</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link to="/notices" className="mobile-notif">🔔<span className="notif-dot"></span></Link>
+            <Link to="/notices" className="mobile-notif">🔔</Link>
             <Link to="/profile" className="mobile-avatar">{(user?.name || 'S')[0].toUpperCase()}</Link>
           </div>
         </div>
@@ -148,8 +153,11 @@ export default function Dashboard() {
         {notices && !notices.length && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No notices.</p>}
         {(notices || []).slice(0, 3).map(n => (
           <div key={n._id} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px' }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--dark)', marginBottom: 4 }}>{n.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{timeAgo(n.createdAt)}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--dark)' }}>{n.title}</div>
+              {n.category && <span className={`badge ${NOTICE_BADGE[n.category] || 'badge-muted'}`} style={{ fontSize: 10 }}>{n.category}</span>}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(noticeDate(n))} · {timeAgo(noticeDate(n))}</div>
           </div>
         ))}
       </div>
@@ -225,8 +233,14 @@ export default function Dashboard() {
               )}
               {(notices || []).slice(0, 3).map(n => (
                 <div key={n._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 10, background: 'var(--bg2)', borderRadius: 8 }}>
-                  <p style={{ fontSize: 13.5, margin: 0 }}>{n.title}</p>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginLeft: 10 }}>{timeAgo(n.createdAt)}</span>
+                  <div style={{ flex: 1, marginRight: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <p style={{ fontSize: 13.5, margin: 0 }}>{n.title}</p>
+                      {n.category && <span className={`badge ${NOTICE_BADGE[n.category] || 'badge-muted'}`} style={{ fontSize: 10 }}>{n.category}</span>}
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatDate(noticeDate(n))}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{timeAgo(noticeDate(n))}</span>
                 </div>
               ))}
             </div>

@@ -82,3 +82,6 @@ Notes for mobile builds:
 |---------|-----------|------------|
 | Student | 192221001 | student123 |
 | Admin   | ADMIN01   | admin@123  |
+
+
+Updated documentation as part of Git/GitHub collaboration workflow exercise.

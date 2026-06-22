@@ -13,6 +13,11 @@ const userSchema = new mongoose.Schema({
   year:       { type: String, default: '' },
   section:    { type: String, default: '' },
   role:       { type: String, enum: ['student','admin'], default: 'student' },
+  // Placement / success profile (Phase 2). Optional & back-compatible.
+  cgpa:           { type: Number, default: 0 },
+  skills:         { type: [String], default: [] },
+  projects:       { type: [{ title: String, tech: String, _id: false }], default: [] },
+  placementOptIn: { type: Boolean, default: true },
   phone:      { type: String, default: '' },
   photo:      { type: String, default: '' },
   parentName: { type: String, default: '' },

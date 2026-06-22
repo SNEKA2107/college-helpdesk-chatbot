@@ -6,7 +6,8 @@ const NAV_SECTIONS = [
     title: 'Main',
     links: [
       { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
-      { to: '/chat',      icon: '💬', label: 'Chat with Bot' },
+      { to: '/success',   icon: '🚀', label: 'Success Dashboard' },
+      { to: '/chat',      icon: '💬', label: 'Campus Copilot' },
       { to: '/requests',  icon: '📋', label: 'My Requests' },
     ],
   },

@@ -31,7 +31,7 @@ function stripHtml(html) {
 export default function Chat() {
   const {
     conversations, activeId, messages, typing, search,
-    setSearch, send, openConversation, newChat, deleteConversation,
+    setSearch, send, openConversation, newChat, deleteConversation, rate,
   } = useChat();
 
   const [input, setInput] = useState('');
@@ -132,6 +132,17 @@ export default function Chat() {
                   <div className="msg-bubble msg-text">{m.content}</div>
                   {m.role === 'assistant' && <SourceChips sources={m.sources} />}
                   {m.role === 'assistant' && <FollowUpPills suggestions={m.followUps} onPick={submit} />}
+                  {m.role === 'assistant' && m.messageId && (
+                    <div className="msg-feedback">
+                      {m.feedback
+                        ? <span className="fb-thanks">{m.feedback === 'up' ? '👍 Thanks for your feedback' : '👎 Thanks — we\'ll improve this'}</span>
+                        : <>
+                            <span className="fb-label">Was this helpful?</span>
+                            <button className="fb-btn" title="Helpful" onClick={() => rate(m.id, m.messageId, 'up')}>👍</button>
+                            <button className="fb-btn" title="Not helpful" onClick={() => rate(m.id, m.messageId, 'down')}>👎</button>
+                          </>}
+                    </div>
+                  )}
                   <div className="msg-time">{m.time}</div>
                 </div>
               </div>

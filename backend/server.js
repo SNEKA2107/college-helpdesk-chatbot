@@ -107,6 +107,8 @@ app.use('/api/conversations', require('./routes/conversations'));
 app.use('/api/success',       require('./routes/success'));
 app.use('/api/home',          require('./routes/home'));
 app.use('/api/placement',     require('./routes/placement'));
+app.use('/api/knowledge',     require('./routes/knowledge'));
+app.use('/api/faculty',       require('./routes/faculty'));
 app.use('/api/analytics',     require('./routes/analytics'));
 app.use('/api/exam',      require('./routes/exam'));
 app.use('/api/fees',      require('./routes/fees'));

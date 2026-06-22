@@ -1,0 +1,20 @@
+/* ===== Knowledge Base Manager + Faculty Directory (Phase 7) ===== */
+/* Reuses the admin .card / .badge / .stat-card system; just the list rows here. */
+
+.kb-doc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.kb-doc-row:last-child { border-bottom: none; }
+.kb-doc-row:hover { background: rgba(255,255,255,0.02); }
+
+.kb-doc-title { font-weight: 600; font-size: 13.5px; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-doc-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.45; }
+.kb-doc-meta {
+  font-size: 11.5px; color: var(--text-muted);
+  margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+}

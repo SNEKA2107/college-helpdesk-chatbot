@@ -4,6 +4,7 @@ const { generate } = require('../services/aiAgent');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const QueryLog = require('../models/QueryLog');
+const { categoryForIntent } = require('../utils/intentCategory');
 
 const router = express.Router();
 
@@ -36,13 +37,18 @@ router.post('/', protect, async (req, res) => {
     const { reply, intent, sources, followUps, matched } = await generate({ message: text, history, user: req.user });
     const latencyMs = Date.now() - t0;
 
-    await Message.create({ conversation: convo._id, role: 'assistant', content: reply, intent, sources, followUps, latencyMs });
+    const assistantMsg = await Message.create({ conversation: convo._id, role: 'assistant', content: reply, intent, sources, followUps, latencyMs });
     await Conversation.updateOne({ _id: convo._id }, { lastMessageAt: new Date(), $inc: { messageCount: 2 } });
-    await QueryLog.create({ user: req.user._id, query: text, intent, matched, latencyMs, hour: new Date().getHours() });
+    // Phase 7: log a complete (query → response) training example with category + role.
+    await QueryLog.create({
+      user: req.user._id, query: text, intent, matched, latencyMs, hour: new Date().getHours(),
+      response: reply, category: categoryForIntent(intent), role: req.user.role, message: assistantMsg._id,
+    });
 
     res.json({
       success: true,
       conversationId: convo._id,
+      messageId: assistantMsg._id,
       message: reply,
       sources,
       followUps,
@@ -52,6 +58,33 @@ router.post('/', protect, async (req, res) => {
   } catch (err) {
     console.error('Chat error:', err.message);
     res.status(500).json({ success: false, message: 'Could not process your message. Please try again.' });
+  }
+});
+
+// POST /api/chat/feedback — rate a Copilot answer 👍/👎 (Module 3). Persists the
+// rating on the Message and mirrors it onto the QueryLog training example.
+router.post('/feedback', protect, async (req, res) => {
+  const { messageId, rating } = req.body;
+  if (!['up', 'down'].includes(rating)) {
+    return res.status(400).json({ success: false, message: 'Rating must be "up" or "down".' });
+  }
+  try {
+    const msg = await Message.findById(messageId);
+    if (!msg || msg.role !== 'assistant') {
+      return res.status(404).json({ success: false, message: 'Answer not found.' });
+    }
+    // Ownership check: the conversation must belong to the requester.
+    const convo = await Conversation.findOne({ _id: msg.conversation, user: req.user._id });
+    if (!convo) return res.status(403).json({ success: false, message: 'Not your conversation.' });
+
+    msg.feedback = rating;
+    await msg.save();
+    await QueryLog.updateOne({ message: msg._id }, { $set: { rating } });
+
+    res.json({ success: true, rating });
+  } catch (err) {
+    console.error('Feedback error:', err.message);
+    res.status(500).json({ success: false, message: 'Could not save your feedback.' });
   }
 });
 

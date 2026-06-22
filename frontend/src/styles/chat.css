@@ -75,3 +75,14 @@
   .convo-sidebar { display: none; }
   .chat-layout { height: calc(100vh - var(--topbar-h) - 110px); }
 }
+
+/* ── Answer feedback (Phase 7, Module 3) ── */
+.msg-feedback { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.fb-label { font-size: 11.5px; color: var(--text-muted); }
+.fb-btn {
+  background: transparent; border: 1px solid var(--border); border-radius: 8px;
+  padding: 2px 8px; font-size: 13px; cursor: pointer; line-height: 1.4;
+  transition: background .18s, border-color .18s, transform .12s;
+}
+.fb-btn:hover { background: rgba(78,133,191,0.14); border-color: rgba(78,133,191,0.5); transform: translateY(-1px); }
+.fb-thanks { font-size: 11.5px; color: var(--primary-light); }

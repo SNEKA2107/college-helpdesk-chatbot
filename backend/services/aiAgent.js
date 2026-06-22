@@ -8,6 +8,8 @@ const Notice     = require('../models/Notice');
 const Attendance = require('../models/Attendance');
 const Marks      = require('../models/Marks');
 const KB         = require('../models/KnowledgeArticle');
+const KBDoc      = require('../models/KnowledgeDocument');
+const Faculty    = require('../models/Faculty');
 const { computeSuccess } = require('./successEngine');
 const { copilotSummary: placementSummary } = require('./placementEngine');
 
@@ -27,7 +29,7 @@ const INTENTS = {
   marks:      ['marks', 'result', 'cgpa', 'gpa', 'grade', 'sgpa', 'backlog'],
   placement:  ['placement', 'company', 'eligib', 'interview', 'resume', 'ctc', 'package', 'drive'],
   notice:     ['notice', 'announcement', 'news', 'circular', 'update'],
-  faculty:    ['faculty', 'professor', 'teacher', 'hod', 'cabin'],
+  faculty:    ['faculty', 'professor', 'teacher', 'teaches', 'who teaches', 'taught', 'teaching', 'instructor', 'lecturer', 'hod', 'head of department', 'cabin'],
   contact:    ['contact', 'phone', 'office', 'email', 'reach'],
 };
 
@@ -42,10 +44,11 @@ function classifyIntent(message) {
 // ── 2. Retrieval ──────────────────────────────────────────────────────────
 // Returns { context, sources } scoped to the detected intent AND the student.
 // Every fact pushed to `context` also records a citation in `sources`.
-async function retrieve(intent, user) {
+async function retrieve(intent, user, message = '') {
   const sources = [];
   const ctx = [];
   const add = (type, refId, label, text) => { sources.push({ type, refId, label }); ctx.push(text); };
+  const searchText = (message || intent).trim();
 
   try {
     if (intent === 'performance') {
@@ -111,15 +114,50 @@ async function retrieve(intent, user) {
       }
     }
 
+    if (intent === 'faculty') {
+      // Faculty Directory grounding (Phase 7): "who teaches X", "who is the HOD", emails.
+      const m = searchText.toLowerCase();
+      let faculty = [];
+      if (/\bhod\b|head of department/.test(m)) {
+        const q = { isHOD: true, isActive: { $ne: false } };
+        if (user.department) q.department = user.department;
+        faculty = await Faculty.find(q).limit(3);
+        if (!faculty.length) faculty = await Faculty.find({ isHOD: true, isActive: { $ne: false } }).limit(3);
+      }
+      if (!faculty.length) {
+        faculty = await Faculty.find({ $text: { $search: searchText }, isActive: { $ne: false } })
+          .limit(3).catch(() => []);
+      }
+      faculty.forEach(f => add('faculty', f._id, `Faculty: ${f.name}`,
+        `${f.name} — ${f.designation}${f.isHOD ? ' (HOD)' : ''}, ${f.department} department.`
+        + (f.subjects?.length ? ` Teaches ${f.subjects.join(', ')}.` : '')
+        + (f.email ? ` Email: ${f.email}.` : '')
+        + (f.officeLocation ? ` Office: ${f.officeLocation}.` : '')));
+    }
+
     // Always pull recent notices so answers stay source-backed and current.
     const notices = await Notice.find({ status: { $nin: ['draft', 'archived'] }, isActive: { $ne: false } })
       .sort({ pinned: -1, publishedAt: -1, createdAt: -1 }).limit(3);
     notices.forEach(n => add('notice', n._id, `Notice: ${n.title}`,
       `Notice "${n.title}": ${(n.summary || n.content || '').slice(0, 200)}`));
 
-    // Knowledge base (keyword search until embeddings land). Non-fatal if no text index/docs.
-    const kb = await KB.find({ $text: { $search: intent }, status: 'published' }).limit(2).catch(() => []);
+    // Knowledge base articles (keyword search until embeddings land). Non-fatal.
+    const kb = await KB.find({ $text: { $search: searchText }, status: 'published' }).limit(2).catch(() => []);
     kb.forEach(k => add('kb', k._id, `KB: ${k.title}`, `${k.title}: ${k.body.slice(0, 300)}`));
+
+    // Knowledge documents (Phase 7): regulations, handbooks, policies, FAQs — with
+    // a section reference in the citation, and usage tracked for Knowledge Analytics.
+    const docs = await KBDoc.find({ $text: { $search: searchText }, status: 'published' })
+      .select('-fileData').sort({ score: { $meta: 'textScore' } }).limit(2).catch(() => []);
+    docs.forEach(doc => {
+      const ref = doc.section || doc.category;
+      add('kb', doc._id, `${doc.title}${ref ? ` · ${ref}` : ''}`,
+        `${doc.title} (${doc.category}${doc.section ? `, ${doc.section}` : ''}): ${(doc.content || doc.description || '').slice(0, 320)}`);
+    });
+    if (docs.length) {
+      // Fire-and-forget access counting (most-accessed-documents analytics).
+      KBDoc.updateMany({ _id: { $in: docs.map(d => d._id) } }, { $inc: { accessCount: 1 } }).catch(() => {});
+    }
   } catch (err) {
     console.error('Retrieval error:', err.message);
   }
@@ -131,7 +169,7 @@ async function retrieve(intent, user) {
 // Grounds Claude on retrieved facts + conversation memory; parses out follow-ups.
 async function generate({ message, history = [], user }) {
   const intent = classifyIntent(message);
-  const { context, sources } = await retrieve(intent, user);
+  const { context, sources } = await retrieve(intent, user, message);
   const matched = sources.length > 0;
 
   if (!process.env.ANTHROPIC_API_KEY) {

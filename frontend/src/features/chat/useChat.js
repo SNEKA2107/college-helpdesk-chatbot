@@ -31,6 +31,8 @@ export function useChat() {
         content: m.content,
         sources: m.sources || [],
         followUps: m.followUps || [],
+        messageId: m._id,
+        feedback: m.feedback || null,
         time: nowTime(),
       })));
     }
@@ -56,6 +58,8 @@ export function useChat() {
         content: r.data.message,
         sources: r.data.sources || [],
         followUps: r.data.followUps || [],
+        messageId: r.data.messageId,
+        feedback: null,
         time: nowTime(),
       }]);
       loadList(search);
@@ -68,6 +72,14 @@ export function useChat() {
       }]);
     }
   }, [activeId, loadList, search]);
+
+  // Module 3: rate an assistant answer 👍/👎 (optimistic; reverts on failure).
+  const rate = useCallback(async (localId, messageId, rating) => {
+    if (!messageId) return;
+    setMessages(ms => ms.map(m => (m.id === localId ? { ...m, feedback: rating } : m)));
+    const r = await apiCall('/chat/feedback', { method: 'POST', body: JSON.stringify({ messageId, rating }) });
+    if (!r.ok) setMessages(ms => ms.map(m => (m.id === localId ? { ...m, feedback: null } : m)));
+  }, []);
 
   const deleteConversation = useCallback(async (id) => {
     await apiCall(`/conversations/${id}`, { method: 'DELETE' });
@@ -83,6 +95,6 @@ export function useChat() {
 
   return {
     conversations, activeId, messages, typing, search,
-    setSearch, send, openConversation, newChat, deleteConversation, loadList,
+    setSearch, send, openConversation, newChat, deleteConversation, loadList, rate,
   };
 }

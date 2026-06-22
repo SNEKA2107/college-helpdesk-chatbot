@@ -3,7 +3,7 @@ name: Project Summary
 on:
   push:
     branches:
-      - main
+      - '**'
 
 jobs:
   project-summary:

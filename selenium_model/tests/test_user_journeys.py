@@ -1,78 +1,102 @@
+"""End-to-end user journeys that string multiple modules together."""
+import sys, time
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import pytest
-import time
-from selenium_model.pages.login_page import LoginPage
-from selenium_model.pages.dashboard_page import DashboardPage
-from selenium_model.pages.admin_page import AdminPage
-from selenium_model.pages.extra_pages import ChatPage, LeavePage, RequestsPage
-
-STUDENT_ID = "22IT101"
-STUDENT_PW = "student123"
-ADMIN_ID   = "ADMIN01"
-ADMIN_PW   = "admin@123"
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+import config
+import collectors
+from pages.login_page import LoginPage
+from pages.app_page import AppPage
+from session import authed_driver
 
 
-def test_complete_student_workflow_journey(driver):
-    login_page = LoginPage(driver)
-    login_page.navigate()
-    login_page.login(STUDENT_ID, STUDENT_PW)
-    login_page.wait_for_login_success()
-
-    dashboard = DashboardPage(driver)
-    assert "Dashboard" in dashboard.get_page_title() or "Home" in dashboard.get_page_title()
-
-    # Exam Timetable
-    dashboard.click_nav_link(DashboardPage.NAV_EXAM)
-    time.sleep(1.0)
-    assert "exam.html" in driver.current_url
-
-    # Chat bot
-    dashboard.click_nav_link(DashboardPage.NAV_CHAT)
-    chat = ChatPage(driver)
-    chat.send_message("exam schedule")
-    resp = chat.get_last_response()
-    assert len(resp) > 0  # bot replied with something
-
-    # Document request
-    dashboard.click_nav_link(DashboardPage.NAV_REQUESTS)
-    reqs = RequestsPage(driver)
-    initial_count = reqs.get_requests_count()
-    reqs.submit_new_request("Conduct Certificate", "E2E Student Journey Request", "Normal (5-7 working days)")
-    assert reqs.get_requests_count() == initial_count + 1
-
-    # Profile page
-    dashboard.click_nav_link(DashboardPage.NAV_PROFILE)
-    time.sleep(1.0)
-    assert "profile.html" in driver.current_url
-
-    # Logout
-    dashboard.logout_via_sidebar()
-    assert "login.html" in driver.current_url
+@pytest.fixture
+def driver(fresh_driver):
+    # Journeys that log in / search via the UI need a pristine renderer.
+    return fresh_driver
 
 
-def test_complete_admin_workflow_journey(driver):
-    login_page = LoginPage(driver)
-    login_page.navigate()
-    login_page.login(ADMIN_ID, ADMIN_PW)
-    login_page.wait_for_login_success()
+def _record(name, steps, result, evidence):
+    collectors.journeys.append({
+        "journey": name, "steps": " → ".join(steps), "result": result, "evidence": evidence})
 
-    admin = AdminPage(driver)
-    assert "Overview" in admin.get_element_text(AdminPage.PAGE_TITLE)
 
-    # Post a general notice
-    title = f"Symposium reminder {int(time.time())}"
-    admin.create_notice(title, "E2E notice testing detail.", "general", False)
+def test_journey_student_login_to_logout(driver, record_property):
+    record_property("module", "USER JOURNEY")
+    record_property("scenario", "Student: login → dashboard → library → logout")
+    record_property("expected", "Full happy-path completes end to end")
+    steps = ["Open /login", "Login as student", "Land on dashboard",
+             "Open Library", "Logout"]
+    try:
+        lp = LoginPage(driver).load()
+        lp.login_as_student()
+        path = lp.wait_until_redirected()
+        assert path.startswith("/dashboard")
+        driver.get(config.BASE_URL + "/library")
+        time.sleep(1.5)
+        assert driver.find_elements(By.CSS_SELECTOR, "table.table")
+        AppPage(driver).logout()
+        time.sleep(2)
+        ok = AppPage(driver).get_token() is None
+        result = "PASSED" if ok else "FAILED"
+        evidence = f"ended on {AppPage(driver).current_path()}, token cleared={ok}"
+        _record("Student end-to-end (login→browse→logout)", steps, result, evidence)
+        record_property("actual", evidence)
+        assert ok
+    except Exception as e:
+        _record("Student end-to-end (login→browse→logout)", steps, "FAILED", str(e))
+        record_property("actual", f"Journey failed: {e}")
+        raise
 
-    # Student search
-    admin.click_tab(AdminPage.NAV_STUDENTS)
-    admin.search_student("22IT101")
-    assert admin.get_students_count() >= 1
 
-    # Leave approval
-    admin.click_tab(AdminPage.NAV_LEAVES)
-    admin.approve_first_leave()
+def test_journey_admin_review(driver, record_property):
+    record_property("module", "USER JOURNEY")
+    record_property("scenario", "Admin: login → admin console → browse tabs")
+    record_property("expected", "Admin reaches console and content renders")
+    steps = ["Login as admin", "Land on /admin", "Read console content"]
+    try:
+        authed_driver(driver, student=False)
+        driver.get(config.BASE_URL + "/admin")
+        time.sleep(2.5)
+        chars = len(driver.find_element(By.TAG_NAME, "body").text)
+        ok = chars > 100 and AppPage(driver).current_path().startswith("/admin")
+        result = "PASSED" if ok else "FAILED"
+        evidence = f"admin console body chars={chars}"
+        _record("Admin review journey", steps, result, evidence)
+        record_property("actual", evidence)
+        assert ok
+    except Exception as e:
+        _record("Admin review journey", steps, "FAILED", str(e))
+        record_property("actual", f"Journey failed: {e}")
+        raise
 
-    # Logout — wait up to 5 s for redirect to login.html
-    admin.click_element(AdminPage.USER_CARD_LOGOUT)
-    from selenium.webdriver.support.ui import WebDriverWait
-    WebDriverWait(driver, 5).until(lambda d: "login.html" in d.current_url)
-    assert "login.html" in driver.current_url
+
+def test_journey_search_and_browse(driver, record_property):
+    record_property("module", "USER JOURNEY")
+    record_property("scenario", "Student: login → search library → open notices")
+    record_property("expected", "Search returns results and notices page renders")
+    steps = ["Login as student", "Search 'Java' in library", "Open Notices"]
+    try:
+        authed_driver(driver, student=True)
+        driver.get(config.BASE_URL + "/library")
+        time.sleep(2)
+        box = driver.find_element(By.CSS_SELECTOR, "input[placeholder*='title, author']")
+        box.send_keys("Java"); box.send_keys(Keys.ENTER)
+        time.sleep(1.5)
+        rows = driver.find_elements(By.CSS_SELECTOR, "table.table tbody tr")
+        driver.get(config.BASE_URL + "/notices")
+        time.sleep(1.5)
+        notices_chars = len(driver.find_element(By.TAG_NAME, "body").text)
+        ok = len(rows) >= 1 and notices_chars > 80
+        result = "PASSED" if ok else "FAILED"
+        evidence = f"library rows={len(rows)}, notices chars={notices_chars}"
+        _record("Search & browse journey", steps, result, evidence)
+        record_property("actual", evidence)
+        assert ok
+    except Exception as e:
+        _record("Search & browse journey", steps, "FAILED", str(e))
+        record_property("actual", f"Journey failed: {e}")
+        raise

@@ -14,6 +14,13 @@ const CATEGORY_META = {
 
 const FILTERS = [['all', 'All Notices'], ['exam', 'Exam'], ['fee', 'Fee'], ['general', 'General'], ['urgent', 'Urgent']];
 
+const PRIORITY_META = {
+  urgent: { label: '🔴 Urgent', color: '#ef4444' },
+  high:   { label: '🟠 High',   color: '#f59e0b' },
+  medium: { label: '🔵 Medium', color: 'var(--primary)' },
+  low:    { label: '⚪ Low',    color: 'var(--text-muted)' },
+};
+
 export default function Notices() {
   const showToast = useToast();
   const [notices, setNotices] = useState(null);
@@ -81,6 +88,25 @@ export default function Notices() {
                     {!isRead && <span style={{ width: 8, height: 8, background: 'var(--primary)', borderRadius: '50%', display: 'inline-block' }} title="Unread"></span>}
                   </div>
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--dark)', marginBottom: 6 }}>{n.title}</h3>
+                  {n.summary && (
+                    <div style={{ background: 'rgba(78,133,191,0.08)', border: '1px solid rgba(78,133,191,0.2)', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)' }}>🤖 AI SUMMARY</span>
+                        {n.aiPriority && <span style={{ fontSize: 11, fontWeight: 600, color: (PRIORITY_META[n.aiPriority] || PRIORITY_META.medium).color }}>{(PRIORITY_META[n.aiPriority] || PRIORITY_META.medium).label}</span>}
+                      </div>
+                      <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, margin: 0 }}>{n.summary}</p>
+                      {!!(n.keyDates && n.keyDates.length) && (
+                        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                          📅 {n.keyDates.map((k, i) => <span key={i}>{k.label}: <b style={{ color: 'var(--text)' }}>{k.date}</b>{i < n.keyDates.length - 1 ? ' · ' : ''}</span>)}
+                        </div>
+                      )}
+                      {!!(n.actionItems && n.actionItems.length) && (
+                        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text)' }}>
+                          {n.actionItems.map((a, i) => <li key={i}>{a}</li>)}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                   <p style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.7 }}>{n.content}</p>
                 </div>
                 <div>

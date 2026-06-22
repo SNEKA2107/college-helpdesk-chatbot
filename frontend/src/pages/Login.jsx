@@ -40,7 +40,7 @@ export default function Login() {
       const data = await res.json();
       if (res.ok && data.success) {
         setSession(data.user, data.token);
-        navigate(data.user.role === 'admin' ? '/admin' : '/dashboard');
+        navigate(data.user.role === 'admin' ? '/admin' : '/home');
       } else {
         setAlert(data.message || 'Invalid Student ID or password.');
         setLoading(false);

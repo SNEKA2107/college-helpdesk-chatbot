@@ -1,0 +1,95 @@
+name: Selenium E2E Audit
+
+# Runs the full 337-case Selenium audit suite against a freshly seeded backend.
+on:
+  push:
+    branches: [main, demo-branch]
+    paths:
+      - 'selenium_model/**'
+      - 'frontend/**'
+      - 'backend/**'
+      - '.github/workflows/selenium-audit.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Install backend dependencies (incl. dev for in-memory Mongo)
+        run: npm install --ignore-scripts --prefix backend
+
+      - name: Install & build frontend (produces frontend/dist)
+        run: |
+          npm install --prefix frontend
+          npm run build --prefix frontend
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r selenium_model/requirements.txt
+
+      - name: Start backend (seeded in-memory MongoDB) and wait for readiness
+        run: |
+          nohup node backend/dev-local.js > selenium_model/backend-server.log 2>&1 &
+          echo "Waiting for http://localhost:5000 ..."
+          for i in $(seq 1 90); do
+            if curl -sf http://localhost:5000/ >/dev/null; then
+              echo "Backend is up after ${i} tries"; exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend failed to start"; cat selenium_model/backend-server.log; exit 1
+
+      - name: Phase 1-2 — Discovery & code audit
+        working-directory: selenium_model
+        run: |
+          python discover.py
+          python audit.py
+
+      - name: Phase 3-5 — Run Selenium E2E suite (337 cases)
+        working-directory: selenium_model
+        env:
+          PYTHONUTF8: '1'
+        run: python -m pytest tests
+
+      - name: Phase 6-7 — Coverage analysis & master Excel report
+        if: always()
+        working-directory: selenium_model
+        run: python report_generator.py
+
+      - name: Upload audit artifacts (report, HTML, screenshots, logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-audit-report
+          path: |
+            selenium_model/MASTER_TEST_AUDIT_REPORT.xlsx
+            selenium_model/FINAL_AUDIT_REPORT.md
+            selenium_model/html_report.html
+            selenium_model/screenshots/
+            selenium_model/data/
+            selenium_model/*.log
+          if-no-files-found: warn
+          retention-days: 30

@@ -2,6 +2,7 @@ const express = require('express');
 const Notice  = require('../models/Notice');
 const { protect, adminOnly } = require('../middleware/auth');
 const { logAudit } = require('../utils/audit');
+const { summarizeNotice } = require('../services/summarizer');
 
 const router = express.Router();
 
@@ -69,15 +70,23 @@ router.post('/', protect, adminOnly, async (req, res) => {
   }
   const lifecycle = status === 'draft' ? 'draft' : 'published';
   try {
+    const cleanTitle = stripHtml(title);
+    const cleanContent = stripHtml(content);
+    // Smart Notice Summarizer — graceful: returns a heuristic fallback if AI is unavailable.
+    const ai = await summarizeNotice({ title: cleanTitle, content: cleanContent, category: category || 'general' });
     const notice = await Notice.create({
-      title:       stripHtml(title),
-      content:     stripHtml(content),
+      title:       cleanTitle,
+      content:     cleanContent,
       category:    category || 'general',
       postedBy:    req.user.name,
       createdBy:   req.user._id,
       status:      lifecycle,
       audience:    normaliseAudience(audience),
       pinned:      !!pinned,
+      summary:     ai.summary,
+      keyDates:    ai.keyDates,
+      actionItems: ai.actionItems,
+      aiPriority:  ai.priority,
       // Stamp the publish time only when it actually goes live.
       publishedAt: lifecycle === 'published' ? new Date() : null,
       expiresAt:   expiresAt ? new Date(expiresAt) : undefined,
@@ -105,6 +114,19 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     // Stamp publishedAt the first time a notice transitions into 'published'.
     if (update.status === 'published' && !current.publishedAt && !update.publishedAt) {
       update.publishedAt = new Date();
+    }
+
+    // Regenerate the AI summary when the wording changes.
+    if (update.title || update.content) {
+      const ai = await summarizeNotice({
+        title: update.title || current.title,
+        content: update.content || current.content,
+        category: update.category || current.category,
+      });
+      update.summary = ai.summary;
+      update.keyDates = ai.keyDates;
+      update.actionItems = ai.actionItems;
+      update.aiPriority = ai.priority;
     }
 
     const notice = await Notice.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });

@@ -163,6 +163,7 @@ export default function NoticesTab({ data, setData, loaded }) {
               <div key={n._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ flex: 1, marginRight: 12 }}>
                   <div style={{ fontWeight: 600, fontSize: 13.5 }}>{n.pinned ? '📌 ' : ''}{n.title}</div>
+                  {n.summary && <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 3 }}>🤖 {n.summary}</div>}
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span className={`badge ${CAT_BADGE[n.category] || 'badge-muted'}`} style={{ fontSize: 10 }}>{n.category}</span>
                     <span className={`badge ${STATUS_BADGE[effStatus(n)]}`} style={{ fontSize: 10 }}>{effStatus(n)}</span>

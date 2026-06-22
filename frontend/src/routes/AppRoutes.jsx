@@ -5,6 +5,7 @@ import { RequireAuth, RequireAdmin, RedirectIfAuthed } from './guards';
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
 const Register   = lazy(() => import('../pages/Register'));
+const Home       = lazy(() => import('../pages/Home'));
 const Dashboard  = lazy(() => import('../pages/Dashboard'));
 const Chat       = lazy(() => import('../pages/Chat'));
 const Requests   = lazy(() => import('../pages/Requests'));
@@ -22,15 +23,18 @@ const Library    = lazy(() => import('../pages/Library'));
 const Contact    = lazy(() => import('../pages/Contact'));
 const Profile    = lazy(() => import('../pages/Profile'));
 const Calendar   = lazy(() => import('../pages/Calendar'));
+const Success    = lazy(() => import('../pages/Success'));
+const Placement  = lazy(() => import('../pages/Placement'));
 const Admin      = lazy(() => import('../pages/Admin'));
 
 const studentPages = [
-  ['/dashboard', Dashboard], ['/chat', Chat], ['/requests', Requests],
+  ['/home', Home], ['/dashboard', Dashboard], ['/chat', Chat], ['/requests', Requests],
   ['/attendance', Attendance], ['/status', Status], ['/exam', Exam],
   ['/fees', Fees], ['/timetable', Timetable], ['/cgpa', Cgpa],
   ['/leave', Leave], ['/od', Od], ['/events', Events],
   ['/notices', Notices], ['/library', Library], ['/contact', Contact],
-  ['/profile', Profile], ['/calendar', Calendar],
+  ['/profile', Profile], ['/calendar', Calendar], ['/success', Success],
+  ['/placement', Placement],
 ];
 
 /** Map legacy static-site URLs (e.g. /login.html, /admin-requests.html) onto React routes. */

@@ -1,0 +1,60 @@
+/* ===== Student Success Dashboard — premium glassmorphism ===== */
+.success-hero {
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+  padding: 26px 28px; margin-bottom: 22px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(78,133,191,0.16), rgba(137,170,204,0.05));
+  border: 1px solid var(--border); backdrop-filter: blur(18px); position: relative; overflow: hidden;
+}
+.success-hero::after {
+  content: ''; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(78,133,191,0.25), transparent 70%); pointer-events: none;
+}
+.success-hero-text h2 { font-size: 26px; font-weight: 800; color: var(--dark); margin: 0 0 4px; }
+.success-hero-text p { color: var(--text-muted); font-size: 14px; margin: 0; }
+.success-grade { display: inline-block; margin-top: 10px; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+
+.glass-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 22px; }
+.glass-card {
+  background: rgba(255,255,255,0.035); border: 1px solid var(--border); border-radius: 16px;
+  padding: 20px; backdrop-filter: blur(16px); transition: transform .25s, border-color .25s;
+}
+.glass-card:hover { transform: translateY(-3px); border-color: rgba(78,133,191,0.4); }
+.glass-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.glass-card-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.gc-metric { display: flex; align-items: center; gap: 16px; }
+.gc-detail { font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+.gc-detail b { color: var(--text); font-weight: 600; }
+
+/* Ring gauge */
+.ring-gauge { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-value { font-size: 26px; font-weight: 800; color: var(--dark); line-height: 1; }
+.ring-sub { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 3px; }
+
+/* Charts */
+.chart-card { background: rgba(255,255,255,0.035); border: 1px solid var(--border); border-radius: 16px; padding: 20px; backdrop-filter: blur(16px); }
+.chart-card h4 { font-size: 14px; font-weight: 700; color: var(--dark); margin: 0 0 16px; }
+.line-chart { position: relative; }
+.chart-xaxis { display: flex; justify-content: space-between; margin-top: 6px; }
+.chart-xaxis span { font-size: 10px; color: var(--text-muted); }
+.chart-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 28px 0; }
+.bar-list { display: flex; flex-direction: column; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: 130px 1fr 44px; align-items: center; gap: 10px; }
+.bar-label { font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { background: var(--border); border-radius: 6px; height: 9px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 6px; transition: width 1s cubic-bezier(.2,.8,.2,1); }
+.bar-value { font-size: 12px; color: var(--text-muted); text-align: right; }
+
+/* Risk indicators + recommendations */
+.risk-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; margin-bottom: 8px; border: 1px solid var(--border); }
+.risk-high { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.3); }
+.risk-medium { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.3); }
+.risk-low { background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.25); }
+.risk-icon { font-size: 16px; line-height: 1.4; }
+.risk-msg { font-size: 13px; color: var(--text); line-height: 1.5; }
+.rec-item { display: flex; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--text); line-height: 1.6; }
+.rec-item:last-child { border-bottom: none; }
+.rec-item .rec-bullet { color: var(--primary); flex-shrink: 0; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+@media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }

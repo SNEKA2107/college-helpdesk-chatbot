@@ -1,118 +1,91 @@
-const express  = require('express');
-const Anthropic = require('@anthropic-ai/sdk');
+const express = require('express');
 const { protect } = require('../middleware/auth');
-const Exam   = require('../models/Exam');
-const Fee    = require('../models/Fee');
-const Notice = require('../models/Notice');
+const { generate } = require('../services/aiAgent');
+const Conversation = require('../models/Conversation');
+const Message = require('../models/Message');
+const QueryLog = require('../models/QueryLog');
+const { categoryForIntent } = require('../utils/intentCategory');
 
 const router = express.Router();
 
-const fmtDate = (d) => {
-  if (!d) return '';
-  const dt = new Date(d);
-  return isNaN(dt) ? String(d) : dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
-// Build live facts from MongoDB so the bot never quotes hardcoded/stale data.
-async function buildFacts(user) {
-  const facts = {};
-  try {
-    const exam = (await Exam.findOne({ status: 'published' }).sort({ updatedAt: -1 }))
-      || (await Exam.findOne().sort({ createdAt: -1 }));
-    if (exam) {
-      facts.exam = `Semester ${exam.semester} exams`
-        + (exam.theoryStart ? `: theory from ${fmtDate(exam.theoryStart)}` : '')
-        + (exam.theoryEnd ? ` to ${fmtDate(exam.theoryEnd)}` : '')
-        + (exam.hallTicketAvailable ? `. Hall tickets available from ${fmtDate(exam.hallTicketAvailable)}` : '')
-        + '.';
-    }
-  } catch { /* ignore */ }
-  try {
-    if (user && user._id) {
-      const fee = await Fee.findOne({ student: user._id });
-      if (fee) {
-        const recorded = fee.history.reduce((s, p) => s + p.amount, 0);
-        const balance = fee.total - recorded;
-        facts.fees = `Your Semester ${fee.semester} fee is ₹${fee.total.toLocaleString('en-IN')}`
-          + `, balance ₹${balance.toLocaleString('en-IN')}`
-          + (fee.dueDate ? `, due ${fmtDate(fee.dueDate)}` : '') + '.';
-      }
-    }
-  } catch { /* ignore */ }
-  try {
-    const notices = await Notice.find({ isActive: true }).sort({ pinned: -1, createdAt: -1 }).limit(3);
-    if (notices.length) facts.notices = 'Latest notices: ' + notices.map((n, i) => `(${i + 1}) ${n.title}`).join('; ') + '.';
-  } catch { /* ignore */ }
-  return facts;
-}
-
-// Keyword fallback — now data-driven for exam/fees/notices (no hardcoded dates/amounts).
-function getBotResponse(message, facts) {
-  const msg = message.toLowerCase();
-  const has = (tags) => tags.some(t => msg.includes(t));
-
-  if (has(['exam', 'hall ticket', 'schedule', 'test', 'paper']))
-    return facts.exam || 'No exam schedule has been published for your class yet. Check the Exam Info page.';
-  if (has(['fee', 'fees', 'payment', 'due', 'tuition']))
-    return facts.fees || 'Your fee details appear on the Fees page once the accounts office sets them up.';
-  if (has(['notice', 'announcement', 'news', 'circular', 'update']))
-    return facts.notices || 'There are no notices right now. Check the Notices page for updates.';
-  if (has(['timetable', 'class', 'period', 'timing']))
-    return 'Your weekly timetable is on the Timetable page — it is set for your department, year and section.';
-  if (has(['leave', 'od', 'medical', 'permission', 'absent']))
-    return 'Apply via the Leave / OD page. You can attach a supporting document (PDF/JPG/PNG) and track approval there.';
-  if (has(['library', 'book', 'borrow', 'return']))
-    return 'Library hours: Mon–Fri 8 AM–6 PM, Sat 9 AM–4 PM. Borrow up to 3 books for 14 days.';
-  if (has(['marksheet', 'marks', 'result', 'cgpa', 'gpa']))
-    return 'View your marks, SGPA and CGPA on the Marks & CGPA page. Document requests are tracked on the Status page.';
-  if (has(['attendance', 'present', 'percentage']))
-    return 'Your subject-wise attendance is on the Attendance page. A minimum of 75% per subject is required.';
-  if (has(['contact', 'phone', 'office', 'email', 'reach']))
-    return 'Use the Contact page to message the admin office directly — your query is logged and you can track its status.';
-  if (has(['help', 'what can you', 'topics']))
-    return 'I can help with exams, fees, notices, timetable, leave/OD, library, marks, attendance and contacts. Just ask!';
-  return "I'm not sure about that. Try asking about exams, fees, notices, timetable, leave, library, marks, attendance, or contact.";
-}
-
-// POST /api/chat
+// POST /api/chat — ask the Campus Copilot. Persists the turn, returns the answer
+// with its source citations and suggested follow-ups, and logs the query.
 router.post('/', protect, async (req, res) => {
-  const { message } = req.body;
+  const { message, conversationId } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ success: false, message: 'Message is required' });
   }
   if (message.length > 1000) {
     return res.status(400).json({ success: false, message: 'Message must be 1000 characters or fewer.' });
   }
+  const text = message.trim();
 
-  const facts = await buildFacts(req.user);
-
-  // Use Claude AI if a key is configured — fed with LIVE facts, not hardcoded ones.
-  if (process.env.ANTHROPIC_API_KEY) {
-    try {
-      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        system: `You are CampusAssist Bot, a helpful college helpdesk assistant. Keep answers concise (2–4 sentences), friendly and helpful.
-Use ONLY the live facts below when relevant. If a fact is not provided, tell the student to check the relevant page — do NOT invent dates, fees, or numbers.
-${facts.exam ? `Exam: ${facts.exam}` : 'Exam: not published yet.'}
-${facts.fees ? `Fees: ${facts.fees}` : ''}
-${facts.notices ? facts.notices : ''}
-Library: Mon–Fri 8 AM–6 PM, Sat 9 AM–4 PM; borrow 3 books for 14 days. Minimum attendance 75% per subject.
-For marksheet/certificate requests → Status/Requests page. For leave or OD → Leave/OD page. For contacting the office → Contact page.
-Do not invent specific student data (grades, attendance %). Only answer college-related questions.`,
-        messages: [{ role: 'user', content: message.trim() }],
-      });
-      const reply = response.content[0].text;
-      return res.json({ success: true, message: reply, timestamp: new Date().toISOString(), ai: true });
-    } catch (err) {
-      console.error('Claude API error:', err.message);
-      // Fall through to keyword matching
+  try {
+    // Resume an existing conversation (owned by this user) or start a new one.
+    let convo = conversationId
+      ? await Conversation.findOne({ _id: conversationId, user: req.user._id })
+      : null;
+    if (!convo) {
+      convo = await Conversation.create({ user: req.user._id, title: text.slice(0, 48) });
     }
-  }
 
-  const reply = getBotResponse(message.trim(), facts);
-  res.json({ success: true, message: reply, timestamp: new Date().toISOString(), ai: false });
+    // Conversation memory: prior turns feed back into the model.
+    const history = await Message.find({ conversation: convo._id }).sort({ createdAt: 1 }).limit(20);
+    await Message.create({ conversation: convo._id, role: 'user', content: text });
+
+    const t0 = Date.now();
+    const { reply, intent, sources, followUps, matched } = await generate({ message: text, history, user: req.user });
+    const latencyMs = Date.now() - t0;
+
+    const assistantMsg = await Message.create({ conversation: convo._id, role: 'assistant', content: reply, intent, sources, followUps, latencyMs });
+    await Conversation.updateOne({ _id: convo._id }, { lastMessageAt: new Date(), $inc: { messageCount: 2 } });
+    // Phase 7: log a complete (query → response) training example with category + role.
+    await QueryLog.create({
+      user: req.user._id, query: text, intent, matched, latencyMs, hour: new Date().getHours(),
+      response: reply, category: categoryForIntent(intent), role: req.user.role, message: assistantMsg._id,
+    });
+
+    res.json({
+      success: true,
+      conversationId: convo._id,
+      messageId: assistantMsg._id,
+      message: reply,
+      sources,
+      followUps,
+      intent,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('Chat error:', err.message);
+    res.status(500).json({ success: false, message: 'Could not process your message. Please try again.' });
+  }
+});
+
+// POST /api/chat/feedback — rate a Copilot answer 👍/👎 (Module 3). Persists the
+// rating on the Message and mirrors it onto the QueryLog training example.
+router.post('/feedback', protect, async (req, res) => {
+  const { messageId, rating } = req.body;
+  if (!['up', 'down'].includes(rating)) {
+    return res.status(400).json({ success: false, message: 'Rating must be "up" or "down".' });
+  }
+  try {
+    const msg = await Message.findById(messageId);
+    if (!msg || msg.role !== 'assistant') {
+      return res.status(404).json({ success: false, message: 'Answer not found.' });
+    }
+    // Ownership check: the conversation must belong to the requester.
+    const convo = await Conversation.findOne({ _id: msg.conversation, user: req.user._id });
+    if (!convo) return res.status(403).json({ success: false, message: 'Not your conversation.' });
+
+    msg.feedback = rating;
+    await msg.save();
+    await QueryLog.updateOne({ message: msg._id }, { $set: { rating } });
+
+    res.json({ success: true, rating });
+  } catch (err) {
+    console.error('Feedback error:', err.message);
+    res.status(500).json({ success: false, message: 'Could not save your feedback.' });
+  }
 });
 
 module.exports = router;

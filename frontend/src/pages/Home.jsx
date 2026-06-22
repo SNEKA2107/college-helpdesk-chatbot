@@ -18,7 +18,7 @@ const priorityColor = { urgent: '#ef4444', high: '#f59e0b', medium: 'var(--prima
 const QUICK_ACTIONS = [
   { to: '/chat',    icon: '💬', label: 'Ask Copilot',      bg: 'linear-gradient(135deg,#4f46e5,#818cf8)' },
   { to: '/success', icon: '🚀', label: 'Success Dashboard', bg: 'linear-gradient(135deg,#7c3aed,#a78bfa)' },
-  { to: '/success', icon: '💼', label: 'View Placements',   bg: 'linear-gradient(135deg,#10b981,#34d399)' },
+  { to: '/placement', icon: '💼', label: 'View Placements', bg: 'linear-gradient(135deg,#10b981,#34d399)' },
   { to: '/notices', icon: '🔔', label: 'View Notices',      bg: 'linear-gradient(135deg,#f59e0b,#facc15)' },
 ];
 

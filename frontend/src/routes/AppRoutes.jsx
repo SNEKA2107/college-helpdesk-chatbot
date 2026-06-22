@@ -24,6 +24,7 @@ const Contact    = lazy(() => import('../pages/Contact'));
 const Profile    = lazy(() => import('../pages/Profile'));
 const Calendar   = lazy(() => import('../pages/Calendar'));
 const Success    = lazy(() => import('../pages/Success'));
+const Placement  = lazy(() => import('../pages/Placement'));
 const Admin      = lazy(() => import('../pages/Admin'));
 
 const studentPages = [
@@ -33,6 +34,7 @@ const studentPages = [
   ['/leave', Leave], ['/od', Od], ['/events', Events],
   ['/notices', Notices], ['/library', Library], ['/contact', Contact],
   ['/profile', Profile], ['/calendar', Calendar], ['/success', Success],
+  ['/placement', Placement],
 ];
 
 /** Map legacy static-site URLs (e.g. /login.html, /admin-requests.html) onto React routes. */

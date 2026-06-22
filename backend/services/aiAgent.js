@@ -9,6 +9,7 @@ const Attendance = require('../models/Attendance');
 const Marks      = require('../models/Marks');
 const KB         = require('../models/KnowledgeArticle');
 const { computeSuccess } = require('./successEngine');
+const { copilotSummary: placementSummary } = require('./placementEngine');
 
 const fmtDate = (d) => {
   if (!d) return '';
@@ -57,6 +58,12 @@ async function retrieve(intent, user) {
         + `, placement readiness ${b.placement.score}/100`
         + (b.academic.backlogs ? `, ${b.academic.backlogs} backlog(s)` : '') + '. '
         + (s.recommendations.length ? `Top recommendation: ${s.recommendations[0]}` : ''));
+    }
+
+    if (intent === 'placement') {
+      // Placement Hub grounding (Phase 6): readiness, eligibility, top match, skill gaps.
+      const text = await placementSummary(user).catch(() => '');
+      if (text) add('success', null, 'Placement readiness', text);
     }
 
     if (intent === 'exam' || intent === 'general') {

@@ -8,6 +8,7 @@ const NAV_SECTIONS = [
       { to: '/home',      icon: '🏠', label: 'Home' },
       { to: '/dashboard', icon: '🗂️', label: 'Dashboard' },
       { to: '/success',   icon: '🚀', label: 'Success Dashboard' },
+      { to: '/placement', icon: '💼', label: 'Placement Hub' },
       { to: '/chat',      icon: '💬', label: 'Campus Copilot' },
       { to: '/requests',  icon: '📋', label: 'My Requests' },
     ],

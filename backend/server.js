@@ -105,6 +105,7 @@ app.use('/api/notices',   require('./routes/notices'));
 app.use('/api/chat',      require('./routes/chat'));
 app.use('/api/conversations', require('./routes/conversations'));
 app.use('/api/success',       require('./routes/success'));
+app.use('/api/home',          require('./routes/home'));
 app.use('/api/analytics',     require('./routes/analytics'));
 app.use('/api/exam',      require('./routes/exam'));
 app.use('/api/fees',      require('./routes/fees'));

@@ -5,6 +5,7 @@ import { RequireAuth, RequireAdmin, RedirectIfAuthed } from './guards';
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
 const Register   = lazy(() => import('../pages/Register'));
+const Home       = lazy(() => import('../pages/Home'));
 const Dashboard  = lazy(() => import('../pages/Dashboard'));
 const Chat       = lazy(() => import('../pages/Chat'));
 const Requests   = lazy(() => import('../pages/Requests'));
@@ -26,7 +27,7 @@ const Success    = lazy(() => import('../pages/Success'));
 const Admin      = lazy(() => import('../pages/Admin'));
 
 const studentPages = [
-  ['/dashboard', Dashboard], ['/chat', Chat], ['/requests', Requests],
+  ['/home', Home], ['/dashboard', Dashboard], ['/chat', Chat], ['/requests', Requests],
   ['/attendance', Attendance], ['/status', Status], ['/exam', Exam],
   ['/fees', Fees], ['/timetable', Timetable], ['/cgpa', Cgpa],
   ['/leave', Leave], ['/od', Od], ['/events', Events],

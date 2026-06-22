@@ -14,6 +14,6 @@ export function RequireAdmin({ children }) {
 
 /** Login/register: bounce already-authenticated users to their home page. */
 export function RedirectIfAuthed({ children }) {
-  if (isLoggedIn()) return <Navigate to={isAdmin() ? '/admin' : '/dashboard'} replace />;
+  if (isLoggedIn()) return <Navigate to={isAdmin() ? '/admin' : '/home'} replace />;
   return children;
 }

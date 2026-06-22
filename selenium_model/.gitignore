@@ -1,0 +1,11 @@
+# Regenerable test artifacts — keep source, ignore outputs
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+screenshots/
+*.log
+run_output.log
+backend-server.log
+browser_console.log
+html_report.html

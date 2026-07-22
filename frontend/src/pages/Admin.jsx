@@ -140,7 +140,7 @@ export default function Admin() {
       <div className="main-wrapper">
         <header className="topbar">
           <div className="topbar-left">
-            <button className="menu-btn" onClick={() => setSidebarOpen(o => !o)}>☰</button>
+            <button className="menu-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Toggle navigation menu">☰</button>
             <h1 className="page-title">{pageTitle}</h1>
           </div>
           <div className="topbar-right">

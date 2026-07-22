@@ -11,7 +11,7 @@ export default function Topbar({ title, onMenuClick }) {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="menu-btn" onClick={onMenuClick}>☰</button>
+        <button className="menu-btn" onClick={onMenuClick} aria-label="Toggle navigation menu">☰</button>
         <h1 className="page-title">{title}</h1>
       </div>
       <div className="topbar-right">

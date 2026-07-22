@@ -120,7 +120,7 @@ export default function StudentsTab({ data, loaded, reload }) {
           <div className="card" style={{ width: 'min(560px, 92vw)', maxHeight: '88vh', overflow: 'auto', margin: 0 }} onClick={e => e.stopPropagation()}>
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div className="card-title">Registration Details</div>
-              <button className="btn btn-sm btn-secondary" onClick={closeDetail}>✕</button>
+              <button className="btn btn-sm btn-secondary" onClick={closeDetail} aria-label="Close details">✕</button>
             </div>
             <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13.5 }}>
               <Field label="Name" value={detail.name} />

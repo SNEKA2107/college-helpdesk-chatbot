@@ -214,7 +214,7 @@ export default function Register() {
                     <input type={showPass.pw ? 'text' : 'password'} className={`${inputClass('password')} ${s.passInput}`}
                       autoComplete="new-password"
                       placeholder="" value={form.password} onChange={e => set('password', e.target.value)} />
-                    <button type="button" className={s.passToggle} onClick={() => setShowPass(v => ({ ...v, pw: !v.pw }))}>
+                    <button type="button" className={s.passToggle} onClick={() => setShowPass(v => ({ ...v, pw: !v.pw }))} aria-label={showPass.pw ? 'Hide password' : 'Show password'}>
                       {showPass.pw ? '🙈' : '👁'}
                     </button>
                   </div>
@@ -234,7 +234,7 @@ export default function Register() {
                     <input type={showPass.cpw ? 'text' : 'password'} className={`${inputClass('confirmPassword')} ${s.passInput}`}
                       autoComplete="new-password"
                       placeholder="" value={form.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} />
-                    <button type="button" className={s.passToggle} onClick={() => setShowPass(v => ({ ...v, cpw: !v.cpw }))}>
+                    <button type="button" className={s.passToggle} onClick={() => setShowPass(v => ({ ...v, cpw: !v.cpw }))} aria-label={showPass.cpw ? 'Hide password' : 'Show password'}>
                       {showPass.cpw ? '🙈' : '👁'}
                     </button>
                   </div>

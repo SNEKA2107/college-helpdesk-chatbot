@@ -114,7 +114,7 @@ export default function Login() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                 />
-                <button type="button" className={s.passToggle} onClick={() => setShowPass(v => !v)}>
+                <button type="button" className={s.passToggle} onClick={() => setShowPass(v => !v)} aria-label={showPass ? 'Hide password' : 'Show password'}>
                   {showPass ? '🙈' : '👁'}
                 </button>
               </div>

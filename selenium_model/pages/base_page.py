@@ -1,74 +1,107 @@
+"""Base page object: shared navigation, waits and session helpers."""
 import time
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
+
+import config
+
 
 class BasePage:
     def __init__(self, driver):
         self.driver = driver
-        self.base_url = "http://localhost:5000"
 
-    def navigate_to(self, path=""):
-        url = f"{self.base_url}/{path}".rstrip('/')
-        self.driver.get(url)
-        self.wait_for_loader()
+    # ---- navigation -------------------------------------------------
+    def open(self, path="/"):
+        self.driver.get(config.BASE_URL + path)
+        return self
 
-    def wait_for_loader(self):
-        """Waits for the GSAP page loader on index.html to finish if present."""
+    def goto_hash_route(self, path):
+        """SPA route change without a full reload (preserves localStorage)."""
+        self.driver.get(config.BASE_URL + path)
+        return self
+
+    def current_path(self):
+        url = self.driver.current_url
+        return url.replace(config.BASE_URL, "") or "/"
+
+    def wait(self, secs=10):
+        return WebDriverWait(self.driver, secs)
+
+    def wait_for(self, by, value, secs=10):
+        return self.wait(secs).until(EC.presence_of_element_located((by, value)))
+
+    def find(self, by, value):
+        return self.driver.find_element(by, value)
+
+    def find_all(self, by, value):
+        return self.driver.find_elements(by, value)
+
+    def exists(self, by, value):
+        return len(self.driver.find_elements(by, value)) > 0
+
+    # React 18 controlled inputs ignore a plain send_keys/value write unless the
+    # input event is dispatched through the prototype's native value setter.
+    _REACT_SET = (
+        "const el=arguments[0],val=arguments[1];"
+        "const proto=el.tagName==='SELECT'?window.HTMLSelectElement.prototype"
+        ":el.tagName==='TEXTAREA'?window.HTMLTextAreaElement.prototype"
+        ":window.HTMLInputElement.prototype;"
+        "Object.getOwnPropertyDescriptor(proto,'value').set.call(el,val);"
+        "el.dispatchEvent(new Event('input',{bubbles:true}));"
+        "el.dispatchEvent(new Event('change',{bubbles:true}));"
+    )
+
+    _REDISPATCH = ("arguments[0].dispatchEvent(new Event('input',{bubbles:true}));"
+                   "arguments[0].dispatchEvent(new Event('change',{bubbles:true}));")
+
+    def react_type(self, by, value, text):
+        text = str(text)
+        el = self.wait_for(by, value)
+        # Set value via the native setter, then re-dispatch input/change after a
+        # short settle. The re-dispatch covers the race where React hasn't yet
+        # attached its onChange handler on a freshly-mounted form (the event would
+        # otherwise be lost and the controlled state stays empty).
+        for attempt in range(4):
+            self.driver.execute_script(self._REACT_SET, el, text)
+            time.sleep(0.12)
+            self.driver.execute_script(self._REDISPATCH, el)
+            if (el.get_attribute("value") or "") == text:
+                if attempt:  # one extra dispatch once stable to be safe
+                    self.driver.execute_script(self._REDISPATCH, el)
+                break
+            time.sleep(0.15)
+        return el
+
+    def body_text(self):
         try:
-            # Check if loader is in DOM and visible
-            loader = self.driver.find_elements(By.ID, "loader")
-            if loader and loader[0].is_displayed():
-                # Wait for it to disappear (max 15s)
-                WebDriverWait(self.driver, 15).until(
-                    EC.invisibility_of_element_located((By.ID, "loader"))
-                )
+            return self.driver.find_element(By.TAG_NAME, "body").text
         except Exception:
-            pass
+            return ""
 
-    def wait_for_element_visible(self, locator, timeout=10):
-        return WebDriverWait(self.driver, timeout).until(
-            EC.visibility_of_element_located(locator)
-        )
+    def title(self):
+        return self.driver.title
 
-    def wait_for_element_clickable(self, locator, timeout=10):
-        return WebDriverWait(self.driver, timeout).until(
-            EC.element_to_be_clickable(locator)
-        )
-
-    def wait_for_element_presence(self, locator, timeout=10):
-        return WebDriverWait(self.driver, timeout).until(
-            EC.presence_of_element_located(locator)
-        )
-
-    def click_element(self, locator, timeout=10):
-        el = self.wait_for_element_clickable(locator, timeout)
-        el.click()
-
-    def send_keys_to_element(self, locator, text, timeout=10):
-        el = self.wait_for_element_visible(locator, timeout)
-        el.clear()
-        el.send_keys(text)
-
-    def get_element_text(self, locator, timeout=10):
-        el = self.wait_for_element_visible(locator, timeout)
-        return el.text
-
-    def logout(self):
-        """Force logout: clear localStorage auth tokens, navigate to login.html."""
+    # ---- session helpers -------------------------------------------
+    def set_session(self, user_json, token):
         self.driver.execute_script(
-            "localStorage.removeItem('ca_token');"
-            "localStorage.removeItem('ca_user');"
+            "localStorage.setItem('ca_user', arguments[0]);"
+            "localStorage.setItem('ca_token', arguments[1]);",
+            user_json, token,
         )
-        self.driver.get(f"{self.base_url}/login.html")
-        self.wait_for_element_visible((By.ID, "studentId"), timeout=10)
 
-    def inject_auth_token(self, token, user_data):
-        """Bypasses login UI by directly placing auth credentials in localStorage."""
-        import json
-        self.driver.execute_script(
-            f"window.localStorage.setItem('ca_token', '{token}');"
-            f"window.localStorage.setItem('ca_user', '{json.dumps(user_data)}');"
-        )
-        self.driver.refresh()
-        self.wait_for_loader()
+    def clear_session(self):
+        self.driver.execute_script("localStorage.clear();")
+
+    def get_token(self):
+        return self.driver.execute_script("return localStorage.getItem('ca_token');")
+
+    # ---- timing -----------------------------------------------------
+    def load_time_ms(self):
+        """navigationStart→loadEventEnd in ms via the Navigation Timing API."""
+        try:
+            t = self.driver.execute_script(
+                "var t=performance.timing;return t.loadEventEnd-t.navigationStart;")
+            return int(t) if t and t > 0 else None
+        except Exception:
+            return None

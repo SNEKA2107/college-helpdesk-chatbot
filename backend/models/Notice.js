@@ -33,6 +33,12 @@ const noticeSchema = new mongoose.Schema({
   // Admin user who authored the notice (audit/ownership). Optional for backward compatibility.
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
+  // ── Smart Notice Summarizer (AI-generated on create/update) ─────────────────
+  summary:     { type: String, default: '' },
+  keyDates:    { type: [{ label: String, date: String, _id: false }], default: [] },
+  actionItems: { type: [String], default: [] },
+  aiPriority:  { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
+
   // Legacy soft-visibility flag, retained for backward compatibility with older rows/clients.
   isActive:  { type: Boolean, default: true },
   pinned:    { type: Boolean, default: false },

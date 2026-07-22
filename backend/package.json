@@ -8,9 +8,10 @@
     "dev": "nodemon server.js",
     "dev:local": "node dev-local.js",
     "seed": "node seed.js",
-    "test": "node --test tests/critical.test.js",
+    "test": "node --test tests/critical.test.js tests/timetable-cohort.test.js",
     "migrate:attendance": "node migrations/0001-dedupe-attendance.js",
     "migrate:fees": "node migrations/0002-backfill-fee-verification.js",
+    "migrate:timetable": "node migrations/0004-backfill-timetable-status.js",
     "postinstall": "cd ../frontend && npm install --include=dev && npm run build"
   },
   "dependencies": {

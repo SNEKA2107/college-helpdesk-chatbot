@@ -1,12 +1,12 @@
 import { NavLink, Link } from 'react-router-dom';
 
 const ITEMS = [
-  { to: '/dashboard', icon: '🏠', label: 'Home' },
-  { to: '/requests',  icon: '📋', label: 'Requests' },
+  { to: '/student/home', icon: '🏠', label: 'Home' },
+  { to: '/student/requests',  icon: '📋', label: 'Requests' },
 ];
 const ITEMS_AFTER = [
-  { to: '/notices', icon: '🔔', label: 'Notices' },
-  { to: '/profile', icon: '👤', label: 'Profile' },
+  { to: '/student/notices', icon: '🔔', label: 'Notices' },
+  { to: '/student/profile', icon: '👤', label: 'Profile' },
 ];
 
 export default function BottomNav() {
@@ -19,7 +19,7 @@ export default function BottomNav() {
   return (
     <nav className="bottom-nav">
       {ITEMS.map(item)}
-      <Link to="/chat" className="bn-fab" title="Chat with Bot">💬</Link>
+      <Link to="/student/chat" className="bn-fab" title="AI Assistant">💬</Link>
       {ITEMS_AFTER.map(item)}
     </nav>
   );

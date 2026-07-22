@@ -16,12 +16,18 @@ import FeesTab from './admin/FeesTab';
 import MarksTab from './admin/MarksTab';
 import CalendarTab from './admin/CalendarTab';
 import AuditTab from './admin/AuditTab';
+import KnowledgeTab from './admin/KnowledgeTab';
+import FacultyTab from './admin/FacultyTab';
+import AnalyticsTab from '../features/analytics/AnalyticsTab';
 
 const NAV_SECTIONS = [
   {
     title: 'Admin',
     tabs: [
       { id: 'overview', icon: '📊', label: 'Overview', title: 'Overview' },
+      { id: 'analytics', icon: '🤖', label: 'AI Analytics', title: 'AI Analytics Dashboard' },
+      { id: 'knowledge', icon: '📚', label: 'Knowledge Base', title: 'Knowledge Base Manager' },
+      { id: 'faculty', icon: '👥', label: 'Faculty Directory', title: 'Faculty Directory' },
       { id: 'requests', icon: '📋', label: 'Requests', title: 'Requests' },
       { id: 'leaves', icon: '📝', label: 'Leave Applications', title: 'Leave Applications' },
       { id: 'notices', icon: '🔔', label: 'Notices', title: 'Notices' },
@@ -147,6 +153,9 @@ export default function Admin() {
 
         <main className="main-content">
           {tab === 'overview' && <OverviewTab {...tabProps} />}
+          {tab === 'analytics' && <AnalyticsTab {...tabProps} />}
+          {tab === 'knowledge' && <KnowledgeTab {...tabProps} />}
+          {tab === 'faculty' && <FacultyTab {...tabProps} />}
           {tab === 'requests' && <RequestsTab {...tabProps} />}
           {tab === 'leaves' && <LeavesTab {...tabProps} />}
           {tab === 'notices' && <NoticesTab {...tabProps} />}

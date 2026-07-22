@@ -1,35 +1,47 @@
 import { Link, NavLink } from 'react-router-dom';
 import { getUser, logout } from '../services/auth';
 
+// Student portal navigation. Every target lives under /student/* — this sidebar
+// contains ONLY student features and never any admin navigation.
 const NAV_SECTIONS = [
   {
     title: 'Main',
     links: [
-      { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
-      { to: '/chat',      icon: '💬', label: 'Chat with Bot' },
-      { to: '/requests',  icon: '📋', label: 'My Requests' },
+      { to: '/student/home',      icon: '🏠', label: 'Home' },
+      { to: '/student/dashboard', icon: '🗂️', label: 'Dashboard' },
+      { to: '/student/success',   icon: '🚀', label: 'Success Dashboard' },
+      { to: '/student/placement', icon: '💼', label: 'Placement Hub' },
+      { to: '/student/chat',      icon: '💬', label: 'AI Assistant' },
+      { to: '/student/requests',  icon: '📋', label: 'My Requests' },
     ],
   },
   {
     title: 'Academics',
     links: [
-      { to: '/attendance', icon: '✅', label: 'Attendance' },
-      { to: '/status',     icon: '📄', label: 'Marksheet Status' },
-      { to: '/exam',       icon: '📘', label: 'Exam Info' },
-      { to: '/fees',       icon: '💳', label: 'Fee Information' },
-      { to: '/timetable',  icon: '📅', label: 'Timetable' },
-      { to: '/cgpa',       icon: '🎯', label: 'CGPA Calculator' },
+      { to: '/student/attendance', icon: '✅', label: 'Attendance' },
+      { to: '/student/status',     icon: '📄', label: 'Marksheet Status' },
+      { to: '/student/exam',       icon: '📘', label: 'Exam Info' },
+      { to: '/student/fees',       icon: '💳', label: 'Fee Information' },
+      { to: '/student/timetable',  icon: '📅', label: 'Timetable' },
+      { to: '/student/cgpa',       icon: '🎯', label: 'CGPA Calculator' },
     ],
   },
   {
     title: 'Services',
     links: [
-      { to: '/leave',   icon: '📝', label: 'Leave Application' },
-      { to: '/od',      icon: '🏅', label: 'OD Request' },
-      { to: '/events',  icon: '🎉', label: 'Events' },
-      { to: '/notices', icon: '🔔', label: 'Notices' },
-      { to: '/library', icon: '📚', label: 'Library' },
-      { to: '/contact', icon: '☎',  label: 'Contact Office' },
+      { to: '/student/leave',   icon: '📝', label: 'Leave Application' },
+      { to: '/student/od',      icon: '🏅', label: 'OD Request' },
+      { to: '/student/events',  icon: '🎉', label: 'Events' },
+      { to: '/student/notices', icon: '🔔', label: 'Notices' },
+      { to: '/student/library', icon: '📚', label: 'Library' },
+      { to: '/student/contact', icon: '☎',  label: 'Contact Office' },
+    ],
+  },
+  {
+    title: 'Account',
+    links: [
+      { to: '/student/profile',  icon: '👤', label: 'Profile' },
+      { to: '/student/settings', icon: '⚙️', label: 'Settings' },
     ],
   },
 ];
@@ -39,7 +51,7 @@ export default function Sidebar({ open, onClose }) {
   return (
     <aside className={`sidebar${open ? ' open' : ''}`} id="sidebar">
       <div className="sidebar-header">
-        <Link to="/dashboard" className="logo-wrap">
+        <Link to="/student/home" className="logo-wrap">
           <div className="logo-icon">🎓</div>
           <div className="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
         </Link>

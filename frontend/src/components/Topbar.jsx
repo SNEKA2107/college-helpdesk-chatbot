@@ -18,7 +18,7 @@ export default function Topbar({ title, onMenuClick }) {
         <button className="theme-btn" onClick={cycle} title={`Switch to ${next.label} mode`}>
           {current.icon} <span className="theme-label">{current.label}</span>
         </button>
-        <Link to="/notices" className="notif-btn" style={{ position: 'relative' }} title={unread > 0 ? `${unread} unread notice${unread > 1 ? 's' : ''}` : 'Notices'}>
+        <Link to="/student/notices" className="notif-btn" style={{ position: 'relative' }} title={unread > 0 ? `${unread} unread notice${unread > 1 ? 's' : ''}` : 'Notices'}>
           🔔
           {unread > 0 && (
             <span className="notif-count" style={{
@@ -28,7 +28,7 @@ export default function Topbar({ title, onMenuClick }) {
             }}>{unread > 9 ? '9+' : unread}</span>
           )}
         </Link>
-        <Link to="/profile" className="topbar-profile" style={{ textDecoration: 'none' }}>
+        <Link to="/student/profile" className="topbar-profile" style={{ textDecoration: 'none' }}>
           <div className="topbar-avatar">{(user?.name || 'S')[0].toUpperCase()}</div>
           <span className="topbar-name">{user?.name || 'Student'}</span>
         </Link>

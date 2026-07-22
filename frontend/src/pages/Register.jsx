@@ -122,7 +122,8 @@ export default function Register() {
                     <label className={s.formLabel}>First Name</label>
                     <div className={s.inputWrap}>
                       <span className={s.inputIcon}>👤</span>
-                      <input type="text" className={inputClass('firstName')} placeholder="Sneka"
+                      <input type="text" className={inputClass('firstName')} placeholder=""
+                        autoComplete="off"
                         value={form.firstName} onChange={e => set('firstName', e.target.value)} />
                     </div>
                     {fieldError('firstName')}
@@ -131,7 +132,8 @@ export default function Register() {
                     <label className={s.formLabel}>Last Name</label>
                     <div className={s.inputWrap}>
                       <span className={s.inputIcon}>👤</span>
-                      <input type="text" className={inputClass('lastName')} placeholder="S"
+                      <input type="text" className={inputClass('lastName')} placeholder=""
+                        autoComplete="off"
                         value={form.lastName} onChange={e => set('lastName', e.target.value)} />
                     </div>
                     {fieldError('lastName')}
@@ -142,7 +144,8 @@ export default function Register() {
                   <label className={s.formLabel}>Student ID / Register Number</label>
                   <div className={s.inputWrap}>
                     <span className={s.inputIcon}>🎓</span>
-                    <input type="text" className={inputClass('studentId')} placeholder="e.g. 22IT101"
+                    <input type="text" className={inputClass('studentId')} placeholder=""
+                      autoComplete="off"
                       value={form.studentId} onChange={e => set('studentId', e.target.value)} />
                   </div>
                   {fieldError('studentId')}
@@ -152,7 +155,8 @@ export default function Register() {
                   <label className={s.formLabel}>College Email</label>
                   <div className={s.inputWrap}>
                     <span className={s.inputIcon}>📧</span>
-                    <input type="email" className={inputClass('email')} placeholder="you@college.edu"
+                    <input type="email" className={inputClass('email')} placeholder=""
+                      autoComplete="off"
                       value={form.email} onChange={e => set('email', e.target.value)} />
                   </div>
                   {fieldError('email')}
@@ -163,7 +167,7 @@ export default function Register() {
                     <label className={s.formLabel}>Department</label>
                     <div className={s.inputWrap}>
                       <span className={s.inputIcon}>🏫</span>
-                      <select className={s.formSelect} value={form.dept} onChange={e => set('dept', e.target.value)}>
+                      <select className={s.formSelect} autoComplete="off" value={form.dept} onChange={e => set('dept', e.target.value)}>
                         <option value="">Select Dept</option>
                         {DEPTS.map(d => <option key={d}>{d}</option>)}
                       </select>
@@ -174,7 +178,7 @@ export default function Register() {
                     <label className={s.formLabel}>Semester</label>
                     <div className={s.inputWrap}>
                       <span className={s.inputIcon}>📚</span>
-                      <select className={s.formSelect} value={form.semester} onChange={e => set('semester', e.target.value)}>
+                      <select className={s.formSelect} autoComplete="off" value={form.semester} onChange={e => set('semester', e.target.value)}>
                         <option value="">Select</option>
                         {SEMESTERS.map(sm => <option key={sm}>{sm}</option>)}
                       </select>
@@ -187,7 +191,8 @@ export default function Register() {
                     <label className={s.formLabel}>Year <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
                     <div className={s.inputWrap}>
                       <span className={s.inputIcon}>📈</span>
-                      <input type="text" className={s.formInput} placeholder="e.g. II"
+                      <input type="text" className={s.formInput} placeholder=""
+                        autoComplete="off"
                         value={form.year} onChange={e => set('year', e.target.value)} />
                     </div>
                   </div>
@@ -195,7 +200,8 @@ export default function Register() {
                     <label className={s.formLabel}>Section <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
                     <div className={s.inputWrap}>
                       <span className={s.inputIcon}>🔤</span>
-                      <input type="text" className={s.formInput} placeholder="e.g. A"
+                      <input type="text" className={s.formInput} placeholder=""
+                        autoComplete="off"
                         value={form.section} onChange={e => set('section', e.target.value)} />
                     </div>
                   </div>
@@ -206,7 +212,8 @@ export default function Register() {
                   <div className={s.inputWrap}>
                     <span className={s.inputIcon}>🔒</span>
                     <input type={showPass.pw ? 'text' : 'password'} className={`${inputClass('password')} ${s.passInput}`}
-                      placeholder="Min 8 characters" value={form.password} onChange={e => set('password', e.target.value)} />
+                      autoComplete="new-password"
+                      placeholder="" value={form.password} onChange={e => set('password', e.target.value)} />
                     <button type="button" className={s.passToggle} onClick={() => setShowPass(v => ({ ...v, pw: !v.pw }))}>
                       {showPass.pw ? '🙈' : '👁'}
                     </button>
@@ -225,7 +232,8 @@ export default function Register() {
                   <div className={s.inputWrap}>
                     <span className={s.inputIcon}>🔒</span>
                     <input type={showPass.cpw ? 'text' : 'password'} className={`${inputClass('confirmPassword')} ${s.passInput}`}
-                      placeholder="Repeat password" value={form.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} />
+                      autoComplete="new-password"
+                      placeholder="" value={form.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} />
                     <button type="button" className={s.passToggle} onClick={() => setShowPass(v => ({ ...v, cpw: !v.cpw }))}>
                       {showPass.cpw ? '🙈' : '👁'}
                     </button>

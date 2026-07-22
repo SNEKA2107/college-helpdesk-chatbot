@@ -1,10 +1,13 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { RequireAuth, RequireAdmin, RedirectIfAuthed } from './guards';
+import { RedirectIfAuthed } from './guards';
+import StudentLayout from '../layouts/StudentLayout';
+import AdminLayout from '../layouts/AdminLayout';
 
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
 const Register   = lazy(() => import('../pages/Register'));
+const Home       = lazy(() => import('../pages/Home'));
 const Dashboard  = lazy(() => import('../pages/Dashboard'));
 const Chat       = lazy(() => import('../pages/Chat'));
 const Requests   = lazy(() => import('../pages/Requests'));
@@ -22,26 +25,35 @@ const Library    = lazy(() => import('../pages/Library'));
 const Contact    = lazy(() => import('../pages/Contact'));
 const Profile    = lazy(() => import('../pages/Profile'));
 const Calendar   = lazy(() => import('../pages/Calendar'));
+const Success    = lazy(() => import('../pages/Success'));
+const Placement  = lazy(() => import('../pages/Placement'));
 const Admin      = lazy(() => import('../pages/Admin'));
 
+// Student portal pages — path is RELATIVE to /student. `settings` reuses the
+// Profile/account page (no separate settings screen exists yet).
 const studentPages = [
-  ['/dashboard', Dashboard], ['/chat', Chat], ['/requests', Requests],
-  ['/attendance', Attendance], ['/status', Status], ['/exam', Exam],
-  ['/fees', Fees], ['/timetable', Timetable], ['/cgpa', Cgpa],
-  ['/leave', Leave], ['/od', Od], ['/events', Events],
-  ['/notices', Notices], ['/library', Library], ['/contact', Contact],
-  ['/profile', Profile], ['/calendar', Calendar],
+  ['dashboard', Dashboard], ['home', Home], ['success', Success], ['placement', Placement],
+  ['chat', Chat], ['requests', Requests], ['attendance', Attendance], ['status', Status],
+  ['exam', Exam], ['fees', Fees], ['timetable', Timetable], ['cgpa', Cgpa],
+  ['leave', Leave], ['od', Od], ['events', Events], ['notices', Notices],
+  ['library', Library], ['contact', Contact], ['profile', Profile], ['settings', Profile],
+  ['calendar', Calendar],
 ];
 
-/** Map legacy static-site URLs (e.g. /login.html, /admin-requests.html) onto React routes. */
+/**
+ * Map legacy static-site URLs (e.g. /login.html, /admin-requests.html) onto React
+ * routes in the new portal namespaces.
+ */
 function LegacyRedirect() {
   const { pathname } = useLocation();
   const m = pathname.match(/^\/([\w-]+)\.html$/);
   let target = '/';
   if (m) {
-    const name = m[1] === 'index' ? '' : m[1].startsWith('admin') ? 'admin' : m[1];
-    const known = ['login', 'register', 'admin', ...studentPages.map(([p]) => p.slice(1))];
-    if (known.includes(name)) target = '/' + name;
+    const raw = m[1];
+    if (raw === 'index') target = '/';
+    else if (raw === 'login' || raw === 'register') target = '/' + raw;
+    else if (raw.startsWith('admin')) target = '/admin/dashboard';
+    else if (studentPages.some(([p]) => p === raw)) target = '/student/' + raw;
   }
   return <Navigate to={target} replace />;
 }
@@ -50,13 +62,33 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>}>
       <Routes>
+        {/* ── Public ── */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
         <Route path="/register" element={<RedirectIfAuthed><Register /></RedirectIfAuthed>} />
-        {studentPages.map(([path, Page]) => (
-          <Route key={path} path={path} element={<RequireAuth><Page /></RequireAuth>} />
+
+        {/* ── Student portal (/student/*) — role-gated by StudentLayout ── */}
+        <Route path="/student" element={<StudentLayout />}>
+          <Route index element={<Navigate to="/student/dashboard" replace />} />
+          {studentPages.map(([path, Page]) => (
+            <Route key={path} path={path} element={<Page />} />
+          ))}
+        </Route>
+
+        {/* ── Admin portal (/admin/*) — role-gated by AdminLayout ── */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="dashboard" element={<Admin />} />
+          {/* Admin control-panel sections are tabs within the dashboard; any other
+              /admin/* deep link falls through to the panel rather than 404-ing. */}
+          <Route path="*" element={<Admin />} />
+        </Route>
+
+        {/* ── Backward-compat: old flat student URLs → /student/* ── */}
+        {studentPages.map(([path]) => (
+          <Route key={'legacy-' + path} path={'/' + path} element={<Navigate to={'/student/' + path} replace />} />
         ))}
-        <Route path="/admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
+
         <Route path="*" element={<LegacyRedirect />} />
       </Routes>
     </Suspense>

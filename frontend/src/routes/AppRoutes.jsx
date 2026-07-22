@@ -27,16 +27,16 @@ const Profile    = lazy(() => import('../pages/Profile'));
 const Calendar   = lazy(() => import('../pages/Calendar'));
 const Success    = lazy(() => import('../pages/Success'));
 const Placement  = lazy(() => import('../pages/Placement'));
+const Settings   = lazy(() => import('../pages/Settings'));
 const Admin      = lazy(() => import('../pages/Admin'));
 
-// Student portal pages — path is RELATIVE to /student. `settings` reuses the
-// Profile/account page (no separate settings screen exists yet).
+// Student portal pages — path is RELATIVE to /student.
 const studentPages = [
   ['dashboard', Dashboard], ['home', Home], ['success', Success], ['placement', Placement],
   ['chat', Chat], ['requests', Requests], ['attendance', Attendance], ['status', Status],
   ['exam', Exam], ['fees', Fees], ['timetable', Timetable], ['cgpa', Cgpa],
   ['leave', Leave], ['od', Od], ['events', Events], ['notices', Notices],
-  ['library', Library], ['contact', Contact], ['profile', Profile], ['settings', Profile],
+  ['library', Library], ['contact', Contact], ['profile', Profile], ['settings', Settings],
   ['calendar', Calendar],
 ];
 

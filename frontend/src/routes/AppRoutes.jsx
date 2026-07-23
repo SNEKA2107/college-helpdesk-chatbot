@@ -27,23 +27,30 @@ const Contact    = lazy(() => import('../pages/Contact'));
 const Profile    = lazy(() => import('../pages/Profile'));
 const Calendar   = lazy(() => import('../pages/Calendar'));
 const Settings   = lazy(() => import('../pages/Settings'));
+const StudentCoursework = lazy(() => import('../pages/StudentCoursework'));
 const Admin      = lazy(() => import('../pages/Admin'));
 
 // Faculty portal pages (path relative to /faculty).
-const FacultyDashboard  = lazy(() => import('../pages/faculty/FacultyDashboard'));
-const FacultyClasses    = lazy(() => import('../pages/faculty/FacultyClasses'));
-const FacultyStudents   = lazy(() => import('../pages/faculty/FacultyStudents'));
-const FacultyAttendance = lazy(() => import('../pages/faculty/FacultyAttendance'));
-const FacultyMarks      = lazy(() => import('../pages/faculty/FacultyMarks'));
-const FacultyLeaveOD    = lazy(() => import('../pages/faculty/FacultyLeaveOD'));
-const FacultyNotices    = lazy(() => import('../pages/faculty/FacultyNotices'));
-const FacultyTimetable  = lazy(() => import('../pages/faculty/FacultyTimetable'));
-const FacultyProfile    = lazy(() => import('../pages/faculty/FacultyProfile'));
+const FacultyDashboard    = lazy(() => import('../pages/faculty/FacultyDashboard'));
+const FacultyClasses      = lazy(() => import('../pages/faculty/FacultyClasses'));
+const FacultyStudents     = lazy(() => import('../pages/faculty/FacultyStudents'));
+const FacultyAttendance   = lazy(() => import('../pages/faculty/FacultyAttendance'));
+const FacultyMarks        = lazy(() => import('../pages/faculty/FacultyMarks'));
+const FacultyAssignments  = lazy(() => import('../pages/faculty/FacultyAssignments'));
+const FacultyMaterials    = lazy(() => import('../pages/faculty/FacultyMaterials'));
+const FacultyAnalytics    = lazy(() => import('../pages/faculty/FacultyAnalytics'));
+const FacultyLeaveOD      = lazy(() => import('../pages/faculty/FacultyLeaveOD'));
+const FacultyNotices      = lazy(() => import('../pages/faculty/FacultyNotices'));
+const FacultyNotifications = lazy(() => import('../pages/faculty/FacultyNotifications'));
+const FacultyTimetable    = lazy(() => import('../pages/faculty/FacultyTimetable'));
+const FacultyProfile      = lazy(() => import('../pages/faculty/FacultyProfile'));
 
 const facultyPages = [
   ['dashboard', FacultyDashboard], ['classes', FacultyClasses], ['students', FacultyStudents],
-  ['attendance', FacultyAttendance], ['marks', FacultyMarks], ['leave-od', FacultyLeaveOD],
-  ['notices', FacultyNotices], ['timetable', FacultyTimetable], ['profile', FacultyProfile],
+  ['attendance', FacultyAttendance], ['marks', FacultyMarks],
+  ['assignments', FacultyAssignments], ['materials', FacultyMaterials], ['analytics', FacultyAnalytics],
+  ['leave-od', FacultyLeaveOD], ['notices', FacultyNotices], ['notifications', FacultyNotifications],
+  ['timetable', FacultyTimetable], ['profile', FacultyProfile],
 ];
 
 // Student portal pages — path is RELATIVE to /student.
@@ -52,6 +59,7 @@ const studentPages = [
   ['chat', Chat], ['requests', Requests], ['attendance', Attendance], ['status', Status],
   ['exam', Exam], ['fees', Fees], ['timetable', Timetable], ['cgpa', Cgpa],
   ['leave', Leave], ['od', Od], ['events', Events], ['notices', Notices],
+  ['coursework', StudentCoursework],
   ['library', Library], ['contact', Contact], ['profile', Profile], ['settings', Settings],
   ['calendar', Calendar],
 ];

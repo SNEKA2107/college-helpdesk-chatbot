@@ -20,6 +20,7 @@ const NAV_SECTIONS = [
       { to: '/student/exam',       icon: '📘', label: 'Exam Info' },
       { to: '/student/fees',       icon: '💳', label: 'Fee Information' },
       { to: '/student/timetable',  icon: '📅', label: 'Timetable' },
+      { to: '/student/coursework', icon: '📄', label: 'Coursework' },
       { to: '/student/cgpa',       icon: '🎯', label: 'CGPA Calculator' },
     ],
   },

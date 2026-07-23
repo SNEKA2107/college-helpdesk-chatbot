@@ -4,15 +4,19 @@ import { getUser, logout } from '../services/auth';
 // Faculty portal navigation. Every target lives under /faculty/* — this sidebar
 // contains ONLY faculty features and never any student or admin navigation.
 const NAV_LINKS = [
-  { to: '/faculty/dashboard',  icon: '🗂️', label: 'Dashboard' },
-  { to: '/faculty/classes',    icon: '📚', label: 'My Classes' },
-  { to: '/faculty/students',   icon: '👥', label: 'Students' },
-  { to: '/faculty/attendance', icon: '✅', label: 'Attendance' },
-  { to: '/faculty/marks',      icon: '📝', label: 'Marks' },
-  { to: '/faculty/leave-od',   icon: '📩', label: 'Leave & OD' },
-  { to: '/faculty/notices',    icon: '🔔', label: 'Notices' },
-  { to: '/faculty/timetable',  icon: '📅', label: 'Timetable' },
-  { to: '/faculty/profile',    icon: '👤', label: 'Profile' },
+  { to: '/faculty/dashboard',     icon: '🗂️', label: 'Dashboard' },
+  { to: '/faculty/classes',       icon: '📚', label: 'My Classes' },
+  { to: '/faculty/students',      icon: '👥', label: 'Students' },
+  { to: '/faculty/attendance',    icon: '✅', label: 'Attendance' },
+  { to: '/faculty/marks',         icon: '📝', label: 'Marks' },
+  { to: '/faculty/assignments',   icon: '📄', label: 'Assignments' },
+  { to: '/faculty/materials',     icon: '📁', label: 'Study Materials' },
+  { to: '/faculty/analytics',     icon: '📊', label: 'Analytics' },
+  { to: '/faculty/leave-od',      icon: '📩', label: 'Leave & OD' },
+  { to: '/faculty/notices',       icon: '🔔', label: 'Notices' },
+  { to: '/faculty/notifications', icon: '📬', label: 'Notifications' },
+  { to: '/faculty/timetable',     icon: '📅', label: 'Timetable' },
+  { to: '/faculty/profile',       icon: '👤', label: 'Profile' },
 ];
 
 export default function FacultySidebar({ open, onClose }) {

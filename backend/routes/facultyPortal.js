@@ -125,6 +125,28 @@ router.get('/students', async (req, res) => {
   }
 });
 
+// GET /students/:studentId — one student's profile + attendance & marks history.
+// Scoped: the student must belong to one of the faculty's assigned classes.
+router.get('/students/:studentId', async (req, res) => {
+  try {
+    const sid = (req.params.studentId || '').toUpperCase();
+    const student = await User.findOne({ studentId: sid, role: 'student' })
+      .select('name studentId department semester section year email phone');
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    const allowed = new Set((await User.find(studentsFilter(req.user)).select('_id')).map(s => String(s._id)));
+    if (!allowed.has(String(student._id))) {
+      return res.status(403).json({ success: false, message: 'This student is not in your assigned classes.' });
+    }
+
+    const attendance = await Attendance.find({ student: student._id }).sort({ date: -1 }).limit(100);
+    const marks = await Marks.find({ student: student._id }).sort({ semester: 1, subject: 1 });
+    res.json({ success: true, student, attendance, marks });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // ── Attendance ─────────────────────────────────────────────────────────────
 // GET /attendance?subject=&section=&date= — records for a class
 router.get('/attendance', async (req, res) => {

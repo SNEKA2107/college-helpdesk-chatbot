@@ -119,12 +119,10 @@ app.use('/api/calendar',   require('./routes/calendar'));
 app.use('/api/audit',      require('./routes/audit'));
 
 // ===== STATIC FILES =====
-// Serve the React build when present (frontend/dist), otherwise the legacy static site at repo root
+// Serve ONLY the React build (frontend/dist). The legacy static site that used
+// to live at the repo root has been retired — there is no fallback to it.
 const distDir = path.join(__dirname, '..', 'frontend', 'dist');
-const webRoot = require('fs').existsSync(path.join(distDir, 'index.html'))
-  ? distDir
-  : path.join(__dirname, '..');
-app.use(express.static(webRoot));
+app.use(express.static(distDir));
 
 // ===== 404 HANDLER (API routes only) =====
 app.use('/api', (req, res) => {
@@ -133,7 +131,14 @@ app.use('/api', (req, res) => {
 
 // ===== SPA FALLBACK =====
 app.get('*', (req, res) => {
-  res.sendFile(path.join(webRoot, 'index.html'));
+  // A path with a file extension (e.g. /attendance.html, /style.css, /app.js)
+  // that express.static did not resolve is a dead legacy asset — return 404
+  // rather than the SPA shell. Extension-less paths are React client routes and
+  // receive index.html so the router can render them.
+  if (path.extname(req.path)) {
+    return res.status(404).json({ success: false, message: `Not found: ${req.originalUrl}` });
+  }
+  res.sendFile(path.join(distDir, 'index.html'));
 });
 
 // ===== ERROR HANDLER =====
@@ -147,5 +152,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 CampusAssist backend running on http://localhost:${PORT}`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📁 Static files: ${webRoot}`);
+  console.log(`📁 Static files: ${distDir}`);
 });

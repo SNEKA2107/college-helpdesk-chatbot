@@ -29,4 +29,15 @@ const adminOnly = (req, res, next) => {
   return res.status(403).json({ success: false, message: 'Admin access only.' });
 };
 
-module.exports = { protect, adminOnly };
+const facultyOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'faculty') return next();
+  return res.status(403).json({ success: false, message: 'Faculty access only.' });
+};
+
+// Admin may view/act on faculty data (e.g. admin viewing faculty info).
+const facultyOrAdmin = (req, res, next) => {
+  if (req.user && (req.user.role === 'faculty' || req.user.role === 'admin')) return next();
+  return res.status(403).json({ success: false, message: 'Faculty or admin access only.' });
+};
+
+module.exports = { protect, adminOnly, facultyOnly, facultyOrAdmin };

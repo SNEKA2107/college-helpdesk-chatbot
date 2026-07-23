@@ -22,6 +22,19 @@ export function isAdmin() {
   return Boolean(user && user.role === 'admin');
 }
 
+export function isFaculty() {
+  const user = getUser();
+  return Boolean(user && user.role === 'faculty');
+}
+
+/** The portal home path for the logged-in user's role. */
+export function homePath() {
+  const user = getUser();
+  if (user?.role === 'admin') return '/admin/dashboard';
+  if (user?.role === 'faculty') return '/faculty/dashboard';
+  return '/student/dashboard';
+}
+
 export function logout() {
   clearSession();
   window.location.href = '/login';

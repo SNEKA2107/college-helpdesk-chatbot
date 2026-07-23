@@ -123,6 +123,47 @@ async function seed() {
   await User.insertMany(studentDocs, { ordered: false });
   console.log(`  ✅ 1000 students inserted`);
 
+  // ── A few ECE/MECH students (6th sem) so those faculty have a class to teach ──
+  const extraStudents = [];
+  [['ECE', 'ECE'], ['MECH', 'MEC']].forEach(([dept, tag], di) => {
+    for (let s = 1; s <= 15; s++) {
+      const { firstName, surname } = resolveName(s, 41 + di);
+      const r = `23${tag}6${String(s).padStart(3, '0')}`.toUpperCase();
+      extraStudents.push({
+        name: `${firstName} ${surname}`, studentId: r,
+        email: `${firstName.toLowerCase()}.${r.toLowerCase()}@college.edu`,
+        password: hashed, department: dept, semester: '6th', role: 'student', phone: phone(), isActive: true,
+      });
+    }
+  });
+  await User.insertMany(extraStudents, { ordered: false });
+
+  // ── Sample faculty (portal login) — one per requested department ─────────────
+  const FACULTY = [
+    { name: 'Dr. Rajesh Kumar', studentId: 'FAC01', email: 'rajesh.kumar@college.edu', department: 'CSE', designation: 'Associate Professor',
+      assignedSubjects: [
+        { code: 'CS3401', name: 'Data Structures', department: 'CSE', semester: '6th', section: '' },
+        { code: 'CS3492', name: 'Database Management Systems', department: 'CSE', semester: '6th', section: '' },
+      ] },
+    { name: 'Dr. Priya Nair', studentId: 'FAC02', email: 'priya.nair@college.edu', department: 'AIML', designation: 'Assistant Professor',
+      assignedSubjects: [
+        { code: 'CS3491', name: 'Artificial Intelligence', department: 'AIML', semester: '6th', section: '' },
+        { code: 'AL3451', name: 'Machine Learning', department: 'AIML', semester: '6th', section: '' },
+      ] },
+    { name: 'Dr. Suresh Babu', studentId: 'FAC03', email: 'suresh.babu@college.edu', department: 'ECE', designation: 'Professor',
+      assignedSubjects: [
+        { code: 'EC3492', name: 'Digital Signal Processing', department: 'ECE', semester: '6th', section: '' },
+        { code: 'EC3552', name: 'VLSI Design', department: 'ECE', semester: '6th', section: '' },
+      ] },
+    { name: 'Dr. Anand Krishnan', studentId: 'FAC04', email: 'anand.krishnan@college.edu', department: 'MECH', designation: 'Associate Professor',
+      assignedSubjects: [
+        { code: 'ME3391', name: 'Engineering Thermodynamics', department: 'MECH', semester: '6th', section: '' },
+        { code: 'ME3591', name: 'Design of Machine Elements', department: 'MECH', semester: '6th', section: '' },
+      ] },
+  ];
+  for (const f of FACULTY) await User.create({ ...f, password: 'faculty123', role: 'faculty', semester: '' });
+  console.log('  ✅ 4 faculty (FAC01–FAC04, pw: faculty123) + ECE/MECH students created');
+
   // ── Notices ──────────────────────────────────────────────────────────────
   await Notice.insertMany([
     { title:'Fee Payment Deadline – Final Reminder', content:'Last date for Semester V fee payment is May 25 2026. Students who fail to pay will not be allowed to write exams.', category:'urgent', postedBy:'Admin', pinned:true },

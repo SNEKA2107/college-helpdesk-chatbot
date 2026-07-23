@@ -39,6 +39,13 @@ const noticeSchema = new mongoose.Schema({
   actionItems: { type: [String], default: [] },
   aiPriority:  { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
 
+  // Optional attachment (faculty may upload a PDF / assignment). Stored as a base64
+  // data URL; name/type kept separately so list views don't ship the blob. Optional
+  // and back-compatible — existing notices simply have no attachment.
+  attachment:     { type: String, default: '' },
+  attachmentName: { type: String, default: '' },
+  attachmentType: { type: String, default: '' },
+
   // Legacy soft-visibility flag, retained for backward compatibility with older rows/clients.
   isActive:  { type: Boolean, default: true },
   pinned:    { type: Boolean, default: false },

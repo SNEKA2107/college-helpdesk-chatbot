@@ -1,0 +1,60 @@
+/* ===== Faculty Portal — reuses the global CampusAssist design tokens ===== */
+.fac-muted { color: var(--text-muted); }
+.fac-center { text-align: center; color: var(--text-muted); padding: 16px; }
+
+.fac-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.fac-row:last-child { border-bottom: none; }
+.fac-row-title { font-weight: 600; color: var(--dark); font-size: 14px; }
+
+/* Quick actions */
+.fac-quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.fac-quick { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); text-decoration: none; color: var(--text); font-weight: 600; font-size: 13px; transition: border-color .18s ease, transform .18s ease; }
+.fac-quick:hover { border-color: var(--primary); transform: translateY(-2px); }
+.fac-quick-icon { font-size: 26px; }
+
+/* Classes */
+.fac-class-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 6px; }
+.fac-class-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; }
+.fac-class-dept { font-weight: 800; font-size: 15px; color: var(--primary); margin-bottom: 4px; }
+
+/* Search input */
+.fac-search { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 14px; outline: none; transition: border-color .18s ease; }
+.fac-search:focus { border-color: var(--primary); }
+
+/* Profile */
+.fac-profile-head { display: flex; align-items: center; gap: 16px; }
+.fac-avatar-lg { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; flex-shrink: 0; }
+.fac-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.fac-chip { background: var(--primary-bg); color: var(--primary); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; }
+
+/* Controls row (subject/date/section selectors) */
+.fac-controls { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; }
+
+/* Attendance toggle */
+.fac-att-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.fac-att-btn { padding: 5px 12px; background: var(--surface); color: var(--text-muted); border: none; cursor: pointer; font-size: 12px; font-weight: 600; border-right: 1px solid var(--border); }
+.fac-att-btn:last-child { border-right: none; }
+.fac-att-btn.active.present { background: rgba(34,197,94,0.15); color: #22c55e; }
+.fac-att-btn.active.absent  { background: rgba(239,68,68,0.15); color: #ef4444; }
+.fac-att-btn.active.late    { background: rgba(234,179,8,0.15); color: #eab308; }
+
+/* Mark inputs */
+.fac-mark-input { width: 90px; padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px; outline: none; }
+.fac-mark-input:focus { border-color: var(--primary); }
+
+/* Tabs (leave/od) */
+.fac-tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+.fac-tab { padding: 7px 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s ease; }
+.fac-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* Notices list */
+.fac-notice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.fac-notice:last-child { border-bottom: none; }
+
+/* Today's classes */
+.fac-today-row { display: flex; gap: 14px; align-items: center; padding: 12px; border-radius: 8px; background: var(--surface2); margin-bottom: 8px; }
+.fac-today-slot { background: var(--primary-bg); color: var(--primary); padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .fac-controls { grid-template-columns: 1fr; }
+}

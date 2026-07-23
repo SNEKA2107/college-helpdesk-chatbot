@@ -56,6 +56,38 @@ async function seed() {
     console.log('ℹ️  Admin already exists');
   }
 
+  // ── Sample faculty (portal login) — idempotent, one per requested department ──
+  const FACULTY = [
+    { name: 'Dr. Rajesh Kumar', studentId: 'FAC01', email: 'rajesh.kumar@college.edu', department: 'CSE', designation: 'Associate Professor',
+      assignedSubjects: [
+        { code: 'CS3401', name: 'Data Structures', department: 'CSE', semester: '6th', section: '' },
+        { code: 'CS3492', name: 'Database Management Systems', department: 'CSE', semester: '6th', section: '' },
+      ] },
+    { name: 'Dr. Priya Nair', studentId: 'FAC02', email: 'priya.nair@college.edu', department: 'AIML', designation: 'Assistant Professor',
+      assignedSubjects: [
+        { code: 'CS3491', name: 'Artificial Intelligence', department: 'AIML', semester: '6th', section: '' },
+        { code: 'AL3451', name: 'Machine Learning', department: 'AIML', semester: '6th', section: '' },
+      ] },
+    { name: 'Dr. Suresh Babu', studentId: 'FAC03', email: 'suresh.babu@college.edu', department: 'ECE', designation: 'Professor',
+      assignedSubjects: [
+        { code: 'EC3492', name: 'Digital Signal Processing', department: 'ECE', semester: '6th', section: '' },
+        { code: 'EC3552', name: 'VLSI Design', department: 'ECE', semester: '6th', section: '' },
+      ] },
+    { name: 'Dr. Anand Krishnan', studentId: 'FAC04', email: 'anand.krishnan@college.edu', department: 'MECH', designation: 'Associate Professor',
+      assignedSubjects: [
+        { code: 'ME3391', name: 'Engineering Thermodynamics', department: 'MECH', semester: '6th', section: '' },
+        { code: 'ME3591', name: 'Design of Machine Elements', department: 'MECH', semester: '6th', section: '' },
+      ] },
+  ];
+  let facCreated = 0;
+  for (const f of FACULTY) {
+    if (!(await User.findOne({ studentId: f.studentId }))) {
+      await User.create({ ...f, password: 'faculty123', role: 'faculty', semester: '' });
+      facCreated++;
+    }
+  }
+  console.log(facCreated ? `✅ ${facCreated} faculty seeded (FAC01–FAC04 | Password: faculty123)` : 'ℹ️  Faculty already exist');
+
   // ── Notices ────────────────────────────────────────────
   const noticeCount = await Notice.countDocuments();
   if (noticeCount === 0) {

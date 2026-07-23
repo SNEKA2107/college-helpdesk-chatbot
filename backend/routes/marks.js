@@ -36,11 +36,19 @@ function targetStudentId(req) {
     : req.user.studentId;
 }
 
+// Students only ever see published marks. Admin/faculty views see everything.
+// Legacy rows have no `published` field, so `$ne: false` keeps them visible.
+function marksFilter(req, sid) {
+  const filter = { studentId: sid };
+  if (req.user.role === 'student') filter.published = { $ne: false };
+  return filter;
+}
+
 // GET /api/marks — marks for the current student (or ?studentId= for admin)
 router.get('/', protect, async (req, res) => {
   try {
     const sid = targetStudentId(req);
-    const marks = await Marks.find({ studentId: sid }).sort({ semester: 1, subject: 1 });
+    const marks = await Marks.find(marksFilter(req, sid)).sort({ semester: 1, subject: 1 });
     res.json({ success: true, count: marks.length, marks });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -51,7 +59,7 @@ router.get('/', protect, async (req, res) => {
 router.get('/cgpa', protect, async (req, res) => {
   try {
     const sid = targetStudentId(req);
-    const marks = await Marks.find({ studentId: sid }).sort({ semester: 1, subject: 1 });
+    const marks = await Marks.find(marksFilter(req, sid)).sort({ semester: 1, subject: 1 });
     res.json({ success: true, ...computeCgpa(marks) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

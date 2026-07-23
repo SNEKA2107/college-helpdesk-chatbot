@@ -31,6 +31,10 @@ const marksSchema = new mongoose.Schema({
   grade:         { type: String, default: 'RA' },
   gradePoint:    { type: Number, default: 0 },
   enteredBy:     { type: String, default: 'Admin' },
+  // Faculty workflow: marks a faculty enters start unpublished and are hidden from
+  // the student until published. Default `true` keeps every existing/admin-entered
+  // record visible (backward-compatible: legacy rows have no field → treated as published).
+  published:     { type: Boolean, default: true },
 }, { timestamps: true });
 
 // CRIT-01: one marks record per student, per semester, per subject.

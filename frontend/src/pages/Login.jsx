@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { API_BASE } from '../services/api';
 import { setSession } from '../services/auth';
 import AuthThemeButton from '../components/AuthThemeButton';
@@ -12,8 +12,16 @@ const FEATURES = [
   { icon: '📝', text: 'Leave applications & request tracking' },
 ];
 
+const ROLE_META = {
+  student: { title: 'Student Login', hint: 'e.g. 22IT101', label: 'Student ID' },
+  faculty: { title: 'Faculty Login', hint: 'e.g. FAC01', label: 'Faculty ID' },
+  admin:   { title: 'Admin Login', hint: 'e.g. ADMIN01', label: 'Admin ID' },
+};
+
 export default function Login() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const meta = ROLE_META[params.get('role')] || ROLE_META.student;
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -40,7 +48,10 @@ export default function Login() {
       const data = await res.json();
       if (res.ok && data.success) {
         setSession(data.user, data.token);
-        navigate(data.user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard');
+        const home = data.user.role === 'admin' ? '/admin/dashboard'
+          : data.user.role === 'faculty' ? '/faculty/dashboard'
+          : '/student/dashboard';
+        navigate(home);
       } else {
         setAlert(data.message || 'Invalid Student ID or password.');
         setLoading(false);
@@ -82,25 +93,25 @@ export default function Login() {
         <div className={s.authRight}>
           <form className={s.authFormWrap} onSubmit={handleLogin}>
             <div className={s.authFormHeader}>
-              <h2>Student Login</h2>
+              <h2>{meta.title}</h2>
               <p>Enter your credentials to access your account</p>
             </div>
 
             <div className={`${s.alertBox}${alert ? ` ${s.show}` : ''}`}>{alert}</div>
 
             <div className={s.formGroup}>
-              <label className={s.formLabel}>Student ID</label>
+              <label className={s.formLabel}>{meta.label}</label>
               <div className={s.inputWrap}>
                 <span className={s.inputIcon}>🎓</span>
                 <input
                   type="text"
                   className={`${s.formInput}${errors.id ? ` ${s.error}` : ''}`}
-                  placeholder="e.g. 22IT101"
+                  placeholder={meta.hint}
                   value={studentId}
                   onChange={e => setStudentId(e.target.value)}
                 />
               </div>
-              <span className={`${s.formError}${errors.id ? ` ${s.show}` : ''}`}>Please enter your Student ID</span>
+              <span className={`${s.formError}${errors.id ? ` ${s.show}` : ''}`}>Please enter your {meta.label}</span>
             </div>
 
             <div className={s.formGroup}>

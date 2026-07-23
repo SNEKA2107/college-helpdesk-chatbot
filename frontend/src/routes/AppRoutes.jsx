@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { RedirectIfAuthed } from './guards';
 import StudentLayout from '../layouts/StudentLayout';
 import AdminLayout from '../layouts/AdminLayout';
+import FacultyLayout from '../layouts/FacultyLayout';
 
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
@@ -26,6 +27,23 @@ const Profile    = lazy(() => import('../pages/Profile'));
 const Calendar   = lazy(() => import('../pages/Calendar'));
 const Settings   = lazy(() => import('../pages/Settings'));
 const Admin      = lazy(() => import('../pages/Admin'));
+
+// Faculty portal pages (path relative to /faculty).
+const FacultyDashboard  = lazy(() => import('../pages/faculty/FacultyDashboard'));
+const FacultyClasses    = lazy(() => import('../pages/faculty/FacultyClasses'));
+const FacultyStudents   = lazy(() => import('../pages/faculty/FacultyStudents'));
+const FacultyAttendance = lazy(() => import('../pages/faculty/FacultyAttendance'));
+const FacultyMarks      = lazy(() => import('../pages/faculty/FacultyMarks'));
+const FacultyLeaveOD    = lazy(() => import('../pages/faculty/FacultyLeaveOD'));
+const FacultyNotices    = lazy(() => import('../pages/faculty/FacultyNotices'));
+const FacultyTimetable  = lazy(() => import('../pages/faculty/FacultyTimetable'));
+const FacultyProfile    = lazy(() => import('../pages/faculty/FacultyProfile'));
+
+const facultyPages = [
+  ['dashboard', FacultyDashboard], ['classes', FacultyClasses], ['students', FacultyStudents],
+  ['attendance', FacultyAttendance], ['marks', FacultyMarks], ['leave-od', FacultyLeaveOD],
+  ['notices', FacultyNotices], ['timetable', FacultyTimetable], ['profile', FacultyProfile],
+];
 
 // Student portal pages — path is RELATIVE to /student.
 const studentPages = [
@@ -79,6 +97,14 @@ export default function AppRoutes() {
           {/* Admin control-panel sections are tabs within the dashboard; any other
               /admin/* deep link falls through to the panel rather than 404-ing. */}
           <Route path="*" element={<Admin />} />
+        </Route>
+
+        {/* ── Faculty portal (/faculty/*) — role-gated by FacultyLayout ── */}
+        <Route path="/faculty" element={<FacultyLayout />}>
+          <Route index element={<Navigate to="/faculty/dashboard" replace />} />
+          {facultyPages.map(([path, Page]) => (
+            <Route key={path} path={path} element={<Page />} />
+          ))}
         </Route>
 
         {/* ── Backward-compat: old flat student URLs → /student/* ── */}

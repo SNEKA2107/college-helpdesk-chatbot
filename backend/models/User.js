@@ -12,7 +12,22 @@ const userSchema = new mongoose.Schema({
   // Optional/back-compatible — existing users default to ''.
   year:       { type: String, default: '' },
   section:    { type: String, default: '' },
-  role:       { type: String, enum: ['student','admin'], default: 'student' },
+  role:       { type: String, enum: ['student','admin','faculty'], default: 'student' },
+  // ── Faculty profile (role: 'faculty'). All optional/back-compatible so existing
+  // student & admin rows are unaffected. Faculty log in with their ID via the same
+  // `studentId` field (e.g. 'FAC01'). ──────────────────────────────────────────
+  designation:     { type: String, default: '' }, // e.g. 'Assistant Professor'
+  assignedSubjects: {
+    type: [{
+      code:       { type: String, default: '' },  // e.g. 'CS3491'
+      name:       { type: String, default: '' },  // e.g. 'Artificial Intelligence'
+      department: { type: String, default: '' },  // e.g. 'CSE'
+      semester:   { type: String, default: '' },  // e.g. '5th'
+      section:    { type: String, default: '' },  // e.g. 'A'
+      _id: false,
+    }],
+    default: [],
+  },
   // Placement / success profile (Phase 2). Optional & back-compatible.
   cgpa:           { type: Number, default: 0 },
   skills:         { type: [String], default: [] },

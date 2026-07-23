@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { apiCall } from '../services/api';
 import '../styles/cgpa.css';
@@ -24,6 +24,111 @@ function cgpaGradeLabel(v) {
   if (v >= 6) return 'Second Class';
   if (v >= 5) return 'Pass';
   return 'Arrear / Fail';
+}
+
+// ── What-If CGPA Calculator ────────────────────────────────────────────────
+// Purely client-side estimator. It shares the official Anna University 10-point
+// grade scale (from GRADE_REF) but NEVER touches admin marks, calls an API, or
+// writes to the database. The only persistence is this browser's localStorage.
+const GRADE_POINTS = Object.fromEntries(GRADE_REF.map(([g, , pts]) => [g, pts]));
+const WHATIF_KEY = 'cgpa_whatif';
+const emptySubject = () => ({ name: '', credits: '', grade: '' });
+const emptySemester = () => ({ subjects: [emptySubject()] });
+
+// Credit-weighted SGPA for one semester's rows (ignores incomplete rows).
+function semStats(subjects) {
+  let credits = 0, points = 0;
+  for (const s of subjects) {
+    const c = Number(s.credits);
+    if (!Number.isFinite(c) || c <= 0 || !(s.grade in GRADE_POINTS)) continue;
+    credits += c;
+    points += c * GRADE_POINTS[s.grade];
+  }
+  return { credits, points, sgpa: credits ? points / credits : 0 };
+}
+
+function WhatIfCalculator() {
+  const [sems, setSems] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(WHATIF_KEY) || 'null');
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch { /* ignore corrupt storage */ }
+    return [emptySemester()];
+  });
+
+  // Optional persistence — local to this browser only.
+  useEffect(() => {
+    try { localStorage.setItem(WHATIF_KEY, JSON.stringify(sems)); } catch { /* ignore */ }
+  }, [sems]);
+
+  const addSemester    = () => setSems(s => [...s, emptySemester()]);
+  const removeSemester = i  => setSems(s => (s.length > 1 ? s.filter((_, idx) => idx !== i) : s));
+  const addSubject     = si => setSems(s => s.map((sem, i) => (i === si ? { ...sem, subjects: [...sem.subjects, emptySubject()] } : sem)));
+  const removeSubject  = (si, xi) => setSems(s => s.map((sem, i) => (i === si ? { ...sem, subjects: sem.subjects.length > 1 ? sem.subjects.filter((_, j) => j !== xi) : sem.subjects } : sem)));
+  const updateSubject  = (si, xi, field, val) => setSems(s => s.map((sem, i) => (i === si ? { ...sem, subjects: sem.subjects.map((sub, j) => (j === xi ? { ...sub, [field]: val } : sub)) } : sem)));
+  const reset = () => { if (window.confirm('Clear all What-If entries? This only resets the estimator — your official records are unaffected.')) setSems([emptySemester()]); };
+
+  const { cgpa, totalCredits } = useMemo(() => {
+    let credits = 0, points = 0;
+    for (const sem of sems) { const r = semStats(sem.subjects); credits += r.credits; points += r.points; }
+    return { cgpa: credits ? points / credits : 0, totalCredits: credits };
+  }, [sems]);
+
+  return (
+    <div className="card" style={{ marginTop: 24 }}>
+      <div className="card-header">
+        <div className="card-title">🧮 What-If CGPA Calculator</div>
+        <span className="badge badge-muted">Estimate only</span>
+      </div>
+      <p className="whatif-note">This calculator is for estimation only and does not affect your official academic records.</p>
+
+      {sems.map((sem, si) => {
+        const r = semStats(sem.subjects);
+        return (
+          <div key={si} className="whatif-sem">
+            <div className="sem-header" style={{ cursor: 'default' }}>
+              <span className="sem-title">Semester {si + 1}</span>
+              <span className="sem-gpa-pill">SGPA: {r.sgpa.toFixed(2)}</span>
+            </div>
+            <table className="grade-table">
+              <thead><tr><th>Subject</th><th style={{ width: 90 }}>Credits</th><th style={{ width: 110 }}>Grade</th><th style={{ width: 40 }}></th></tr></thead>
+              <tbody>
+                {sem.subjects.map((sub, xi) => (
+                  <tr key={xi}>
+                    <td><input className="grade-input" placeholder="Subject name" value={sub.name} onChange={e => updateSubject(si, xi, 'name', e.target.value)} /></td>
+                    <td><input className="grade-input" type="number" min="0" max="12" placeholder="Cr." value={sub.credits} onChange={e => updateSubject(si, xi, 'credits', e.target.value)} /></td>
+                    <td>
+                      <select className="grade-input" value={sub.grade} onChange={e => updateSubject(si, xi, 'grade', e.target.value)}>
+                        <option value="">—</option>
+                        {GRADE_REF.map(([g, , pts]) => <option key={g} value={g}>{g} ({pts})</option>)}
+                      </select>
+                    </td>
+                    <td><button className="del-row" title="Remove subject" onClick={() => removeSubject(si, xi)}>×</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="whatif-sem-actions">
+              <button className="add-sub-btn" onClick={() => addSubject(si)}>+ Add Subject</button>
+              {sems.length > 1 && <button className="btn btn-secondary btn-sm" onClick={() => removeSemester(si)}>🗑 Remove Semester</button>}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="whatif-footer">
+        <div className="whatif-actions">
+          <button className="btn btn-secondary" onClick={addSemester}>+ Add Semester</button>
+          <button className="btn btn-outline" onClick={reset}>↺ Reset</button>
+        </div>
+        <div className="whatif-result">
+          <span className="whatif-result-lbl">Estimated CGPA</span>
+          <span className="whatif-result-val">{totalCredits ? cgpa.toFixed(2) : '—'}</span>
+          {totalCredits > 0 && <span className="whatif-result-sub">{cgpaGradeLabel(cgpa)} · {totalCredits} credits</span>}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Cgpa() {
@@ -136,6 +241,8 @@ export default function Cgpa() {
           </div>
         </div>
       </div>
+
+      <WhatIfCalculator />
     </Layout>
   );
 }

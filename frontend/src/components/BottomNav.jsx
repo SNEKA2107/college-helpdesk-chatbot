@@ -1,7 +1,7 @@
 import { NavLink, Link } from 'react-router-dom';
 
 const ITEMS = [
-  { to: '/student/home', icon: '🏠', label: 'Home' },
+  { to: '/student/dashboard', icon: '🗂️', label: 'Dashboard' },
   { to: '/student/requests',  icon: '📋', label: 'Requests' },
 ];
 const ITEMS_AFTER = [

@@ -7,7 +7,6 @@ import AdminLayout from '../layouts/AdminLayout';
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
 const Register   = lazy(() => import('../pages/Register'));
-const Home       = lazy(() => import('../pages/Home'));
 const Dashboard  = lazy(() => import('../pages/Dashboard'));
 const Chat       = lazy(() => import('../pages/Chat'));
 const Requests   = lazy(() => import('../pages/Requests'));
@@ -25,14 +24,12 @@ const Library    = lazy(() => import('../pages/Library'));
 const Contact    = lazy(() => import('../pages/Contact'));
 const Profile    = lazy(() => import('../pages/Profile'));
 const Calendar   = lazy(() => import('../pages/Calendar'));
-const Success    = lazy(() => import('../pages/Success'));
-const Placement  = lazy(() => import('../pages/Placement'));
 const Settings   = lazy(() => import('../pages/Settings'));
 const Admin      = lazy(() => import('../pages/Admin'));
 
 // Student portal pages — path is RELATIVE to /student.
 const studentPages = [
-  ['dashboard', Dashboard], ['home', Home], ['success', Success], ['placement', Placement],
+  ['dashboard', Dashboard],
   ['chat', Chat], ['requests', Requests], ['attendance', Attendance], ['status', Status],
   ['exam', Exam], ['fees', Fees], ['timetable', Timetable], ['cgpa', Cgpa],
   ['leave', Leave], ['od', Od], ['events', Events], ['notices', Notices],

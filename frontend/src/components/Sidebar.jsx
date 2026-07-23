@@ -7,10 +7,7 @@ const NAV_SECTIONS = [
   {
     title: 'Main',
     links: [
-      { to: '/student/home',      icon: '🏠', label: 'Home' },
       { to: '/student/dashboard', icon: '🗂️', label: 'Dashboard' },
-      { to: '/student/success',   icon: '🚀', label: 'Success Dashboard' },
-      { to: '/student/placement', icon: '💼', label: 'Placement Hub' },
       { to: '/student/chat',      icon: '💬', label: 'AI Assistant' },
       { to: '/student/requests',  icon: '📋', label: 'My Requests' },
     ],
@@ -51,7 +48,7 @@ export default function Sidebar({ open, onClose }) {
   return (
     <aside className={`sidebar${open ? ' open' : ''}`} id="sidebar">
       <div className="sidebar-header">
-        <Link to="/student/home" className="logo-wrap">
+        <Link to="/student/dashboard" className="logo-wrap">
           <div className="logo-icon">🎓</div>
           <div className="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
         </Link>

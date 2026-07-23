@@ -78,7 +78,7 @@ export default function Attendance() {
       <div className="card reveal">
         <h3 className="card-title">Recent Attendance Records</h3>
         <div className="table-wrap" style={{ marginTop: 14 }}>
-          <table>
+          <table className="table">
             <thead><tr><th>Date</th><th>Subject</th><th>Status</th><th>Marked By</th></tr></thead>
             <tbody>
               {!records && <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</td></tr>}

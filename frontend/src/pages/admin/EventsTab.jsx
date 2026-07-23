@@ -67,7 +67,7 @@ export default function EventsTab({ data, setData, loaded, reload }) {
             <div className="form-group"><label className="form-label">Date *</label>
               <input type="date" className="form-input" value={form.date} onChange={e => setField('date', e.target.value)} /></div>
             <div className="form-group"><label className="form-label">Time</label>
-              <input type="text" className="form-input" placeholder="e.g. 10:00 AM" value={form.time} onChange={e => setField('time', e.target.value)} /></div>
+              <input type="time" className="form-input" value={form.time} onChange={e => setField('time', e.target.value)} /></div>
             <div className="form-group"><label className="form-label">Seats</label>
               <input type="number" className="form-input" min={1} value={form.seats} onChange={e => setField('seats', e.target.value)} /></div>
             <div className="form-group"><label className="form-label">Venue *</label>

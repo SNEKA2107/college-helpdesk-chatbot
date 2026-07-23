@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { apiCall } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import { DEPARTMENTS, SEMESTERS } from './shared';
+import { toTimeInput } from '../../utils/format';
 
 const rowInputStyle = { padding: '6px 8px', fontSize: 12.5 };
 const SCHED_COLS = '130px 1fr 90px 110px 30px';
-const PRAC_COLS = '130px 1fr 80px 90px 30px';
+const PRAC_COLS = '130px 1fr 80px 110px 30px';
 const STATUS_BADGE = { draft: 'badge-warning', published: 'badge-success', archived: 'badge-muted' };
 
 const emptySched = () => ({ date: '', subject: '', code: '', session: '' });
@@ -37,7 +38,7 @@ export default function ExamsTab({ data, setData }) {
       theoryStart: ex.theoryStart || '', theoryEnd: ex.theoryEnd || '', hallTicketAvailable: ex.hallTicketAvailable || '',
     });
     setSchedule(ex.schedule?.length ? ex.schedule.map(s => ({ ...s })) : [emptySched()]);
-    setPracticals(ex.practicals?.length ? ex.practicals.map(p => ({ ...p })) : [emptyPrac()]);
+    setPracticals(ex.practicals?.length ? ex.practicals.map(p => ({ ...p, time: toTimeInput(p.time) })) : [emptyPrac()]);
     setInstructions((ex.instructions || []).join('\n'));
   }
 
@@ -200,7 +201,7 @@ export default function ExamsTab({ data, setData }) {
                 <input type="date" className="form-input" style={rowInputStyle} value={r.date} onChange={e => setPracRow(i, 'date', e.target.value)} />
                 <input type="text" className="form-input" style={rowInputStyle} placeholder="Subject" value={r.subject} onChange={e => setPracRow(i, 'subject', e.target.value)} />
                 <input type="text" className="form-input" style={rowInputStyle} placeholder="Lab" value={r.lab} onChange={e => setPracRow(i, 'lab', e.target.value)} />
-                <input type="text" className="form-input" style={rowInputStyle} placeholder="Time" value={r.time} onChange={e => setPracRow(i, 'time', e.target.value)} />
+                <input type="time" className="form-input" style={rowInputStyle} value={r.time} onChange={e => setPracRow(i, 'time', e.target.value)} />
                 <button className="btn btn-sm" style={{ background: 'var(--danger)', color: '#fff', padding: 0 }} onClick={() => removeRow(setPracticals)(i)}>✕</button>
               </div>
             ))}

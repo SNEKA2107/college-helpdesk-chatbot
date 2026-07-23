@@ -30,7 +30,11 @@ function cgpaGradeLabel(v) {
 // Purely client-side estimator. It shares the official Anna University 10-point
 // grade scale (from GRADE_REF) but NEVER touches admin marks, calls an API, or
 // writes to the database. The only persistence is this browser's localStorage.
-const GRADE_POINTS = Object.fromEntries(GRADE_REF.map(([g, , pts]) => [g, pts]));
+// Grade scale for the estimator — kept independent of the official GRADE_REF so
+// it can offer the full Anna University scale (incl. C) without touching the
+// official Academic Record view or its Grade Reference card.
+const WHATIF_GRADES = [['O', 10], ['A+', 9], ['A', 8], ['B+', 7], ['B', 6], ['C', 5], ['RA', 0]];
+const GRADE_POINTS = Object.fromEntries(WHATIF_GRADES.map(([g, pts]) => [g, pts]));
 const WHATIF_KEY = 'cgpa_whatif';
 const emptySubject = () => ({ name: '', credits: '', grade: '' });
 const emptySemester = () => ({ subjects: [emptySubject()] });
@@ -77,7 +81,7 @@ function WhatIfCalculator() {
   return (
     <div className="card" style={{ marginTop: 24 }}>
       <div className="card-header">
-        <div className="card-title">🧮 What-If CGPA Calculator</div>
+        <div className="card-title">🎯 What-If CGPA Calculator</div>
         <span className="badge badge-muted">Estimate only</span>
       </div>
       <p className="whatif-note">This calculator is for estimation only and does not affect your official academic records.</p>
@@ -100,7 +104,7 @@ function WhatIfCalculator() {
                     <td>
                       <select className="grade-input" value={sub.grade} onChange={e => updateSubject(si, xi, 'grade', e.target.value)}>
                         <option value="">—</option>
-                        {GRADE_REF.map(([g, , pts]) => <option key={g} value={g}>{g} ({pts})</option>)}
+                        {WHATIF_GRADES.map(([g, pts]) => <option key={g} value={g}>{g} ({pts})</option>)}
                       </select>
                     </td>
                     <td><button className="del-row" title="Remove subject" onClick={() => removeSubject(si, xi)}>×</button></td>

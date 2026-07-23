@@ -253,7 +253,7 @@ export default function Landing() {
               key={p.role}
               type="button"
               className="feature-card"
-              onClick={() => navigate(`/login?role=${p.role}`)}
+              onClick={() => navigate(p.role === 'faculty' ? '/faculty/login' : `/login?role=${p.role}`)}
               style={{ cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit', border: 'none', width: '100%' }}
             >
               <div className={`feature-icon ${p.cls}`}>{p.icon}</div>

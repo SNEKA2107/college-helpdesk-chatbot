@@ -58,6 +58,11 @@ async function seed() {
 
   // ── Sample faculty (portal login) — idempotent, one per requested department ──
   const FACULTY = [
+    { name: 'Dr. John David', studentId: 'FAC001', email: 'john@campusassist.edu', department: 'CSE', designation: 'Professor',
+      assignedSubjects: [
+        { code: 'CS3401', name: 'Data Structures', department: 'CSE', semester: '6th', section: '' },
+        { code: 'CS3691', name: 'Embedded Systems and IoT', department: 'CSE', semester: '6th', section: '' },
+      ] },
     { name: 'Dr. Rajesh Kumar', studentId: 'FAC01', email: 'rajesh.kumar@college.edu', department: 'CSE', designation: 'Associate Professor',
       assignedSubjects: [
         { code: 'CS3401', name: 'Data Structures', department: 'CSE', semester: '6th', section: '' },

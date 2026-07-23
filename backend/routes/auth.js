@@ -81,6 +81,32 @@ router.post('/login', [
   }
 });
 
+// POST /api/auth/faculty-login — faculty sign in with EMAIL + password.
+// Separate, additive endpoint: the studentId-based /login used by students and
+// admins is left completely unchanged. Issues the same JWT via genToken.
+router.post('/faculty-login', [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('password').isString().notEmpty().withMessage('Password is required'),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email: email.toLowerCase(), role: 'faculty' });
+    if (!user || !(await user.matchPassword(password))) {
+      return res.status(401).json({ success: false, message: 'Invalid faculty email or password.' });
+    }
+    if (!user.isActive) {
+      return res.status(403).json({ success: false, message: 'Account is deactivated. Contact the admin.' });
+    }
+    const token = genToken(user._id);
+    res.json({ success: true, message: 'Login successful', token, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // GET /api/auth/me (protected)
 router.get('/me', protect, async (req, res) => {
   res.json({ success: true, user: req.user });

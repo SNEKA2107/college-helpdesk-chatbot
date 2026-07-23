@@ -7,6 +7,7 @@ import FacultyLayout from '../layouts/FacultyLayout';
 
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
+const FacultyLogin = lazy(() => import('../pages/FacultyLogin'));
 const Register   = lazy(() => import('../pages/Register'));
 const Dashboard  = lazy(() => import('../pages/Dashboard'));
 const Chat       = lazy(() => import('../pages/Chat'));
@@ -98,6 +99,9 @@ export default function AppRoutes() {
               /admin/* deep link falls through to the panel rather than 404-ing. */}
           <Route path="*" element={<Admin />} />
         </Route>
+
+        {/* ── Faculty login (public, email-based) — must precede the guarded block ── */}
+        <Route path="/faculty/login" element={<RedirectIfAuthed><FacultyLogin /></RedirectIfAuthed>} />
 
         {/* ── Faculty portal (/faculty/*) — role-gated by FacultyLayout ── */}
         <Route path="/faculty" element={<FacultyLayout />}>

@@ -241,7 +241,7 @@ export default function Landing() {
         <div className="section-head">
           <span className="section-label">Portals</span>
           <h2>Choose Your <em>Portal</em></h2>
-          <p>CampusAssist serves students, faculty and administrators — pick the portal that's yours.</p>
+          <p>CampusAssist serves students, faculty and administrators — one sign-in takes you to the right portal.</p>
         </div>
         <div className="features-grid" style={{ maxWidth: 980, margin: '0 auto' }}>
           {[
@@ -253,13 +253,13 @@ export default function Landing() {
               key={p.role}
               type="button"
               className="feature-card"
-              onClick={() => navigate(p.role === 'faculty' ? '/faculty/login' : `/login?role=${p.role}`)}
+              onClick={() => navigate('/login')}
               style={{ cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit', border: 'none', width: '100%' }}
             >
               <div className={`feature-icon ${p.cls}`}>{p.icon}</div>
               <h3>{p.title}</h3>
               <p>{p.text}</p>
-              <span style={{ marginTop: 12, display: 'inline-block', color: 'var(--primary)', fontWeight: 700, fontSize: 14 }}>Go to {p.title} Login →</span>
+              <span style={{ marginTop: 12, display: 'inline-block', color: 'var(--primary)', fontWeight: 700, fontSize: 14 }}>Sign in →</span>
             </button>
           ))}
         </div>

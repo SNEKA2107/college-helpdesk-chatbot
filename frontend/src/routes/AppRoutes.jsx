@@ -5,10 +5,11 @@ import StudentLayout from '../layouts/StudentLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import FacultyLayout from '../layouts/FacultyLayout';
 
-const RoleSelect = lazy(() => import('../pages/RoleSelect'));
+// NOTE: RoleSelect and FacultyLogin are intentionally no longer routed — the app
+// now has a single unified /login page. The files are kept on disk (nothing is
+// deleted) and every old entry point redirects to /login for backward compat.
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
-const FacultyLogin = lazy(() => import('../pages/FacultyLogin'));
 const Register   = lazy(() => import('../pages/Register'));
 const Dashboard  = lazy(() => import('../pages/Dashboard'));
 const Chat       = lazy(() => import('../pages/Chat'));
@@ -88,12 +89,20 @@ export default function AppRoutes() {
     <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>}>
       <Routes>
         {/* ── Public ── */}
-        {/* Entry point is now the role-selection screen; the original marketing
-            landing is preserved (non-destructively) at /welcome. */}
-        <Route path="/" element={<RoleSelect />} />
+        {/* Entry point is the single unified login; the original marketing landing
+            is preserved (non-destructively) at /welcome. */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/welcome" element={<Landing />} />
         <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
         <Route path="/register" element={<RedirectIfAuthed><Register /></RedirectIfAuthed>} />
+
+        {/* Legacy per-role entry points → unified login. Declared before the
+            guarded /student, /faculty and /admin blocks so the static "login"
+            segment wins over those parents' child/splat routes. */}
+        <Route path="/roles" element={<Navigate to="/login" replace />} />
+        <Route path="/student/login" element={<Navigate to="/login" replace />} />
+        <Route path="/faculty/login" element={<Navigate to="/login" replace />} />
+        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
 
         {/* ── Student portal (/student/*) — role-gated by StudentLayout ── */}
         <Route path="/student" element={<StudentLayout />}>
@@ -111,9 +120,6 @@ export default function AppRoutes() {
               /admin/* deep link falls through to the panel rather than 404-ing. */}
           <Route path="*" element={<Admin />} />
         </Route>
-
-        {/* ── Faculty login (public, email-based) — must precede the guarded block ── */}
-        <Route path="/faculty/login" element={<RedirectIfAuthed><FacultyLogin /></RedirectIfAuthed>} />
 
         {/* ── Faculty portal (/faculty/*) — role-gated by FacultyLayout ── */}
         <Route path="/faculty" element={<FacultyLayout />}>

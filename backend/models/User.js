@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema({
   // student & admin rows are unaffected. Faculty log in with their ID via the same
   // `studentId` field (e.g. 'FAC01'). ──────────────────────────────────────────
   designation:     { type: String, default: '' }, // e.g. 'Assistant Professor'
+  qualification:   { type: String, default: '' }, // e.g. 'Ph.D. in Computer Science'
+  experience:      { type: String, default: '' }, // e.g. '12 years'
   assignedSubjects: {
     type: [{
       code:       { type: String, default: '' },  // e.g. 'CS3491'

@@ -1,11 +1,16 @@
-const express    = require('express');
-const User       = require('../models/User');
-const Attendance = require('../models/Attendance');
-const Marks      = require('../models/Marks');
-const Leave      = require('../models/Leave');
-const Notice     = require('../models/Notice');
-const Timetable  = require('../models/Timetable');
+const express       = require('express');
+const User          = require('../models/User');
+const Attendance    = require('../models/Attendance');
+const Marks         = require('../models/Marks');
+const Leave         = require('../models/Leave');
+const Notice        = require('../models/Notice');
+const Timetable     = require('../models/Timetable');
+const Assignment    = require('../models/Assignment');
+const StudyMaterial = require('../models/StudyMaterial');
 const { protect, facultyOnly } = require('../middleware/auth');
+
+// Max base64 data-URL size for uploaded files (~7 MB, matching the profile-photo guard).
+const MAX_FILE = 7 * 1024 * 1024;
 
 const router = express.Router();
 
@@ -33,6 +38,14 @@ function assignedClasses(fac) {
 // Does this faculty teach the given subject to the given section? (authorization guard)
 function teaches(fac, subjectName, section) {
   return (fac.assignedSubjects || []).some(s =>
+    norm(s.name) === norm(subjectName) &&
+    (norm(section) === '' || norm(s.section) === norm(section)));
+}
+
+// Find the assigned subject matching a name (+ optional section) so we can derive the
+// canonical class fields (department/semester/section) for an assignment/material.
+function matchSubject(fac, subjectName, section) {
+  return (fac.assignedSubjects || []).find(s =>
     norm(s.name) === norm(subjectName) &&
     (norm(section) === '' || norm(s.section) === norm(section)));
 }
@@ -411,6 +424,409 @@ router.get('/timetable', async (req, res) => {
     }).sort({ department: 1, semester: 1 });
     res.json({ success: true, timetables });
   } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Assignments ─────────────────────────────────────────────────────────────
+// Derived status: an assignment is 'closed' if force-closed or past its due date.
+function effectiveStatus(a) {
+  if (a.status === 'closed') return 'closed';
+  return new Date(a.dueDate) < new Date() ? 'closed' : 'open';
+}
+
+// GET /assignments — the faculty's own assignments (submissions summarised, not inlined)
+router.get('/assignments', async (req, res) => {
+  try {
+    const docs = await Assignment.find({ createdBy: req.user._id }).sort({ createdAt: -1 }).lean();
+    const assignments = docs.map(a => ({
+      ...a,
+      attachment: undefined,
+      submissionCount: (a.submissions || []).length,
+      gradedCount: (a.submissions || []).filter(s => s.marks != null).length,
+      effectiveStatus: effectiveStatus(a),
+    }));
+    res.json({ success: true, count: assignments.length, assignments });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /assignments — create an assignment for an assigned class/subject
+router.post('/assignments', async (req, res) => {
+  const { title, description, subject, section, dueDate, maxMarks, attachment, attachmentName, attachmentType } = req.body;
+  if (!title || !subject || !dueDate) {
+    return res.status(400).json({ success: false, message: 'Title, subject and due date are required.' });
+  }
+  const sub = matchSubject(req.user, subject, section);
+  if (!sub) return res.status(403).json({ success: false, message: 'You are not assigned to this subject/section.' });
+  if (attachment && attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'Attachment is too large (max 5 MB).' });
+  const mm = maxMarks === undefined ? 100 : Number(maxMarks);
+  if (!Number.isFinite(mm) || mm < 1 || mm > 1000) return res.status(400).json({ success: false, message: 'Max marks must be 1–1000.' });
+  try {
+    const assignment = await Assignment.create({
+      title: title.trim(),
+      description: (description || '').trim(),
+      subject: sub.name, subjectCode: sub.code || '',
+      department: sub.department, semester: sub.semester || '', section: sub.section || '',
+      dueDate: new Date(dueDate), maxMarks: mm,
+      attachment: attachment || '', attachmentName: attachmentName || '', attachmentType: attachmentType || '',
+      createdBy: req.user._id, facultyName: req.user.name,
+    });
+    res.status(201).json({ success: true, message: 'Assignment created.', assignment });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Load an assignment and assert the current faculty owns it.
+async function ownAssignment(req, res) {
+  const a = await Assignment.findById(req.params.id);
+  if (!a) { res.status(404).json({ success: false, message: 'Assignment not found.' }); return null; }
+  if (String(a.createdBy) !== String(req.user._id)) { res.status(403).json({ success: false, message: 'You can only manage your own assignments.' }); return null; }
+  return a;
+}
+
+// PUT /assignments/:id — edit OWN assignment
+router.put('/assignments/:id', async (req, res) => {
+  try {
+    const a = await ownAssignment(req, res); if (!a) return;
+    const { title, description, dueDate, maxMarks, status, attachment, attachmentName, attachmentType } = req.body;
+    if (title !== undefined) a.title = title.trim();
+    if (description !== undefined) a.description = description.trim();
+    if (dueDate !== undefined) a.dueDate = new Date(dueDate);
+    if (maxMarks !== undefined) {
+      const mm = Number(maxMarks);
+      if (!Number.isFinite(mm) || mm < 1 || mm > 1000) return res.status(400).json({ success: false, message: 'Max marks must be 1–1000.' });
+      a.maxMarks = mm;
+    }
+    if (status !== undefined && ['open', 'closed'].includes(status)) a.status = status;
+    if (attachment !== undefined) {
+      if (attachment && attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'Attachment is too large (max 5 MB).' });
+      a.attachment = attachment; a.attachmentName = attachmentName || ''; a.attachmentType = attachmentType || '';
+    }
+    await a.save();
+    res.json({ success: true, message: 'Assignment updated.', assignment: a });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /assignments/:id — delete OWN assignment
+router.delete('/assignments/:id', async (req, res) => {
+  try {
+    const a = await ownAssignment(req, res); if (!a) return;
+    await a.deleteOne();
+    res.json({ success: true, message: 'Assignment deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /assignments/:id/submissions — full submissions for an OWN assignment
+router.get('/assignments/:id/submissions', async (req, res) => {
+  try {
+    const a = await ownAssignment(req, res); if (!a) return;
+    res.json({ success: true, assignment: { _id: a._id, title: a.title, subject: a.subject, maxMarks: a.maxMarks, dueDate: a.dueDate }, submissions: a.submissions || [] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /assignments/:id/submissions/:studentId/file — download one submission's attachment
+router.get('/assignments/:id/submissions/:studentId/file', async (req, res) => {
+  try {
+    const a = await ownAssignment(req, res); if (!a) return;
+    const sub = (a.submissions || []).find(s => norm(s.studentId) === norm(req.params.studentId));
+    if (!sub || !sub.attachment) return res.status(404).json({ success: false, message: 'No attachment.' });
+    res.json({ success: true, attachment: sub.attachment, attachmentName: sub.attachmentName });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PUT /assignments/:id/submissions/:studentId — grade a submission with marks + remarks
+router.put('/assignments/:id/submissions/:studentId', async (req, res) => {
+  const { marks, grade, remarks } = req.body;
+  try {
+    const a = await ownAssignment(req, res); if (!a) return;
+    const sub = (a.submissions || []).find(s => norm(s.studentId) === norm(req.params.studentId));
+    if (!sub) return res.status(404).json({ success: false, message: 'Submission not found.' });
+    if (marks !== undefined && marks !== null && marks !== '') {
+      const m = Number(marks);
+      if (!Number.isFinite(m) || m < 0 || m > a.maxMarks) return res.status(400).json({ success: false, message: `Marks must be 0–${a.maxMarks}.` });
+      sub.marks = m;
+    }
+    if (grade !== undefined) sub.grade = String(grade).trim();
+    if (remarks !== undefined) sub.remarks = String(remarks).trim();
+    sub.gradedBy = req.user.name;
+    sub.gradedAt = new Date();
+    await a.save();
+    res.json({ success: true, message: 'Submission graded.', submission: sub });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Study Materials ─────────────────────────────────────────────────────────
+// GET /materials — the faculty's own uploaded materials (blob omitted)
+router.get('/materials', async (req, res) => {
+  try {
+    const materials = await StudyMaterial.find({ createdBy: req.user._id }).sort({ createdAt: -1 }).select('-attachment');
+    res.json({ success: true, count: materials.length, materials });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /materials — upload a study material for an assigned class/subject
+router.post('/materials', async (req, res) => {
+  const { title, description, subject, section, kind, attachment, attachmentName, attachmentType } = req.body;
+  if (!title || !subject) return res.status(400).json({ success: false, message: 'Title and subject are required.' });
+  if (!attachment) return res.status(400).json({ success: false, message: 'Please attach a file to upload.' });
+  if (attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'File is too large (max 5 MB).' });
+  const sub = matchSubject(req.user, subject, section);
+  if (!sub) return res.status(403).json({ success: false, message: 'You are not assigned to this subject/section.' });
+  try {
+    const material = await StudyMaterial.create({
+      title: title.trim(), description: (description || '').trim(),
+      subject: sub.name, subjectCode: sub.code || '',
+      department: sub.department, semester: sub.semester || '', section: sub.section || '',
+      kind: StudyMaterial.KINDS.includes(kind) ? kind : 'Notes',
+      attachment, attachmentName: attachmentName || '', attachmentType: attachmentType || '',
+      createdBy: req.user._id, facultyName: req.user.name,
+    });
+    res.status(201).json({ success: true, message: 'Material uploaded.', material: { ...material.toObject(), attachment: undefined } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PUT /materials/:id — edit OWN material metadata (and optionally replace file)
+router.put('/materials/:id', async (req, res) => {
+  try {
+    const m = await StudyMaterial.findById(req.params.id);
+    if (!m) return res.status(404).json({ success: false, message: 'Material not found.' });
+    if (String(m.createdBy) !== String(req.user._id)) return res.status(403).json({ success: false, message: 'You can only edit your own materials.' });
+    const { title, description, kind, attachment, attachmentName, attachmentType } = req.body;
+    if (title !== undefined) m.title = title.trim();
+    if (description !== undefined) m.description = description.trim();
+    if (kind !== undefined && StudyMaterial.KINDS.includes(kind)) m.kind = kind;
+    if (attachment) {
+      if (attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'File is too large (max 5 MB).' });
+      m.attachment = attachment; m.attachmentName = attachmentName || ''; m.attachmentType = attachmentType || '';
+    }
+    await m.save();
+    res.json({ success: true, message: 'Material updated.', material: { ...m.toObject(), attachment: undefined } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /materials/:id — delete OWN material
+router.delete('/materials/:id', async (req, res) => {
+  try {
+    const m = await StudyMaterial.findById(req.params.id);
+    if (!m) return res.status(404).json({ success: false, message: 'Material not found.' });
+    if (String(m.createdBy) !== String(req.user._id)) return res.status(403).json({ success: false, message: 'You can only delete your own materials.' });
+    await m.deleteOne();
+    res.json({ success: true, message: 'Material deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /materials/:id/file — download an OWN material's file
+router.get('/materials/:id/file', async (req, res) => {
+  try {
+    const m = await StudyMaterial.findById(req.params.id).select('attachment attachmentName createdBy');
+    if (!m || !m.attachment) return res.status(404).json({ success: false, message: 'No file.' });
+    if (String(m.createdBy) !== String(req.user._id)) return res.status(403).json({ success: false, message: 'Not your material.' });
+    res.json({ success: true, attachment: m.attachment, attachmentName: m.attachmentName });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Analytics ───────────────────────────────────────────────────────────────
+// GET /analytics — aggregated teaching analytics scoped to the faculty's data
+router.get('/analytics', async (req, res) => {
+  try {
+    const fac = req.user;
+    const subjects = fac.assignedSubjects || [];
+    const subjectNames = new Set(subjects.map(s => norm(s.name)));
+    const classes = assignedClasses(fac);
+
+    const students = await User.find(studentsFilter(fac)).select('_id studentId department semester section');
+    const studentIds = students.map(s => s._id);
+
+    // Attendance percentage (overall) across the faculty's assigned subjects.
+    const attRecords = await Attendance.find({
+      student: { $in: studentIds },
+      subject: { $in: subjects.map(s => s.name) },
+    }).select('status subject');
+    const attTotal = attRecords.length;
+    const attPresent = attRecords.filter(r => r.status !== 'Absent').length;
+    const attendancePercentage = attTotal ? Math.round((attPresent / attTotal) * 100) : 0;
+
+    // Marks scoped to the faculty's subjects + students.
+    const marks = await Marks.find({
+      student: { $in: studentIds },
+      subject: { $in: subjects.map(s => s.name) },
+    }).select('subject semester total grade internalMarks externalMarks studentId');
+
+    // Subject-wise average performance + pass/fail.
+    const bySubject = {};
+    for (const m of marks) {
+      const k = m.subject;
+      (bySubject[k] ||= { subject: k, count: 0, sum: 0, pass: 0, fail: 0 });
+      bySubject[k].count++;
+      bySubject[k].sum += m.total || 0;
+      if ((m.total || 0) >= 50) bySubject[k].pass++; else bySubject[k].fail++;
+    }
+    const subjectWise = Object.values(bySubject).map(s => ({
+      subject: s.subject, count: s.count, average: s.count ? Math.round(s.sum / s.count) : 0,
+      pass: s.pass, fail: s.fail,
+    })).sort((a, b) => b.average - a.average);
+
+    // Marks distribution by grade band.
+    const gradeOrder = ['O', 'A+', 'A', 'B+', 'B', 'RA'];
+    const distMap = {};
+    for (const m of marks) distMap[m.grade] = (distMap[m.grade] || 0) + 1;
+    const marksDistribution = gradeOrder.filter(g => distMap[g]).map(g => ({ grade: g, count: distMap[g] }));
+
+    // Overall pass/fail.
+    const passCount = marks.filter(m => (m.total || 0) >= 50).length;
+    const failCount = marks.length - passCount;
+
+    // Assignment completion per assignment (submissions vs class size).
+    const assignments = await Assignment.find({ createdBy: fac._id }).select('title subject department semester section submissions dueDate');
+    const classSize = cls => students.filter(s =>
+      norm(s.department) === norm(cls.department) &&
+      (norm(cls.semester) === '' || norm(s.semester) === norm(cls.semester)) &&
+      (norm(cls.section) === '' || norm(s.section) === norm(cls.section))).length;
+    const assignmentCompletion = assignments.map(a => {
+      const expected = classSize(a) || 0;
+      const submitted = (a.submissions || []).length;
+      return {
+        title: a.title, subject: a.subject,
+        submitted, expected,
+        pct: expected ? Math.round((submitted / expected) * 100) : 0,
+      };
+    });
+
+    res.json({
+      success: true,
+      analytics: {
+        attendancePercentage,
+        attendanceTotals: { present: attPresent, absent: attTotal - attPresent, total: attTotal },
+        subjectWise,
+        marksDistribution,
+        passFail: { pass: passCount, fail: failCount, total: marks.length },
+        assignmentCompletion,
+        teachingSummary: {
+          subjects: subjects.length,
+          classes: classes.length,
+          students: students.length,
+          assignments: assignments.length,
+          materials: await StudyMaterial.countDocuments({ createdBy: fac._id }),
+          marksRecords: marks.length,
+        },
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Notifications ───────────────────────────────────────────────────────────
+// GET /notifications — a unified read-only feed aggregated from existing data:
+// admin/dept notices, new submissions on the faculty's assignments, pending leave/OD,
+// and recent timetable changes for the faculty's classes.
+router.get('/notifications', async (req, res) => {
+  try {
+    const fac = req.user;
+    const classes = assignedClasses(fac);
+    const depts = [...new Set(classes.map(c => c.department).filter(Boolean))];
+    const items = [];
+
+    // Admin & department notices (not the faculty's own).
+    const notices = await Notice.find({
+      status: 'published',
+      createdBy: { $ne: fac._id },
+      $or: [{ audience: 'all' }, { audience: { $in: depts } }],
+    }).sort({ publishedAt: -1, createdAt: -1 }).limit(15).select('title category publishedAt createdAt postedBy');
+    notices.forEach(n => items.push({
+      type: 'notice', icon: '📢', title: n.title,
+      detail: `${n.category} · by ${n.postedBy || 'Admin'}`,
+      date: n.publishedAt || n.createdAt,
+    }));
+
+    // Student submission alerts on the faculty's assignments.
+    const assignments = await Assignment.find({ createdBy: fac._id }).select('title submissions');
+    assignments.forEach(a => (a.submissions || []).forEach(s => items.push({
+      type: 'submission', icon: '📥', title: `New submission: ${a.title}`,
+      detail: `${s.studentName || s.studentId} submitted`,
+      date: s.submittedAt,
+    })));
+
+    // Pending leave/OD requests in the faculty's departments.
+    const leaves = await Leave.find({ department: { $in: depts }, status: 'Pending' })
+      .sort({ createdAt: -1 }).limit(15).select('name studentId leaveType reason createdAt');
+    leaves.forEach(l => items.push({
+      type: 'leave', icon: '📩', title: `Pending ${l.leaveType || 'Leave'}: ${l.name || l.studentId}`,
+      detail: (l.reason || '').slice(0, 60),
+      date: l.createdAt,
+    }));
+
+    // Recent timetable changes for the faculty's classes.
+    if (classes.length) {
+      const timetables = await Timetable.find({
+        status: 'published',
+        $or: classes.map(c => {
+          const q = { department: c.department };
+          if (c.semester) q.semester = c.semester;
+          if (c.section)  q.section  = c.section;
+          return q;
+        }),
+      }).sort({ updatedAt: -1 }).limit(10).select('department semester section updatedAt');
+      timetables.forEach(t => items.push({
+        type: 'timetable', icon: '📅', title: `Timetable updated: ${t.department} · Sem ${t.semester}${t.section ? ` · ${t.section}` : ''}`,
+        detail: 'Published timetable changed',
+        date: t.updatedAt,
+      }));
+    }
+
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json({ success: true, count: items.length, notifications: items.slice(0, 50) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Profile update ──────────────────────────────────────────────────────────
+// PUT /profile — the faculty updates their own editable profile fields.
+router.put('/profile', async (req, res) => {
+  const { name, phone, email, designation, qualification, experience, photo } = req.body;
+  if (name !== undefined && !String(name).trim()) return res.status(400).json({ success: false, message: 'Name cannot be empty.' });
+  if (photo !== undefined && typeof photo === 'string' && photo.length > MAX_FILE) {
+    return res.status(400).json({ success: false, message: 'Photo is too large. Please use an image under 5 MB.' });
+  }
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+    if (name !== undefined) user.name = String(name).trim();
+    if (phone !== undefined) user.phone = String(phone).trim();
+    if (email !== undefined && String(email).trim()) user.email = String(email).trim().toLowerCase();
+    if (designation !== undefined) user.designation = String(designation).trim();
+    if (qualification !== undefined) user.qualification = String(qualification).trim();
+    if (experience !== undefined) user.experience = String(experience).trim();
+    if (photo !== undefined) user.photo = photo;
+    await user.save();
+    const faculty = user.toObject(); delete faculty.password;
+    res.json({ success: true, message: 'Profile updated.', faculty });
+  } catch (err) {
+    if (err.code === 11000) return res.status(409).json({ success: false, message: 'That email is already in use.' });
     res.status(500).json({ success: false, message: err.message });
   }
 });

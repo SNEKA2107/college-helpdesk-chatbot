@@ -1,0 +1,258 @@
+/* Role-selection ("Choose Your Role") entry screen.
+   Styling follows the existing CampusAssist auth pages: a local CSS-variable
+   palette scoped to .page, overridden per data-theme (dark / light / night).
+   No Tailwind — consistent with the rest of the app. */
+
+.page {
+  --primary: #4E85BF;
+  --primary-light: #89AACC;
+  --accent-purple: #8b5cf6;
+  --accent-purple-light: #a78bfa;
+  --bg: #060608;
+  --bg-2: #0b0b12;
+  --text: #f2f2f5;
+  --text-muted: #9a9aa6;
+  --card-bg: rgba(255, 255, 255, 0.035);
+  --card-border: rgba(255, 255, 255, 0.09);
+  --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  --chip-bg: rgba(255, 255, 255, 0.05);
+
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 20px;
+  box-sizing: border-box;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1100px 700px at 15% -10%, rgba(78, 133, 191, 0.16), transparent 60%),
+    radial-gradient(1000px 700px at 100% 110%, rgba(139, 92, 246, 0.16), transparent 60%),
+    linear-gradient(160deg, var(--bg) 0%, var(--bg-2) 100%);
+}
+
+:global(html[data-theme="light"]) .page {
+  --bg: #eef2f8;
+  --bg-2: #e5ebf5;
+  --text: #0f172a;
+  --text-muted: #5a6678;
+  --card-bg: rgba(255, 255, 255, 0.72);
+  --card-border: rgba(15, 23, 42, 0.08);
+  --card-shadow: 0 12px 40px rgba(37, 60, 105, 0.14);
+  --chip-bg: rgba(15, 23, 42, 0.045);
+}
+
+:global(html[data-theme="night"]) .page {
+  --bg: #0c0906;
+  --bg-2: #140f08;
+  --text: #f5e6c8;
+  --text-muted: #9a7c58;
+  --primary: #bf8a2e;
+  --primary-light: #d4a84e;
+  --accent-purple: #c9962f;
+  --accent-purple-light: #e0b455;
+  --card-bg: rgba(255, 255, 255, 0.035);
+  --card-border: rgba(212, 168, 78, 0.14);
+}
+
+/* Decorative floating orbs — purely presentational. */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+.orb1 { width: 420px; height: 420px; top: -120px; left: -80px;
+  background: radial-gradient(circle, rgba(78, 133, 191, 0.55), transparent 70%); }
+.orb2 { width: 460px; height: 460px; bottom: -160px; right: -100px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.5), transparent 70%); }
+
+/* ── Header ── */
+.header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 640px;
+  margin-bottom: 44px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.brandName {
+  background: linear-gradient(90deg, var(--primary-light), var(--accent-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.subtitle {
+  margin: 14px 0 0;
+  font-size: clamp(14px, 2.4vw, 17px);
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.9;
+}
+.desc {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ── Cards grid ── */
+.grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  width: 100%;
+  max-width: 1040px;
+}
+
+/* ── Role card ── */
+.card {
+  --accent: var(--primary);
+  --accent-2: var(--accent-purple);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 16px;
+  padding: 28px 26px;
+  border-radius: 22px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+/* Gradient accent hairline that appears along the top on hover/focus. */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.card:hover,
+.card:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.4),
+    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+  outline: none;
+}
+.card:hover::before,
+.card:focus-visible::before { opacity: 1; }
+.card:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 22px 60px rgba(0, 0, 0, 0.4);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.iconBadge {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.arrow {
+  color: var(--accent);
+  opacity: 0.75;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.card:hover .arrow,
+.card:focus-visible .arrow {
+  transform: translateX(6px);
+  opacity: 1;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.features li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+.cardCta {
+  margin-top: 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ── Footer links ── */
+.footerLinks {
+  position: relative;
+  z-index: 1;
+  margin-top: 36px;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.footerLinks a {
+  color: var(--primary-light);
+  font-weight: 600;
+  text-decoration: none;
+}
+.footerLinks a:hover { text-decoration: underline; }
+.sep { margin: 0 10px; opacity: 0.5; }
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; max-width: 440px; }
+  .page { padding: 44px 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrow, .card, .card::before { transition: none; }
+}

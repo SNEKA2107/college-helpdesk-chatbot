@@ -5,6 +5,7 @@ import StudentLayout from '../layouts/StudentLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import FacultyLayout from '../layouts/FacultyLayout';
 
+const RoleSelect = lazy(() => import('../pages/RoleSelect'));
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
 const FacultyLogin = lazy(() => import('../pages/FacultyLogin'));
@@ -87,7 +88,10 @@ export default function AppRoutes() {
     <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>}>
       <Routes>
         {/* ── Public ── */}
-        <Route path="/" element={<Landing />} />
+        {/* Entry point is now the role-selection screen; the original marketing
+            landing is preserved (non-destructively) at /welcome. */}
+        <Route path="/" element={<RoleSelect />} />
+        <Route path="/welcome" element={<Landing />} />
         <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
         <Route path="/register" element={<RedirectIfAuthed><Register /></RedirectIfAuthed>} />
 

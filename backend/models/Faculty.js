@@ -2,10 +2,14 @@ const mongoose = require('mongoose');
 
 // Phase 7 — Faculty Directory. Admin-managed; the Copilot text-searches it to
 // answer "who teaches X", "who is the HOD", "what is the faculty email", etc.
-const DEPARTMENTS = ['IT', 'CSE', 'AIML', 'AIDS', 'Bioinformatics', 'ECE', 'EEE', 'MECH', 'CIVIL', 'General'];
-
+//
+// Since the dynamic-data fix this record is always paired with a User account
+// (role:'faculty') that provides the actual login — see routes/faculty.js. The
+// `user` link below joins the two; it is optional so directory rows created
+// before the change keep working.
 const facultySchema = new mongoose.Schema({
   name:           { type: String, required: true, trim: true },
+  user:           { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
   department:     { type: String, default: 'General', index: true },
   designation:    { type: String, default: 'Assistant Professor' },
   email:          { type: String, default: '', lowercase: true, trim: true },
@@ -20,7 +24,4 @@ const facultySchema = new mongoose.Schema({
 // Keyword retrieval over the fields students ask about.
 facultySchema.index({ name: 'text', subjects: 'text', department: 'text', designation: 'text' });
 
-const Faculty = mongoose.model('Faculty', facultySchema);
-Faculty.DEPARTMENTS = DEPARTMENTS;
-
-module.exports = Faculty;
+module.exports = mongoose.model('Faculty', facultySchema);

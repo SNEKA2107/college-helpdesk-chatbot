@@ -8,6 +8,19 @@ export function setSession(user, token) {
   localStorage.setItem('ca_token', token);
 }
 
+/**
+ * Merge fields into the cached user without touching the token.
+ * Used when a server response changes something the UI keys off — e.g. clearing
+ * `mustChangePassword` after the temporary password has been replaced.
+ */
+export function updateSessionUser(patch) {
+  const user = getUser();
+  if (!user) return null;
+  const next = { ...user, ...patch };
+  localStorage.setItem('ca_user', JSON.stringify(next));
+  return next;
+}
+
 export function clearSession() {
   localStorage.removeItem('ca_user');
   localStorage.removeItem('ca_token');

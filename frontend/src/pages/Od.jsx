@@ -5,13 +5,14 @@ import { getUser } from '../services/auth';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../utils/format';
 import { validateUploadFile, readFileAsDataURL, previewDataUrl } from '../utils/file';
+import { useDepartments } from '../hooks/useDepartments';
 
 const OD_TYPES = [
   'Technical Symposium', 'Hackathon / Coding Contest', 'Industrial Visit', 'Guest Lecture / Seminar',
   'Sports Event', 'Cultural Event', 'Paper Presentation', 'Workshop / Training',
   'NSS / NCC Activity', 'Internship', 'Other',
 ];
-const DEPTS = ['IT', 'CSE', 'AIML', 'AIDS', 'ECE', 'EEE', 'MECH', 'CIVIL'];
+// Departments come from the Department collection (audit finding H-1).
 const SEMS = ['5th', '1st', '2nd', '3rd', '4th', '6th', '7th', '8th'];
 
 const STATUS_BADGE = {
@@ -29,6 +30,7 @@ const GUIDELINES = [
 ];
 
 export default function Od() {
+  const { codes: DEPTS } = useDepartments({ academicOnly: true });
   const showToast = useToast();
   const user = getUser();
   const todayStr = new Date().toISOString().split('T')[0];
@@ -39,9 +41,16 @@ export default function Od() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: user?.name || '', regNo: user?.studentId || '',
-    dept: DEPTS[0], sem: SEMS[0],
+    // Prefer the student's own department; the list now loads asynchronously so
+    // it cannot be indexed at first render.
+    dept: user?.department || '', sem: user?.semester || SEMS[0],
     odType: '', eventName: '', venue: '', fromDate: '', toDate: '', reason: '',
   });
+
+  // Once departments arrive, fall back to the first one if the student has none.
+  useEffect(() => {
+    if (!form.dept && DEPTS.length) setForm(f => (f.dept ? f : { ...f, dept: DEPTS[0] }));
+  }, [DEPTS, form.dept]);
   const set = (key, value) => setForm(f => ({ ...f, [key]: value }));
   const [doc, setDoc] = useState(null); // { document, documentName, documentType }
 

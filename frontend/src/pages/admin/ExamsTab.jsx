@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { apiCall } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
-import { DEPARTMENTS, SEMESTERS } from './shared';
+import { useDepartments } from '../../hooks/useDepartments';
 import { toTimeInput } from '../../utils/format';
 
 const rowInputStyle = { padding: '6px 8px', fontSize: 12.5 };
@@ -14,6 +14,8 @@ const emptyPrac = () => ({ date: '', subject: '', lab: '', time: '' });
 const blankForm = { department: '', year: '', section: '', semester: '', academicYear: '', theoryStart: '', theoryEnd: '', hallTicketAvailable: '' };
 
 export default function ExamsTab({ data, setData }) {
+  // Departments come from the Department collection, not a hardcoded list (audit H-1).
+  const { codes: DEPARTMENTS } = useDepartments({ academicOnly: true });
   const showToast = useToast();
   const exams = data.exams || [];
   const [selectedId, setSelectedId] = useState('');

@@ -3,25 +3,19 @@ import { apiCall } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import { formatDate } from '../../utils/format';
 import { CAT_BADGE } from './shared';
+import { useDepartments } from '../../hooks/useDepartments';
 
 const CATEGORIES = ['general', 'urgent', 'exam', 'fee', 'holiday'];
 
-// Audience options — must stay in sync with AUDIENCES in backend/models/Notice.js.
-const AUDIENCES = [
+// Role audiences are fixed. Department audiences are built from the Department
+// collection at render time, so a newly created department can be targeted
+// immediately — this used to be a hardcoded copy of the model enum that drifted
+// out of sync with it (audit finding H-1).
+const ROLE_AUDIENCES = [
   { value: 'all', label: 'Everyone' },
   { value: 'student', label: 'All Students' },
   { value: 'admin', label: 'Admins only' },
-  { value: 'IT', label: 'Dept · IT' },
-  { value: 'CSE', label: 'Dept · CSE' },
-  { value: 'AIML', label: 'Dept · AIML' },
-  { value: 'AIDS', label: 'Dept · AIDS' },
-  { value: 'Bioinformatics', label: 'Dept · Bioinformatics' },
-  { value: 'ECE', label: 'Dept · ECE' },
-  { value: 'EEE', label: 'Dept · EEE' },
-  { value: 'MECH', label: 'Dept · MECH' },
-  { value: 'CIVIL', label: 'Dept · CIVIL' },
 ];
-const AUDIENCE_LABEL = Object.fromEntries(AUDIENCES.map(a => [a.value, a.label]));
 
 const STATUS_FILTERS = [['published', 'Published'], ['draft', 'Drafts'], ['archived', 'Archived']];
 const STATUS_BADGE = { published: 'badge-success', draft: 'badge-warning', archived: 'badge-muted' };
@@ -29,6 +23,14 @@ const STATUS_BADGE = { published: 'badge-success', draft: 'badge-warning', archi
 const EMPTY_FORM = { title: '', content: '', category: 'general', audience: 'all', expiresAt: '', pinned: false };
 
 export default function NoticesTab({ data, setData, loaded }) {
+  const { departments } = useDepartments({ academicOnly: true });
+  const AUDIENCES = useMemo(() => [
+    ...ROLE_AUDIENCES,
+    ...departments.map(d => ({ value: d.code, label: `Dept · ${d.code}` })),
+  ], [departments]);
+  const AUDIENCE_LABEL = useMemo(
+    () => Object.fromEntries(AUDIENCES.map(a => [a.value, a.label])), [AUDIENCES]);
+
   const showToast = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
   const [statusFilter, setStatusFilter] = useState('published');

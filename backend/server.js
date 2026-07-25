@@ -84,7 +84,17 @@ mongoose.connect(process.env.MONGO_URI, {
   serverSelectionTimeoutMS: 15000,
   socketTimeoutMS: 45000,
 })
-  .then(() => console.log('✅ MongoDB Atlas connected successfully'))
+  .then(async () => {
+    console.log('✅ MongoDB Atlas connected successfully');
+    // Materialise the Department collection on first boot. Idempotent, and it
+    // adopts any department code already present in existing data so nothing
+    // that worked before this change stops working.
+    try {
+      await require('./services/departments').bootstrapDepartments();
+    } catch (err) {
+      console.error('⚠️  Department bootstrap failed:', err.message);
+    }
+  })
   .catch(err => {
     console.error('❌ MongoDB connection error:', err.message);
     console.log('⚠️  Set MONGO_URI in backend/.env and restart');
@@ -98,6 +108,7 @@ const authRouter = require('./routes/auth');
 app.use('/api/auth/login',    authLimiter, authRouter);
 app.use('/api/auth/register', authLimiter, authRouter);
 app.use('/api/auth',          authRouter);
+app.use('/api/departments', require('./routes/departments'));
 app.use('/api/students',  require('./routes/students'));
 app.use('/api/requests',  require('./routes/requests'));
 app.use('/api/leave',     require('./routes/leave'));

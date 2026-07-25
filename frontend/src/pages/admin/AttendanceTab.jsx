@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiCall } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
-import { DEPARTMENTS, SEMESTERS } from './shared';
+import { SEMESTERS } from './shared';
+import { useDepartments } from '../../hooks/useDepartments';
 
 const today = () => new Date().toISOString().split('T')[0];
 const pctBadge = p => (p >= 75 ? 'badge-success' : p >= 60 ? 'badge-warning' : 'badge-danger');
 
 export default function AttendanceTab({ data }) {
+  // Departments come from the Department collection, not a hardcoded list (audit H-1).
+  const { codes: DEPARTMENTS } = useDepartments({ academicOnly: true });
   const showToast = useToast();
-  const [dept, setDept] = useState('IT');
+  // Empty until the department list arrives — 'IT' was hardcoded here, which
+  // silently loaded the wrong roster for a college without an IT department.
+  const [dept, setDept] = useState('');
   const [sem, setSem] = useState('2nd');
   const [subject, setSubject] = useState('');
   const [date, setDate] = useState(today);
@@ -17,6 +22,11 @@ export default function AttendanceTab({ data }) {
   const [saving, setSaving] = useState(false);
   const [lookupId, setLookupId] = useState('');
   const [lookup, setLookup] = useState(null); // { loading } | { error } | { summary, overall, totalClasses }
+
+  // Select the first real department once the list has loaded.
+  useEffect(() => {
+    if (!dept && DEPARTMENTS.length) setDept(DEPARTMENTS[0]);
+  }, [DEPARTMENTS, dept]);
 
   function loadStudents() {
     const list = data.students.filter(s => s.department === dept && s.semester === sem && s.isActive !== false);

@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiCall } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
-import { DEPARTMENTS, SEMESTERS } from './shared';
+import { SEMESTERS } from './shared';
+import { useDepartments } from '../../hooks/useDepartments';
 
 const TT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DEFAULT_SLOTS = '9–10 AM, 10–11 AM, 11–12 PM, 12–1 PM, 1–2 PM, 2–3 PM, 3–4 PM';
 
 export default function TimetableTab({ data, setData }) {
+  // Departments come from the Department collection, not a hardcoded list (audit H-1).
+  const { codes: DEPARTMENTS } = useDepartments({ academicOnly: true });
   const showToast = useToast();
   const [existingId, setExistingId] = useState('');
-  const [dept, setDept] = useState('IT');
+  // Empty until the department list arrives — 'IT' was hardcoded here, so a
+  // college without an IT department started on a department that does not exist.
+  const [dept, setDept] = useState('');
   const [sem, setSem] = useState('2nd');
   const [studyYear, setStudyYear] = useState('');   // cohort study-year (e.g. II) — optional
   const [section, setSection] = useState('');        // section (e.g. A) — optional
@@ -18,6 +23,11 @@ export default function TimetableTab({ data, setData }) {
   // grid = { slots: string[], cells: { [day]: string[] } } or null while hidden
   const [grid, setGrid] = useState(null);
   const [conflicts, setConflicts] = useState([]);
+
+  // Select the first real department once the list has loaded.
+  useEffect(() => {
+    if (!dept && DEPARTMENTS.length) setDept(DEPARTMENTS[0]);
+  }, [DEPARTMENTS, dept]);
 
   const current = data.timetables.find(t => t._id === existingId) || null;
   const STATUS_BADGE = { draft: 'badge-warning', published: 'badge-success', archived: 'badge-muted' };

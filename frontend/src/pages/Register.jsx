@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../services/api';
 import AuthThemeButton from '../components/AuthThemeButton';
 import s from '../styles/Register.module.css';
+import { useDepartments } from '../hooks/useDepartments';
 
 const STRENGTH_LEVELS = [
   { w: '0%',   c: '#cbd5e1', l: 'Enter a password' },
@@ -21,10 +22,12 @@ function strengthOf(pw) {
   return STRENGTH_LEVELS[score] || STRENGTH_LEVELS[0];
 }
 
-const DEPTS = ['IT', 'CSE', 'ECE', 'EEE', 'MECH', 'CIVIL'];
+// Departments are loaded from the server (audit finding H-1) — a hardcoded list
+// here meant a new college's departments could never be picked at registration.
 const SEMESTERS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
 export default function Register() {
+  const { codes: DEPTS } = useDepartments({ academicOnly: true });
   const navigate = useNavigate();
   const [form, setForm] = useState({
     firstName: '', lastName: '', studentId: '', email: '',

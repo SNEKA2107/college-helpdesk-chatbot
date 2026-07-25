@@ -8,6 +8,7 @@ const Timetable     = require('../models/Timetable');
 const Assignment    = require('../models/Assignment');
 const StudyMaterial = require('../models/StudyMaterial');
 const { protect, facultyOnly } = require('../middleware/auth');
+const { fail } = require('../utils/apiError');
 
 // Max base64 data-URL size for uploaded files (~7 MB, matching the profile-photo guard).
 const MAX_FILE = 7 * 1024 * 1024;
@@ -23,14 +24,17 @@ router.use(protect, facultyOnly);
 // ── Helpers ────────────────────────────────────────────────────────────────
 const norm = v => (v == null ? '' : String(v).trim().toLowerCase());
 
-// Distinct (department, semester, section) classes derived from assigned subjects.
+// Distinct (department, year, semester, section) classes derived from assigned
+// subjects. `year` is included because the admin assignment editor can pin an
+// assignment to one academic year; rows without it keep the previous behaviour
+// of covering every year.
 function assignedClasses(fac) {
   const seen = new Set(), out = [];
   for (const s of fac.assignedSubjects || []) {
-    const key = `${norm(s.department)}|${norm(s.semester)}|${norm(s.section)}`;
+    const key = `${norm(s.department)}|${norm(s.year)}|${norm(s.semester)}|${norm(s.section)}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ department: s.department, semester: s.semester, section: s.section });
+    out.push({ department: s.department, year: s.year, semester: s.semester, section: s.section });
   }
   return out;
 }
@@ -56,10 +60,13 @@ function studentsFilter(fac) {
   if (!classes.length) return { _id: null }; // matches nothing
   return {
     role: 'student',
+    // Each field narrows the class only when the assignment actually specifies
+    // it, so a blank semester/section/year still means "all of them".
     $or: classes.map(c => {
       const q = { department: c.department };
       if (c.semester) q.semester = c.semester;
       if (c.section)  q.section  = c.section;
+      if (c.year)     q.year     = c.year;
       return q;
     }),
   };
@@ -121,7 +128,7 @@ router.get('/dashboard', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -134,7 +141,7 @@ router.get('/students', async (req, res) => {
       .sort({ studentId: 1 });
     res.json({ success: true, count: students.length, students });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -156,7 +163,7 @@ router.get('/students/:studentId', async (req, res) => {
     const marks = await Marks.find({ student: student._id }).sort({ semester: 1, subject: 1 });
     res.json({ success: true, student, attendance, marks });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -175,7 +182,7 @@ router.get('/attendance', async (req, res) => {
     const records = await Attendance.find(filter).sort({ date: -1 }).limit(500);
     res.json({ success: true, count: records.length, records });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -198,13 +205,13 @@ router.post('/attendance', async (req, res) => {
       const result = await Attendance.findOneAndUpdate(
         { student: student._id, subject, date: day },
         { $set: { status: r.status || 'Present', markedBy: req.user.name }, $setOnInsert: { studentId: student.studentId } },
-        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, rawResult: true }
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, includeResultMetadata: true }
       );
       if (result.lastErrorObject?.updatedExisting) updated++; else created++;
     }
     res.status(201).json({ success: true, message: `${created} marked, ${updated} updated${skipped ? `, ${skipped} skipped` : ''}`, created, updated, skipped });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -223,7 +230,7 @@ router.get('/marks', async (req, res) => {
     const marks = await Marks.find(filter).sort({ studentId: 1 });
     res.json({ success: true, count: marks.length, marks });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -257,13 +264,13 @@ router.post('/marks', async (req, res) => {
         },
         $setOnInsert: { studentId: studentId.toUpperCase(), published: false },
       },
-      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, rawResult: true }
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, includeResultMetadata: true }
     );
     const created = !record.lastErrorObject?.updatedExisting;
     res.status(created ? 201 : 200).json({ success: true, message: created ? 'Marks saved (unpublished)' : 'Marks updated', record: record.value });
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ success: false, message: 'Marks already exist for this student/semester/subject.' });
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -281,7 +288,7 @@ router.post('/marks/publish', async (req, res) => {
     const result = await Marks.updateMany(q, { $set: { published: true } });
     res.json({ success: true, message: `Published ${result.modifiedCount} record(s) for ${subject}.`, published: result.modifiedCount });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -295,7 +302,7 @@ router.get('/leaves', async (req, res) => {
     const leaves = await Leave.find(filter).sort({ createdAt: -1 }).limit(200);
     res.json({ success: true, count: leaves.length, leaves });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -318,7 +325,7 @@ router.put('/leaves/:id', async (req, res) => {
     await leave.save();
     res.json({ success: true, message: `Request ${status.toLowerCase()}.`, leave });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -331,7 +338,7 @@ router.get('/notices', async (req, res) => {
       .select('-attachment');
     res.json({ success: true, count: notices.length, notices });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -355,7 +362,7 @@ router.post('/notices', async (req, res) => {
     });
     res.status(201).json({ success: true, message: 'Notice posted.', notice });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -376,7 +383,7 @@ router.put('/notices/:id', async (req, res) => {
     await notice.save();
     res.json({ success: true, message: 'Notice updated.', notice });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -391,7 +398,7 @@ router.delete('/notices/:id', async (req, res) => {
     await notice.deleteOne();
     res.json({ success: true, message: 'Notice deleted.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -403,7 +410,7 @@ router.get('/notices/:id/attachment', async (req, res) => {
     if (String(notice.createdBy) !== String(req.user._id)) return res.status(403).json({ success: false, message: 'Not your notice.' });
     res.json({ success: true, attachment: notice.attachment, attachmentName: notice.attachmentName });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -419,12 +426,13 @@ router.get('/timetable', async (req, res) => {
         const q = { department: c.department };
         if (c.semester) q.semester = c.semester;
         if (c.section)  q.section  = c.section;
+        if (c.year)     q.year     = c.year;
         return q;
       }),
     }).sort({ department: 1, semester: 1 });
     res.json({ success: true, timetables });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -448,7 +456,7 @@ router.get('/assignments', async (req, res) => {
     }));
     res.json({ success: true, count: assignments.length, assignments });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -475,7 +483,7 @@ router.post('/assignments', async (req, res) => {
     });
     res.status(201).json({ success: true, message: 'Assignment created.', assignment });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -508,7 +516,7 @@ router.put('/assignments/:id', async (req, res) => {
     await a.save();
     res.json({ success: true, message: 'Assignment updated.', assignment: a });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -519,7 +527,7 @@ router.delete('/assignments/:id', async (req, res) => {
     await a.deleteOne();
     res.json({ success: true, message: 'Assignment deleted.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -529,7 +537,7 @@ router.get('/assignments/:id/submissions', async (req, res) => {
     const a = await ownAssignment(req, res); if (!a) return;
     res.json({ success: true, assignment: { _id: a._id, title: a.title, subject: a.subject, maxMarks: a.maxMarks, dueDate: a.dueDate }, submissions: a.submissions || [] });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -541,7 +549,7 @@ router.get('/assignments/:id/submissions/:studentId/file', async (req, res) => {
     if (!sub || !sub.attachment) return res.status(404).json({ success: false, message: 'No attachment.' });
     res.json({ success: true, attachment: sub.attachment, attachmentName: sub.attachmentName });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -564,7 +572,7 @@ router.put('/assignments/:id/submissions/:studentId', async (req, res) => {
     await a.save();
     res.json({ success: true, message: 'Submission graded.', submission: sub });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -575,7 +583,7 @@ router.get('/materials', async (req, res) => {
     const materials = await StudyMaterial.find({ createdBy: req.user._id }).sort({ createdAt: -1 }).select('-attachment');
     res.json({ success: true, count: materials.length, materials });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -598,7 +606,7 @@ router.post('/materials', async (req, res) => {
     });
     res.status(201).json({ success: true, message: 'Material uploaded.', material: { ...material.toObject(), attachment: undefined } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -619,7 +627,7 @@ router.put('/materials/:id', async (req, res) => {
     await m.save();
     res.json({ success: true, message: 'Material updated.', material: { ...m.toObject(), attachment: undefined } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -632,7 +640,7 @@ router.delete('/materials/:id', async (req, res) => {
     await m.deleteOne();
     res.json({ success: true, message: 'Material deleted.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -644,7 +652,7 @@ router.get('/materials/:id/file', async (req, res) => {
     if (String(m.createdBy) !== String(req.user._id)) return res.status(403).json({ success: false, message: 'Not your material.' });
     res.json({ success: true, attachment: m.attachment, attachmentName: m.attachmentName });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -735,7 +743,7 @@ router.get('/analytics', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -800,7 +808,7 @@ router.get('/notifications', async (req, res) => {
     items.sort((a, b) => new Date(b.date) - new Date(a.date));
     res.json({ success: true, count: items.length, notifications: items.slice(0, 50) });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -827,7 +835,7 @@ router.put('/profile', async (req, res) => {
     res.json({ success: true, message: 'Profile updated.', faculty });
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ success: false, message: 'That email is already in use.' });
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 

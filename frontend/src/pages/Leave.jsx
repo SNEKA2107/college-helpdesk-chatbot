@@ -5,9 +5,12 @@ import { getUser } from '../services/auth';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../utils/format';
 import { validateUploadFile, readFileAsDataURL, previewDataUrl } from '../utils/file';
+import { useDepartments } from '../hooks/useDepartments';
 
 const LEAVE_TYPES = ['Medical Leave', 'Personal Leave', 'On Duty (OD) – Event', 'On Duty (OD) – Training', 'Emergency Leave', 'Family Function'];
-const DEPTS = ['IT', 'CSE', 'ECE', 'EEE', 'MECH'];
+// Departments come from the Department collection (audit finding H-1). The old
+// hardcoded five omitted AIML/AIDS/Bioinformatics/CIVIL, so those students could
+// not file a leave request under their own department.
 const SEMS = ['5th', '1st', '2nd', '3rd', '4th', '6th', '7th', '8th'];
 
 const LEAVE_BADGE = {
@@ -17,6 +20,7 @@ const LEAVE_BADGE = {
 };
 
 export default function Leave() {
+  const { codes: DEPTS } = useDepartments({ academicOnly: true });
   const showToast = useToast();
   const user = getUser();
   const todayStr = new Date().toISOString().split('T')[0];
@@ -27,10 +31,17 @@ export default function Leave() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: user?.name || '', regNo: user?.studentId || '',
-    dept: DEPTS[0], sem: SEMS[0],
+    // Prefer the student's own department; the list now loads asynchronously so
+    // it cannot be indexed at first render.
+    dept: user?.department || '', sem: user?.semester || SEMS[0],
     leaveType: '', fromDate: '', toDate: '', reason: '',
   });
   const set = (key, value) => setForm(f => ({ ...f, [key]: value }));
+
+  // Once departments arrive, fall back to the first one if the student has none.
+  useEffect(() => {
+    if (!form.dept && DEPTS.length) setForm(f => (f.dept ? f : { ...f, dept: DEPTS[0] }));
+  }, [DEPTS, form.dept]);
   // Supporting document (optional), held as a base64 data URL until submit.
   const [doc, setDoc] = useState(null); // { document, documentName, documentType }
 

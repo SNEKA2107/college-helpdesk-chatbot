@@ -1,11 +1,10 @@
 const mongoose = require('mongoose');
 
-// Department codes that may be targeted by a department-specific notice.
-// Kept in sync with the student-facing departments in models/User.js (excludes 'Admin').
-const DEPARTMENTS = ['IT', 'CSE', 'AIML', 'AIDS', 'Bioinformatics', 'ECE', 'EEE', 'MECH', 'CIVIL'];
-
-// Allowed audiences: everyone, a role, or a single department.
-const AUDIENCES = ['all', 'student', 'admin', ...DEPARTMENTS];
+// Non-department audiences. A notice may also target a single department by
+// storing its code here — validated against the Department collection in
+// routes/notices.js rather than a hardcoded enum, so new departments work
+// immediately (audit finding H-1).
+const ROLE_AUDIENCES = ['all', 'student', 'admin'];
 
 const noticeSchema = new mongoose.Schema({
   title:     { type: String, required: true },
@@ -21,7 +20,7 @@ const noticeSchema = new mongoose.Schema({
 
   // Audience targeting. 'all' = everyone, 'student'/'admin' = role-scoped,
   // a department code = that department's students only.
-  audience:  { type: String, enum: AUDIENCES, default: 'all' },
+  audience:  { type: String, default: 'all', trim: true },
 
   // When the notice went live. Set on publish; used for sort + "time ago".
   // Optional/nullable so drafts have no publish date; backfilled from createdAt for legacy rows.
@@ -52,7 +51,6 @@ const noticeSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Notice = mongoose.model('Notice', noticeSchema);
-Notice.DEPARTMENTS = DEPARTMENTS;
-Notice.AUDIENCES = AUDIENCES;
+Notice.ROLE_AUDIENCES = ROLE_AUDIENCES;
 
 module.exports = Notice;

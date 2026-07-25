@@ -2,6 +2,8 @@ const express = require('express');
 const { protect, adminOnly } = require('../middleware/auth');
 const Exam = require('../models/Exam');
 const { logAudit } = require('../utils/audit');
+const { fail, badRequest } = require('../utils/apiError');
+const { resolveDepartment } = require('../services/departments');
 
 const router = express.Router();
 
@@ -46,7 +48,7 @@ router.get('/', protect, async (req, res) => {
     if (!exam) return res.status(404).json({ success: false, message: 'No exam schedule has been published for your class yet.' });
     res.json({ success: true, exam });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the exam request.');
   }
 });
 
@@ -56,7 +58,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     const exams = await Exam.find().sort({ updatedAt: -1 });
     res.json({ success: true, exams });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the exam request.');
   }
 });
 
@@ -69,7 +71,7 @@ router.get('/schedule', protect, async (req, res) => {
     if (!exam) return res.status(404).json({ success: false, message: 'No exam schedule found.' });
     res.json({ success: true, schedule: exam.schedule });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the exam request.');
   }
 });
 
@@ -82,20 +84,28 @@ router.get('/practicals', protect, async (req, res) => {
     if (!exam) return res.status(404).json({ success: false, message: 'No exam schedule found.' });
     res.json({ success: true, practicals: exam.practicals });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the exam request.');
   }
 });
 
 // POST /api/exam — Admin: create exam schedule (starts as DRAFT)
 router.post('/', protect, adminOnly, async (req, res) => {
+  // Audit finding M-2: validate before Mongoose so a bad body is a 400, not a 500.
+  const { department, semester } = req.body || {};
+  if (!department) return badRequest(res, 'Department is required.');
+  if (!semester)   return badRequest(res, 'Semester is required.');
+
+  const dept = await resolveDepartment(department);
+  if (!dept.ok) return badRequest(res, dept.message);
+
   try {
-    const exam = await Exam.create({ ...req.body, status: 'draft', publishedAt: undefined });
+    const exam = await Exam.create({ ...req.body, department: dept.code, status: 'draft', publishedAt: undefined });
     await logAudit(req, 'exam.create', 'Exam', exam._id, {
       department: exam.department, semester: exam.semester, year: exam.year, section: exam.section,
     });
     res.status(201).json({ success: true, exam });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not create the exam schedule.');
   }
 });
 
@@ -110,7 +120,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     await logAudit(req, 'exam.update', 'Exam', exam._id, { status: exam.status });
     res.json({ success: true, exam });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the exam request.');
   }
 });
 
@@ -128,7 +138,7 @@ router.put('/:id/publish', protect, adminOnly, async (req, res) => {
     });
     res.json({ success: true, exam });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the exam request.');
   }
 });
 
@@ -140,7 +150,7 @@ router.put('/:id/archive', protect, adminOnly, async (req, res) => {
     await logAudit(req, 'exam.archive', 'Exam', exam._id, {});
     res.json({ success: true, exam });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the exam request.');
   }
 });
 

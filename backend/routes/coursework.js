@@ -2,6 +2,7 @@ const express       = require('express');
 const Assignment    = require('../models/Assignment');
 const StudyMaterial = require('../models/StudyMaterial');
 const { protect }   = require('../middleware/auth');
+const { fail } = require('../utils/apiError');
 
 // Student-facing coursework API (mounted at /api/coursework). Lets a student see the
 // assignments & study materials for THEIR OWN class, submit assignments, and download
@@ -61,7 +62,7 @@ router.get('/assignments', async (req, res) => {
     });
     res.json({ success: true, count: list.length, assignments: list });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load your coursework.');
   }
 });
 
@@ -73,7 +74,7 @@ router.get('/assignments/:id/file', async (req, res) => {
     if (!matchesStudent(a, req.user)) return res.status(403).json({ success: false, message: 'Not for your class.' });
     res.json({ success: true, attachment: a.attachment, attachmentName: a.attachmentName });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load your coursework.');
   }
 });
 
@@ -105,7 +106,7 @@ router.post('/assignments/:id/submit', async (req, res) => {
     await a.save();
     res.status(201).json({ success: true, message: existing ? 'Submission updated.' : 'Assignment submitted.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load your coursework.');
   }
 });
 
@@ -117,7 +118,7 @@ router.get('/materials', async (req, res) => {
     const materials = docs.filter(m => matchesStudent(m, req.user));
     res.json({ success: true, count: materials.length, materials });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load your coursework.');
   }
 });
 
@@ -129,7 +130,7 @@ router.get('/materials/:id/file', async (req, res) => {
     if (!matchesStudent(m, req.user)) return res.status(403).json({ success: false, message: 'Not for your class.' });
     res.json({ success: true, attachment: m.attachment, attachmentName: m.attachmentName });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load your coursework.');
   }
 });
 

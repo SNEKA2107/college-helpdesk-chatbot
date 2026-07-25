@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import FacultySidebar from './FacultySidebar';
+import TempPasswordBanner from './TempPasswordBanner';
 import { useTheme } from '../hooks/useTheme';
 import { usePageAnimations } from '../hooks/usePageAnimations';
 import { getUser, logout } from '../services/auth';
@@ -42,7 +43,11 @@ export default function FacultyShell({ title, children }) {
             >🚪 Logout</button>
           </div>
         </header>
-        <main className="main-content">{children}</main>
+        <main className="main-content">
+          {/* Renders only while the account is still on an admin-issued temporary password. */}
+          <TempPasswordBanner />
+          {children}
+        </main>
       </div>
     </div>
   );

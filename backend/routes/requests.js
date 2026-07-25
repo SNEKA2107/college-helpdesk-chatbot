@@ -3,6 +3,7 @@ const Request  = require('../models/Request');
 const User     = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
 const { sendEmail, emailTemplate } = require('../utils/email');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ router.get('/stats', protect, async (req, res) => {
     ]);
     res.json({ success: true, stats: { total, completed, inProgress, pending: submitted } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the service request.');
   }
 });
 
@@ -31,7 +32,7 @@ router.get('/', protect, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json({ success: true, count: requests.length, requests });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the service request.');
   }
 });
 
@@ -49,7 +50,7 @@ router.post('/', protect, async (req, res) => {
     });
     res.status(201).json({ success: true, message: 'Request submitted successfully', request });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the service request.');
   }
 });
 
@@ -94,7 +95,7 @@ router.put('/:id/status', protect, adminOnly, async (req, res) => {
 
     res.json({ success: true, message: 'Status updated', request });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the service request.');
   }
 });
 
@@ -112,7 +113,7 @@ router.delete('/:id', protect, async (req, res) => {
     await request.deleteOne();
     res.json({ success: true, message: 'Request cancelled' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the service request.');
   }
 });
 

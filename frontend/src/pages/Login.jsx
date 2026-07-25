@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { GraduationCap, IdCard, Lock, Eye, EyeOff, ArrowRight, LoaderCircle, CircleAlert, Info } from 'lucide-react';
@@ -46,6 +46,19 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState(null); // { type: 'error' | 'info', text }
   const [loading, setLoading] = useState(false);
+  // True only on a brand-new deployment with no administrator yet (audit C-1).
+  // Without this the /setup page existed but nothing pointed at it, so a fresh
+  // install still looked permanently locked out.
+  const [needsSetup, setNeedsSetup] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API_BASE}/auth/setup-status`)
+      .then(r => r.json())
+      .then(d => { if (alive) setNeedsSetup(!!d.needsSetup); })
+      .catch(() => {});   // an unreachable server is already reported on submit
+    return () => { alive = false; };
+  }, []);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -227,6 +240,11 @@ export default function Login() {
             <p className={s.footerHint}>
               One login for students, faculty and admins — you'll land on your own dashboard automatically.
             </p>
+            {needsSetup && (
+              <p className={s.footerHint} style={{ marginTop: 10 }}>
+                No administrator exists yet. <Link to="/setup">Set up the first administrator</Link>
+              </p>
+            )}
           </div>
         </motion.form>
       </motion.main>

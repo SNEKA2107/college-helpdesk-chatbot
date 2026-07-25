@@ -2,6 +2,7 @@ const express = require('express');
 const { protect, adminOnly } = require('../middleware/auth');
 const QueryLog = require('../models/QueryLog');
 const Conversation = require('../models/Conversation');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -60,7 +61,7 @@ router.get('/', protect, adminOnly, async (req, res) => {
     });
   } catch (err) {
     console.error('Analytics error:', err.message);
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load analytics.');
   }
 });
 

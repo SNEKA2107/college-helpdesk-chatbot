@@ -2,6 +2,7 @@ const express = require('express');
 const { protect } = require('../middleware/auth');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get('/', protect, async (req, res) => {
       .sort({ lastMessageAt: -1 }).limit(50);
     res.json({ success: true, conversations });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load the conversation.');
   }
 });
 
@@ -31,7 +32,7 @@ router.get('/:id', protect, async (req, res) => {
     const messages = await Message.find({ conversation: conversation._id }).sort({ createdAt: 1 });
     res.json({ success: true, conversation, messages });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load the conversation.');
   }
 });
 
@@ -42,7 +43,7 @@ router.delete('/:id', protect, async (req, res) => {
     if (convo) await Message.deleteMany({ conversation: convo._id });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load the conversation.');
   }
 });
 

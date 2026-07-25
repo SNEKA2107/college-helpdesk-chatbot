@@ -18,6 +18,7 @@ import CalendarTab from './admin/CalendarTab';
 import AuditTab from './admin/AuditTab';
 import KnowledgeTab from './admin/KnowledgeTab';
 import FacultyTab from './admin/FacultyTab';
+import DepartmentsTab from './admin/DepartmentsTab';
 import AnalyticsTab from '../features/analytics/AnalyticsTab';
 
 const NAV_SECTIONS = [
@@ -33,6 +34,7 @@ const NAV_SECTIONS = [
       { id: 'notices', icon: '🔔', label: 'Notices', title: 'Notices' },
       { id: 'messages', icon: '✉️', label: 'Messages', title: 'Messages' },
       { id: 'students', icon: '👥', label: 'Students', title: 'Students' },
+      { id: 'departments', icon: '🏛️', label: 'Departments', title: 'Department Management' },
       { id: 'account', icon: '👤', label: 'My Account', title: 'My Account' },
     ],
   },
@@ -154,6 +156,7 @@ export default function Admin() {
         <main className="main-content">
           {tab === 'overview' && <OverviewTab {...tabProps} />}
           {tab === 'analytics' && <AnalyticsTab {...tabProps} />}
+          {tab === 'departments' && <DepartmentsTab {...tabProps} />}
           {tab === 'knowledge' && <KnowledgeTab {...tabProps} />}
           {tab === 'faculty' && <FacultyTab {...tabProps} />}
           {tab === 'requests' && <RequestsTab {...tabProps} />}

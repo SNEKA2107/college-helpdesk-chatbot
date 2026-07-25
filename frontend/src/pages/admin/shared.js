@@ -4,7 +4,10 @@ export const CAT_BADGE = { urgent: 'badge-danger', exam: 'badge-primary', fee: '
 export const EV_BADGE = { Technical: 'badge-primary', Cultural: 'badge-info', Sports: 'badge-success', Workshop: 'badge-warning', Seminar: 'badge-muted', Other: 'badge-muted' };
 
 export const REQ_STATUSES = ['Submitted', 'Under Review', 'Processing', 'Ready for Collection', 'Completed', 'Rejected'];
-export const DEPARTMENTS = ['IT', 'CSE', 'AIDS', 'AIML', 'Bioinformatics'];
+// DEPARTMENTS used to live here as a hardcoded array of five — which is why
+// ECE/EEE/MECH/CIVIL students could register but never be given a timetable,
+// exam or attendance record (audit finding H-1). Departments are now data:
+// use `useDepartments()` from hooks/useDepartments.js instead.
 export const SEMESTERS = ['2nd', '4th', '6th', '8th', '1st', '3rd', '5th', '7th'];
 
 export const emptyCellStyle = { textAlign: 'center', padding: 32, color: 'var(--text-muted)' };

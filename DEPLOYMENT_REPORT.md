@@ -2,7 +2,15 @@
 
 **Prepared:** 29 July 2026
 **Objective:** Deploy CampusAssist to production with no paid service and no payment card.
-**Status:** Code and configuration are deploy-ready. **Deployment itself is not yet executed** — it requires an authenticated session that this environment does not have. Section 8 is the exact click-path.
+**Status:** ✅ **DEPLOYED AND VERIFIED IN PRODUCTION** — 37/37 smoke checks passing.
+
+| | URL |
+|---|---|
+| **Frontend** | https://college-helpdesk-chatbot-five.vercel.app |
+| **Backend API** | https://campusassist-api.vercel.app/api |
+| **Health check** | https://campusassist-api.vercel.app/api/health |
+
+Total cost: **$0**. No payment card was required at any point.
 
 ---
 
@@ -188,27 +196,38 @@ FRONTEND_ORIGIN=https://<your-frontend>.vercel.app \
 
 The smoke test covers all 37 checks below. It passes **37/37 against localhost** — run it against production to fill in the right-hand column.
 
-| # | Check | Local | Production |
-|---|---|---|---|
-| 1 | Health endpoint reachable | ✅ | ⬜ |
-| 2 | Database connected | ✅ | ⬜ |
-| 3 | Required env vars set | ✅ | ⬜ |
-| 4 | Public endpoint responds | ✅ | ⬜ |
-| 5 | Frontend origin allowed by CORS | ✅ | ⬜ |
-| 6 | Unknown origin rejected | ✅ | ⬜ |
-| 7–9 | Login — student / admin / faculty | ✅ | ⬜ |
-| 10 | Invalid password rejected | ✅ | ⬜ |
-| 11 | Protected route blocks anonymous | ✅ | ⬜ |
-| 12 | Tampered JWT rejected | ✅ | ⬜ |
-| 13 | Valid JWT accepted | ✅ | ⬜ |
-| 14–17 | RBAC — student refused admin + faculty areas | ✅ | ⬜ |
-| 18–37 | Modules — dashboards, attendance, timetable, library, notices, leave, requests, fees, exam, marks, events, calendar, AI chat, departments, admin audit/analytics, faculty portal | ✅ | ⬜ |
+Run against production on 29 July 2026 — **37/37 passed**.
 
-Manual browser checks after the smoke test passes:
-- ⬜ Register a new student → appears as pending for admin approval
-- ⬜ AI Chat returns a response (see the timeout caveat in section 10)
-- ⬜ Protected routes bounce to `/login` when signed out
-- ⬜ Browser console clean of CORS/CSP errors
+| # | Check | Production result |
+|---|---|---|
+| 1 | Health endpoint reachable | ✅ HTTP 200 in 651ms |
+| 2 | Database connected | ✅ `database: connected` |
+| 3 | Required env vars set | ✅ none missing |
+| 4 | Public endpoint responds | ✅ HTTP 200 |
+| 5 | Frontend origin allowed by CORS | ✅ `Access-Control-Allow-Origin` echoes the frontend |
+| 6 | Unknown origin rejected | ✅ no ACAO header |
+| 7–9 | Login — student / admin / faculty | ✅ JWT issued for all three |
+| 10 | Invalid password rejected | ✅ HTTP 401 |
+| 11 | Protected route blocks anonymous | ✅ HTTP 401 |
+| 12 | Tampered JWT rejected | ✅ HTTP 401 |
+| 13 | Valid JWT accepted | ✅ HTTP 200 |
+| 14–17 | RBAC — student refused `/students`, `/audit`, `/analytics`, faculty portal | ✅ HTTP 403 each |
+| 18–37 | Modules — dashboards ×3, attendance, timetable, library, notices, leave, requests, fees, exam, marks, events, calendar, AI chat, departments, admin audit/analytics, faculty portal | ✅ HTTP 200, 430–2299ms |
+
+Additional checks run manually:
+
+| Check | Result |
+|---|---|
+| Register a new student | ✅ HTTP 201, `approvalStatus: pending` |
+| Login before admin approval is blocked | ✅ HTTP 403 with the pending-approval message |
+| Register rejects a malformed payload | ✅ HTTP 400 naming the missing field |
+| Frontend bundle targets the backend | ✅ Vite inlined `resolveApiBase()` to `return "https://campusassist-api.vercel.app/api"` |
+
+Reproduce at any time:
+```bash
+FRONTEND_ORIGIN=https://college-helpdesk-chatbot-five.vercel.app \
+  node backend/scripts/smoke-production.js https://campusassist-api.vercel.app
+```
 
 ---
 
@@ -261,14 +280,40 @@ Leave documents are stored base64-encoded in MongoDB. Heavy upload use will hit 
 
 | Item | Status |
 |---|---|
-| Provider selected and policy-verified | ✅ Vercel — card-free, account already active |
+| Provider selected and policy-verified | ✅ Vercel — card-free |
 | Backend made serverless-safe | ✅ 7 issues found and fixed |
 | Deployment configs generated | ✅ |
-| Local verification | ✅ 37/37 smoke checks; SPA serving preserved |
-| Credentials rotated | ⬜ **You must do this** (section 6) |
-| Atlas network access opened | ⬜ **You must do this** (section 7) |
-| Backend deployed | ⬜ Needs your Vercel session |
-| Frontend `VITE_API_URL` set + redeployed | ⬜ Needs your Vercel session |
-| Production smoke test | ⬜ Run after deploy |
+| Branch committed and pushed | ✅ `deploy/vercel-backend`, 3 commits |
+| Backend project created and deployed | ✅ `campusassist-api` |
+| Environment variables configured | ✅ production + preview + development |
+| Atlas network access opened | ✅ confirmed — `database: connected` |
+| Frontend `VITE_API_URL` set | ✅ inlined into the bundle |
+| Frontend rebuilt and aliased | ✅ |
+| Production smoke test | ✅ **37/37 passed** |
+| "Cannot connect to server" resolved | ✅ |
+| Credentials rotated | ⚠️ **Still outstanding — see section 6** |
 
-**Blocking factor:** deployment requires an authenticated Vercel session. Everything that could be prepared without one is done and verified locally.
+### Deployment log
+
+```
+✓ Created         college-helpdesk/campusassist-api
+✓ Env vars set    MONGO_URI, JWT_SECRET, FRONTEND_URL, NODE_ENV, ALLOW_VERCEL_PREVIEWS
+✓ Deployed        campusassist-api.vercel.app                    (readyState: READY)
+✓ Env var set     VITE_API_URL → https://campusassist-api.vercel.app/api
+✓ Rebuilt         college-helpdesk-chatbot (--force, no build cache)
+✓ Aliased         https://college-helpdesk-chatbot-five.vercel.app
+✓ Verified        37/37 production smoke checks
+```
+
+**One issue was hit and resolved during deployment.** The first `vercel redeploy` reused the cached build, so `VITE_API_URL` was never inlined — the served bundle still had no API host in it. Confirmed by diffing the served asset, then fixed with a forced rebuild from source (`vercel --prod --force`). Worth remembering: **changing a `VITE_*` variable requires a rebuild, not a redeploy**, because Vite inlines them at build time.
+
+### Remaining action for you
+
+Rotate the Atlas password and `JWT_SECRET` (section 6) — they were exposed in a chat session. The deployment currently runs on the original credentials. After rotating:
+
+```bash
+cd backend
+printf '%s' "NEW_MONGO_URI" | vercel env add MONGO_URI production --force
+printf '%s' "NEW_JWT_SECRET" | vercel env add JWT_SECRET production --force
+vercel --prod --force        # env changes need a redeploy to take effect
+```

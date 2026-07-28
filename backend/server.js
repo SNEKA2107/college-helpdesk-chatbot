@@ -200,7 +200,21 @@ if (IS_SERVERLESS) {
 // It reports *why* it is unhealthy, which is what makes a failed deploy
 // diagnosable from the outside.
 const MONGO_STATES = ['disconnected', 'connected', 'connecting', 'disconnecting'];
-app.get('/api/health', (req, res) => {
+const HEALTH_CONNECT_GRACE_MS = 5000;
+
+app.get('/api/health', async (req, res) => {
+  // Report readiness, not a bare snapshot. A cold serverless instance answers
+  // this before its connect() has resolved, so a snapshot would flash 503 on a
+  // perfectly healthy deployment and make uptime monitoring cry wolf. Wait a
+  // bounded moment for the connection, then report whatever is actually true —
+  // a genuinely unreachable database still fails, just 5s later.
+  if (mongoose.connection.readyState !== 1) {
+    await Promise.race([
+      connectDB().catch(() => {}),
+      new Promise(resolve => setTimeout(resolve, HEALTH_CONNECT_GRACE_MS)),
+    ]);
+  }
+
   const dbState = MONGO_STATES[mongoose.connection.readyState] || 'unknown';
   const healthy = dbState === 'connected' && missingRequired.length === 0;
   res.status(healthy ? 200 : 503).json({

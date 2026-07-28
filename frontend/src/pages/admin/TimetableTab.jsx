@@ -7,6 +7,24 @@ import { useDepartments } from '../../hooks/useDepartments';
 const TT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DEFAULT_SLOTS = '9–10 AM, 10–11 AM, 11–12 PM, 12–1 PM, 1–2 PM, 2–3 PM, 3–4 PM';
 
+// Grid cells that are not a real class — kept in step with the same list in
+// backend/utils/timetableConflicts.js so the editor and the conflict detector
+// agree on what counts as a scheduled period.
+const IGNORE_CELLS = ['', '-', 'Lunch', 'Break'];
+
+const EMPTY_DETAIL = { name: '', code: '', faculty: '', room: '' };
+
+/** Distinct real subject labels used anywhere in the grid, in first-seen order. */
+function subjectKeysOf(grid) {
+  if (!grid) return [];
+  const seen = [];
+  TT_DAYS.forEach(day => (grid.cells[day] || []).forEach(cell => {
+    const key = (cell || '').trim();
+    if (!IGNORE_CELLS.includes(key) && !seen.includes(key)) seen.push(key);
+  }));
+  return seen;
+}
+
 export default function TimetableTab({ data, setData }) {
   // Departments come from the Department collection, not a hardcoded list (audit H-1).
   const { codes: DEPARTMENTS } = useDepartments({ academicOnly: true });
@@ -22,7 +40,13 @@ export default function TimetableTab({ data, setData }) {
   const [slotsText, setSlotsText] = useState(DEFAULT_SLOTS);
   // grid = { slots: string[], cells: { [day]: string[] } } or null while hidden
   const [grid, setGrid] = useState(null);
+  // subjectDetails = { [cellLabel]: { name, code, faculty, room } }. The student and
+  // faculty timetable pages read the faculty name and room from here, and the
+  // backend's publish-time conflict detector resolves faculty/room clashes from it —
+  // this editor previously never sent it, so both were silently inert.
+  const [details, setDetails] = useState({});
   const [conflicts, setConflicts] = useState([]);
+  const [conflictsChecked, setConflictsChecked] = useState(false);
 
   // Select the first real department once the list has loaded.
   useEffect(() => {
@@ -44,9 +68,12 @@ export default function TimetableTab({ data, setData }) {
 
   function onExistingChange(id) {
     setExistingId(id);
-    if (!id) { setGrid(null); return; }
+    setConflicts([]); setConflictsChecked(false);
+    if (!id) { setGrid(null); setDetails({}); return; }
     const t = data.timetables.find(x => x._id === id);
     if (!t) return;
+    // Carry the stored subject details into the editor so an edit never drops them.
+    setDetails(t.subjectDetails || {});
     setDept(t.department);
     setSem(t.semester);
     setStudyYear(t.year || '');
@@ -60,6 +87,26 @@ export default function TimetableTab({ data, setData }) {
   const setCell = (day, i, value) =>
     setGrid(g => ({ ...g, cells: { ...g.cells, [day]: g.cells[day].map((c, idx) => (idx === i ? value : c)) } }));
 
+  const subjectKeys = subjectKeysOf(grid);
+
+  const setDetail = (key, field, value) =>
+    setDetails(d => ({ ...d, [key]: { ...EMPTY_DETAIL, ...(d[key] || {}), [field]: value } }));
+
+  /** subjectDetails for exactly the labels currently in the grid (stale keys dropped). */
+  function buildSubjectDetails() {
+    const out = {};
+    subjectKeys.forEach(key => {
+      const d = details[key] || {};
+      out[key] = {
+        name: (d.name || '').trim() || key,   // fall back to the label itself
+        code: (d.code || '').trim(),
+        faculty: (d.faculty || '').trim(),
+        room: (d.room || '').trim(),
+      };
+    });
+    return out;
+  }
+
   async function saveTimetable() {
     const academicYear = year.trim();
     if (!academicYear) { showToast('Academic Year is required', 'error'); return; }
@@ -70,7 +117,11 @@ export default function TimetableTab({ data, setData }) {
       schedule[day] = (grid?.cells[day] || []).map(v => v.trim() || '-');
     });
 
-    const body = { department: dept, semester: sem, year: studyYear.trim(), section: section.trim(), academicYear, slots, schedule };
+    const body = {
+      department: dept, semester: sem, year: studyYear.trim(), section: section.trim(),
+      academicYear, slots, schedule,
+      subjectDetails: buildSubjectDetails(),
+    };
     const res = existingId
       ? await apiCall(`/timetable/${existingId}`, { method: 'PUT', body: JSON.stringify(body) })
       : await apiCall('/timetable', { method: 'POST', body: JSON.stringify(body) });
@@ -84,7 +135,8 @@ export default function TimetableTab({ data, setData }) {
         return { ...d, timetables };
       });
       setExistingId(saved._id);
-      setConflicts([]);
+      setDetails(saved.subjectDetails || {});
+      setConflicts([]); setConflictsChecked(false);
       showToast(existingId ? 'Timetable updated' : 'Draft saved — publish it to make it visible to students', 'success');
     } else {
       showToast(res.error || 'Failed to save timetable', 'error');
@@ -95,9 +147,28 @@ export default function TimetableTab({ data, setData }) {
     setData(d => ({ ...d, timetables: d.timetables.map(t => (t._id === saved._id ? saved : t)) }));
   }
 
+  /**
+   * Pre-publish conflict preview (GET /timetable/:id/conflicts). Lets an admin see
+   * faculty/room/slot clashes before attempting to publish, instead of only
+   * discovering them from a rejected publish.
+   */
+  async function checkConflicts() {
+    if (!existingId) { showToast('Save the timetable first', 'error'); return; }
+    const res = await apiCall(`/timetable/${existingId}/conflicts`);
+    if (res.ok) {
+      setConflicts(res.data.conflicts || []);
+      setConflictsChecked(true);
+      showToast(res.data.conflicts?.length
+        ? `${res.data.conflicts.length} conflict(s) found`
+        : 'No conflicts — safe to publish', res.data.conflicts?.length ? 'warning' : 'success');
+    } else {
+      showToast(res.error || 'Failed to check conflicts', 'error');
+    }
+  }
+
   async function publishTimetable() {
     if (!existingId) { showToast('Save the timetable first', 'error'); return; }
-    setConflicts([]);
+    setConflicts([]); setConflictsChecked(false);
     const res = await apiCall(`/timetable/${existingId}/publish`, { method: 'PUT' });
     if (res.ok) {
       applySaved(res.data.timetable);
@@ -168,6 +239,7 @@ export default function TimetableTab({ data, setData }) {
             {current.status !== 'archived' && (
               <button className="btn btn-sm btn-outline" style={{ padding: '4px 12px' }} onClick={archiveTimetable}>🗄 Archive</button>
             )}
+            <button className="btn btn-sm btn-outline" style={{ padding: '4px 12px' }} onClick={checkConflicts}>🔎 Check Conflicts</button>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {current.status === 'published' ? 'Visible to students in this cohort.' : current.status === 'draft' ? 'Draft — not visible to students yet.' : 'Archived — hidden from students.'}
             </span>
@@ -176,10 +248,15 @@ export default function TimetableTab({ data, setData }) {
 
         {conflicts.length > 0 && (
           <div className="alert alert-danger" style={{ marginTop: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
-            <strong>⚠️ Cannot publish — {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''}:</strong>
+            <strong>⚠️ {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''} — publishing is blocked:</strong>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
               {conflicts.map((c, i) => <li key={i}>{c.message}</li>)}
             </ul>
+          </div>
+        )}
+        {conflictsChecked && conflicts.length === 0 && (
+          <div className="alert alert-success" style={{ marginTop: 14 }}>
+            <span>✅</span><div>No conflicts detected — this timetable is safe to publish.</div>
           </div>
         )}
       </div>
@@ -211,8 +288,55 @@ export default function TimetableTab({ data, setData }) {
               </tbody>
             </table>
           </div>
-          <button className="btn btn-primary btn-full" style={{ marginTop: 14 }} onClick={saveTimetable}>Save Timetable</button>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 10 }}>
+            Type a short label per period (e.g. <code>DBMS</code>). Use <code>-</code> for a free period
+            and <code>Lunch</code> for the break. Add each label's faculty &amp; room below.
+          </p>
         </div>
+      )}
+
+      {grid && subjectKeys.length > 0 && (
+        <div className="card" style={{ marginTop: 20 }}>
+          <div className="card-header">
+            <div className="card-title">👨‍🏫 Subject Details</div>
+            <span className="badge badge-primary">{subjectKeys.length}</span>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: -6, marginBottom: 12 }}>
+            Students and faculty see the full name and room here instead of the short label.
+            Faculty and room are also what the system uses to detect double-bookings before publishing.
+          </p>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Label</th><th>Full Name</th><th>Code</th><th>Faculty</th><th>Room</th></tr>
+              </thead>
+              <tbody>
+                {subjectKeys.map(key => (
+                  <tr key={key}>
+                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{key}</td>
+                    {['name', 'code', 'faculty', 'room'].map(field => (
+                      <td key={field}>
+                        <input
+                          type="text" className="form-input"
+                          style={{ padding: '5px 7px', fontSize: 12, minWidth: 110 }}
+                          placeholder={field === 'name' ? key
+                            : field === 'code' ? 'e.g. 21CS302'
+                              : field === 'faculty' ? 'e.g. Dr. Meera' : 'e.g. Room 204'}
+                          value={(details[key] || {})[field] || ''}
+                          onChange={e => setDetail(key, field, e.target.value)}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {grid && (
+        <button className="btn btn-primary btn-full" style={{ marginTop: 14 }} onClick={saveTimetable}>Save Timetable</button>
       )}
     </div>
   );

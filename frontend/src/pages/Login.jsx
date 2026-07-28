@@ -9,29 +9,14 @@ import s from '../styles/UnifiedLogin.module.css';
 
 const REMEMBER_KEY = 'ca_remember_id';
 
-const looksLikeEmail = (v) => /^\S+@\S+\.\S+$/.test(v);
-
-/**
- * The login endpoints to try, in order, for a given credential.
- *
- * The backend keeps its two EXISTING endpoints, untouched:
- *   - POST /auth/login          → studentId + password (students and admins)
- *   - POST /auth/faculty-login  → email + password     (faculty)
- *
- * So the *frontend* picks the endpoint from the shape of the credential: an
- * email-looking value goes to faculty-login first, anything else (roll number,
- * admin username) goes to the studentId endpoint. If the first attempt rejects
- * the credential we try the other before giving up, which keeps every credential
- * that worked before working now.
- */
-function attemptsFor(identifier) {
-  const faculty = { url: `${API_BASE}/auth/faculty-login`, body: { email: identifier } };
-  const standard = { url: `${API_BASE}/auth/login`, body: { studentId: identifier } };
-  return looksLikeEmail(identifier) ? [faculty, standard] : [standard];
-}
-
 /**
  * Single unified login for Student / Faculty / Admin — the user never picks a role.
+ *
+ * There is ONE request: POST /auth/login resolves a register number, faculty
+ * staff ID, admin ID or email (all case-insensitive) to an account server-side.
+ * The frontend deliberately does no credential sniffing — it cannot know which
+ * role an identifier belongs to, and guessing an endpoint from the shape of the
+ * input was only ever a workaround for the backend accepting one form per role.
  *
  * After a successful login the role on the returned user decides the landing page
  * via the shared homePath() helper — the same mapping the route guards use, so
@@ -72,35 +57,29 @@ export default function Login() {
     if (Object.keys(errs).length) return;
 
     setLoading(true);
-    let firstError = '';
     try {
-      for (const attempt of attemptsFor(id)) {
-        const res = await fetch(attempt.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...attempt.body, password }),
-        });
-        const data = await res.json();
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: id, password }),
+      });
+      const data = await res.json();
 
-        if (res.ok && data.success) {
-          if (remember) localStorage.setItem(REMEMBER_KEY, id);
-          else localStorage.removeItem(REMEMBER_KEY);
-          setSession(data.user, data.token);
-          navigate(homePath(), { replace: true });
-          return;
-        }
-
-        const message = data.message || data.errors?.[0]?.msg || '';
-        if (!firstError) firstError = message;
-        // 403 = account state (deactivated / pending / rejected approval). That is a
-        // definitive answer about a real account, so surface it instead of retrying.
-        if (res.status === 403) {
-          setAlert({ type: 'error', text: message || 'This account cannot sign in right now.' });
-          setLoading(false);
-          return;
-        }
+      if (res.ok && data.success) {
+        if (remember) localStorage.setItem(REMEMBER_KEY, id);
+        else localStorage.removeItem(REMEMBER_KEY);
+        setSession(data.user, data.token);
+        // Redirect purely on the authenticated user's role — the backend decides it.
+        navigate(homePath(), { replace: true });
+        return;
       }
-      setAlert({ type: 'error', text: firstError || 'Invalid credentials. Please check and try again.' });
+
+      // 401 = bad credential, 403 = a real account that cannot sign in right now
+      // (deactivated, or a student registration still pending/rejected).
+      setAlert({
+        type: 'error',
+        text: data.message || data.errors?.[0]?.msg || 'Invalid credentials. Please check and try again.',
+      });
     } catch {
       setAlert({ type: 'error', text: 'Cannot connect to server. Make sure the backend is running.' });
     }
@@ -154,14 +133,14 @@ export default function Login() {
           )}
 
           <div className={s.field}>
-            <label className={s.label} htmlFor="ca-identifier">Username / Email</label>
+            <label className={s.label} htmlFor="ca-identifier">ID or Email</label>
             <div className={s.inputWrap}>
               <span className={s.inputIcon}><IdCard size={18} /></span>
               <input
                 id="ca-identifier"
                 type="text"
                 className={`${s.input}${errors.id ? ` ${s.inputError}` : ''}`}
-                placeholder="Roll number, email or username"
+                placeholder="Register number, staff ID, admin ID or email"
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck="false"

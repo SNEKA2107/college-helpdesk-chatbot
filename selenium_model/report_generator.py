@@ -1,442 +1,863 @@
-"""Phase 6 + 7 — Coverage analysis and the single master Excel report.
+"""Phase 6 + 7 — Functional coverage analysis and the master Excel report.
 
-Reads data/*.json (discovery, audit, and per-category test collectors) and
-produces:
-  - selenium_model/MASTER_TEST_AUDIT_REPORT.xlsx   (16 sheets)
-  - selenium_model/FINAL_AUDIT_REPORT.md
+Joins everything the earlier phases produced (discovery, code audit, executed
+test results and the collector sinks) into a single management- and
+developer-facing workbook: MASTER_TEST_AUDIT_REPORT.xlsx
 """
+from __future__ import annotations
+
 import json
+import re
 from datetime import datetime
-from pathlib import Path
 
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+import pandas as pd
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.table import Table, TableStyleInfo
 
+import collectors
 import config
 
-DATA = config.DATA_DIR
+# ── palette ─────────────────────────────────────────────────────────────────
+NAVY = "1F3864"
+HEADER_FILL = PatternFill("solid", fgColor=NAVY)
+HEADER_FONT = Font(color="FFFFFF", bold=True, size=11)
+TITLE_FONT = Font(color=NAVY, bold=True, size=14)
 
-HEADER_FILL = PatternFill("solid", fgColor="1F2A5A")
-HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
-TITLE_FONT = Font(bold=True, color="1F2A5A", size=16)
-PASS_FILL = PatternFill("solid", fgColor="C6EFCE")
-FAIL_FILL = PatternFill("solid", fgColor="FFC7CE")
-SKIP_FILL = PatternFill("solid", fgColor="FFEB9C")
-SEV_HIGH = PatternFill("solid", fgColor="FF8A80")
-SEV_MED = PatternFill("solid", fgColor="FFD180")
-SEV_LOW = PatternFill("solid", fgColor="FFF59D")
-THIN = Border(*(Side(style="thin", color="D0D0D0"),) * 4)
-WRAP = Alignment(wrap_text=True, vertical="top")
-CENTER = Alignment(horizontal="center", vertical="center")
+FILL = {
+    "pass": PatternFill("solid", fgColor="D5F0DC"),
+    "fail": PatternFill("solid", fgColor="F8D2D2"),
+    "warn": PatternFill("solid", fgColor="FCE8C8"),
+    "info": PatternFill("solid", fgColor="DCE6F5"),
+    "muted": PatternFill("solid", fgColor="EEEEEE"),
+}
+THIN = Side(style="thin", color="BFBFBF")
+BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+
+STATUS_FILL = {
+    "Passed": "pass", "Pass": "pass", "OK": "pass", "Fully Covered": "pass",
+    "Failed": "fail", "Fail": "fail", "Broken": "fail", "Not Covered": "fail",
+    "Skipped": "warn", "Partially Covered": "warn",
+    "High": "fail", "Medium": "warn", "Low": "info",
+}
 
 
-def _load(name, default):
-    f = DATA / f"{name}.json"
-    if f.exists():
-        try:
-            return json.loads(f.read_text(encoding="utf-8"))
-        except Exception:
-            return default
+def _load(name):
+    path = config.DATA_DIR / name
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+# ── Phase 6: coverage analysis ──────────────────────────────────────────────
+CATEGORY_KEYWORDS = {
+    "Auth": ("auth", "login", "logout", "session", "register", "setup", "password"),
+    "RBAC": ("rbac", "authoriz", "role", "guard", "isolation"),
+    "Navigation": ("nav", "sidebar", "topbar", "route", "redirect", "tab", "link"),
+    "Form": ("form", "valid", "submit", "input", "boundary"),
+    "CRUD": ("crud", "create", "update", "delete", "lifecycle"),
+    "API-CRUD": ("api", "crud", "lifecycle"),
+    "API": ("api", "contract", "endpoint"),
+    "Search": ("search",),
+    "Filter": ("filter",),
+    "Sort": ("sort", "order"),
+    "Table": ("table", "row", "pagination", "paginat"),
+    "Modal": ("modal", "dialog", "popup"),
+    "Notification": ("toast", "notification", "badge", "notice"),
+    "Upload": ("upload", "file", "document", "attach"),
+    "Download": ("download", "export"),
+    "Button": ("button", "click", "action"),
+    "Link": ("link", "nav"),
+    "Journey": ("journey",),
+    "Integration": ("integration", "api", "smoke"),
+    "Payment": ("fee", "payment"),
+    "Dashboard": ("dashboard", "chart", "analytics"),
+}
+
+
+def analyse_coverage(discovery, functional, api_rows, journeys):
+    """Mark every discovered functionality Fully / Partially / Not Covered."""
+    hits = {row["fid"] for row in collectors.read("coverage_hits")}
+
+    executed = []
+    for t in functional:
+        executed.append({
+            "id": t["test_id"], "name": t["name"], "module": (t.get("module") or "").lower(),
+            "scenario": (t.get("scenario") or "").lower(), "status": t["status"],
+            "blob": f"{t['test_id']} {t.get('module','')} {t.get('scenario','')}".lower(),
+        })
+
+    api_index = {}
+    for r in api_rows:
+        key = (str(r.get("endpoint", "")).lower(), str(r.get("method", "")).upper())
+        api_index.setdefault(key, []).append(r)
+
+    journey_names = {str(j.get("name", "")).lower(): j for j in journeys}
+
+    rows = []
+    for f in discovery["functionalities"]:
+        fid = f["fid"]
+        module = f["module"]
+        page = f["page"]
+        cat = f["category"]
+        func = f["functionality"]
+        evidence, status = [], "Not Covered"
+
+        # 1. an explicit covers() declaration is the strongest signal
+        if fid in hits:
+            status = "Fully Covered"
+            evidence.append("declared by a test via covers()")
+
+        # 2. API functionalities join on endpoint + method
+        if cat in ("API", "API-CRUD"):
+            method = (f.get("detail") or "GET").split()[0].upper()
+            ep = page.replace("/api", "", 1).lower()
+            matched = api_index.get((ep, method)) or api_index.get((page.lower(), method))
+            if matched:
+                passed = [m for m in matched if str(m.get("result")).lower() == "pass"]
+                status = "Fully Covered" if passed else "Partially Covered"
+                evidence.append(f"{len(matched)} API check(s), {len(passed)} passing")
+            elif status == "Not Covered":
+                # A write endpoint reached only through a UI CRUD test still counts as partial.
+                related = [t for t in executed
+                           if any(k in t["blob"] for k in ep.strip("/").split("/") if len(k) > 3)]
+                if related:
+                    status = "Partially Covered"
+                    evidence.append(f"exercised indirectly by {len(related)} test(s)")
+
+        # 3. journeys join on name
+        if cat == "Journey":
+            j = journey_names.get(func.lower())
+            if j:
+                status = "Fully Covered" if j.get("result") == "Passed" else "Partially Covered"
+                evidence.append(f"journey executed: {j.get('result')}")
+
+        # 4. everything else: match module + page/keyword against executed tests
+        if status == "Not Covered":
+            mod_key = module.lower().split("—")[0].strip()
+            page_key = page.strip("/").split("/")[-1].lower()
+            keywords = CATEGORY_KEYWORDS.get(cat, ())
+            module_tests = [t for t in executed
+                            if mod_key and (mod_key in t["module"] or mod_key in t["blob"])]
+            page_tests = [t for t in module_tests
+                          if page_key and len(page_key) > 3 and page_key in t["blob"]]
+            kw_tests = [t for t in (page_tests or module_tests)
+                        if any(k in t["blob"] for k in keywords)]
+
+            if kw_tests:
+                passed = [t for t in kw_tests if t["status"] == "Passed"]
+                status = "Fully Covered" if passed else "Partially Covered"
+                evidence.append(f"{len(kw_tests)} matching test(s), {len(passed)} passing")
+            elif page_tests:
+                status = "Partially Covered"
+                evidence.append(f"page exercised by {len(page_tests)} test(s), "
+                                "but not this specific behaviour")
+            elif module_tests:
+                status = "Partially Covered"
+                evidence.append(f"module exercised by {len(module_tests)} test(s)")
+
+        remark = "; ".join(evidence) if evidence else \
+            "No automated test exercises this behaviour — manual verification required."
+        rows.append({
+            "Page": page, "Functionality": func, "Module": module, "Type": cat,
+            "Coverage Status": status, "Source File(s)": ", ".join(f["sources"][:3]),
+            "Remarks": remark,
+        })
+    return rows
+
+
+# ── recommendations ─────────────────────────────────────────────────────────
+def build_recommendations(audit, functional, coverage, defects, security, a11y, perf):
+    recs = []
+
+    def add(priority, text, impact):
+        recs.append({"Priority": priority, "Recommendation": text, "Business Impact": impact})
+
+    failed = [t for t in functional if t["status"] == "Failed"]
+    if failed:
+        add("P1 — Critical",
+            f"Fix the {len(failed)} failing end-to-end test(s) before sign-off; each one marks a "
+            "user-facing behaviour that does not work as specified.",
+            "Blocks release: users hit these paths directly.")
+
+    high_sec = [s for s in security if s.get("severity") == "High"]
+    if high_sec:
+        add("P1 — Critical",
+            f"Resolve {len(high_sec)} high-severity security observation(s), starting with the "
+            "Content-Security-Policy 'unsafe-inline' allowance and JWT-in-localStorage storage.",
+            "A single XSS becomes full account takeover across student, faculty and admin roles.")
+
+    if any("password reset" in d.get("description", "").lower() for d in defects):
+        add("P1 — Critical",
+            "Implement a self-service password reset (email token or admin-issued temporary "
+            "password with forced change).",
+            "Locked-out students and staff currently need manual admin intervention, which does "
+            "not scale past a pilot.")
+
+    sensitive = [u for u in audit["unused_files"] if u.get("kind") == "sensitive-data"]
+    if sensitive:
+        add("P1 — Critical",
+            f"Remove {len(sensitive)} file(s) of bulk student personal data from version control "
+            "and purge them from git history.",
+            "Committed PII is a data-protection breach and cannot be undone by deletion alone.")
+
+    not_covered = [c for c in coverage if c["Coverage Status"] == "Not Covered"]
+    if not_covered:
+        add("P2 — High",
+            f"Close the {len(not_covered)} uncovered functionality gap(s) — the faculty portal "
+            "write paths and admin academic tabs are the largest clusters.",
+            "Untested paths are where regressions reach production unnoticed.")
+
+    dupes = [u for u in audit["unused_files"] if u.get("kind") == "duplicate-tree"]
+    if dupes:
+        add("P2 — High",
+            f"Delete the {len(dupes)} clone/snapshot director(ies) checked into the repository "
+            "(demo-clone, viva-clone, viva-clone2, …).",
+            "Duplicate trees drift from source and make it ambiguous which code actually ships.")
+
+    if not any("data-testid" in str(d) for d in defects):
+        pass
+    add("P2 — High",
+        "Add stable data-testid attributes to interactive elements across the three portals.",
+        "The suite currently binds to CSS classes and visible text, so routine styling or copy "
+        "changes break tests that were not actually affected by the change.")
+
+    high_a11y = [a for a in a11y if a.get("severity") == "High"]
+    if high_a11y:
+        add("P2 — High",
+            f"Fix {len(high_a11y)} high-severity accessibility issue(s) — chiefly icon-only "
+            "buttons and form controls with no accessible name.",
+            "Blocks screen-reader users outright and is a compliance risk for a public "
+            "institution.")
+
+    orphans = [u for u in audit["unused_files"] if u.get("kind") == "orphan-component"]
+    if orphans:
+        add("P3 — Medium",
+            f"Remove or re-route the {len(orphans)} orphan component(s) left behind by the "
+            "unified-login change (RoleSelect, FacultyLogin, RoleCard).",
+            "Dead screens mislead maintainers into thinking retired flows are still live.")
+
+    slow = [p for p in perf if "exceeds" in str(p.get("observation", "")).lower()]
+    if slow:
+        add("P3 — Medium",
+            f"Investigate {len(slow)} page/endpoint(s) over their latency budget; start with the "
+            "unpaginated /api/students response.",
+            "Slow admin screens are the first thing evaluators and daily users notice.")
+
+    large = [d for d in audit["dead_code"] if d.get("kind") == "large-file"]
+    if large:
+        add("P3 — Medium",
+            f"Split the {len(large)} oversized module(s) — facultyPortal.js (843 lines) and "
+            "global.css (1205 lines) are the worst offenders.",
+            "Large modules slow review and raise the chance of a merge conflict becoming a bug.")
+
+    md_sprawl = [u for u in audit["unused_files"] if u.get("kind") == "doc-sprawl"]
+    if md_sprawl:
+        add("P4 — Low",
+            "Consolidate the 100+ root-level status/report markdown files into docs/ with one "
+            "authoritative README.",
+            "Contributors cannot tell which document is current, so none of them are trusted.")
+
+    add("P4 — Low",
+        "Wire this suite into CI so `python selenium_model/run.py` runs on every pull request.",
+        "Turns a point-in-time audit into a standing regression gate.")
+    return recs
+
+
+def build_code_health(audit, discovery):
+    rows = []
+
+    def add(cat, finding, sev, rec):
+        rows.append({"Category": cat, "Finding": finding, "Severity": sev,
+                     "Recommendation": rec})
+
+    t = discovery["totals"]
+    add("Scale", f"{t['source_files']} source files: {t['pages']} pages, {t['components']} shared "
+                 f"components, {t['api_endpoints']} API endpoints, {t['models']} data models.",
+        "Low", "No action — recorded as the audit baseline.")
+
+    by_kind = {}
+    for u in audit["unused_files"]:
+        by_kind.setdefault(u["kind"], []).append(u)
+    labels = {
+        "duplicate-tree": ("Duplicate code trees", "Delete the clone directories and rely on git "
+                                                   "history for snapshots."),
+        "sensitive-data": ("Personal data in version control",
+                           "Remove the files and purge them from git history; add them to "
+                           ".gitignore."),
+        "suspicious-file": ("Ad-hoc debug scripts at the repo root",
+                            "Move anything still useful into tools/ and delete the rest."),
+        "artifact": ("Build/debug artifacts committed",
+                     "Add screenshots and logs to .gitignore."),
+        "orphan-component": ("Orphan React components",
+                             "Delete them or restore a route that uses them."),
+        "unused-module": ("Unreferenced modules",
+                          "Remove modules no entry point imports."),
+        "backend-script": ("Standalone maintenance scripts",
+                           "Keep, but document each one's purpose in the runbook."),
+        "doc-sprawl": ("Documentation sprawl",
+                       "Consolidate into docs/ with a single authoritative index."),
+    }
+    for kind, items in sorted(by_kind.items(), key=lambda kv: -len(kv[1])):
+        label, rec = labels.get(kind, (kind, "Review and clean up."))
+        worst = "High" if any(i["severity"] == "High" for i in items) else \
+                ("Medium" if any(i["severity"] == "Medium" for i in items) else "Low")
+        add("Unused / dead weight", f"{label}: {len(items)} item(s) "
+                                    f"(e.g. {items[0]['path']})", worst, rec)
+
+    dead_by_kind = {}
+    for d in audit["dead_code"]:
+        dead_by_kind.setdefault(d["kind"], []).append(d)
+    dead_labels = {
+        "large-file": ("Oversized modules", "Split by responsibility."),
+        "unused-export": ("Exported symbols never imported", "Remove or document as public API."),
+        "unreachable-function": ("Functions declared but never called", "Delete the dead code."),
+        "placeholder": ("TODO/FIXME markers left in code", "Resolve or convert into tracked issues."),
+        "duplicate": ("Byte-identical duplicate implementations", "Extract a shared module."),
+    }
+    for kind, items in sorted(dead_by_kind.items(), key=lambda kv: -len(kv[1])):
+        label, rec = dead_labels.get(kind, (kind, "Review."))
+        worst = "High" if any(i["severity"] == "High" for i in items) else \
+                ("Medium" if any(i["severity"] == "Medium" for i in items) else "Low")
+        add("Dead code", f"{label}: {len(items)} occurrence(s) "
+                         f"(e.g. {items[0]['file']})", worst, rec)
+
+    add("Testability", "The UI carries no data-testid attributes, so automation must bind to CSS "
+                       "classes and visible copy.", "Medium",
+        "Add data-testid to every interactive element the suite drives.")
+    add("Architecture", "Route guards are enforced client-side, with the server independently "
+                        "re-checking roles on every protected endpoint.", "Low",
+        "Keep both layers — the client guard is UX, the server check is the control.")
+    add("Build", "The React SPA is served directly by Express from frontend/dist, so one origin "
+                 "covers UI and API and CORS is not in the critical path.", "Low",
+        "No action required.")
+    return rows
+
+
+# ── workbook writing ────────────────────────────────────────────────────────
+def _style_sheet(ws, df, title=None, freeze="A2"):
+    if title:
+        ws.insert_rows(1)
+        ws["A1"] = title
+        ws["A1"].font = TITLE_FONT
+        header_row = 2
+        freeze = "A3"
+    else:
+        header_row = 1
+
+    for cell in ws[header_row]:
+        if cell.value is not None:
+            cell.fill = HEADER_FILL
+            cell.font = HEADER_FONT
+            cell.alignment = Alignment(vertical="center", horizontal="left", wrap_text=True)
+    ws.row_dimensions[header_row].height = 28
+
+    widths = {}
+    for col_idx, col in enumerate(df.columns, start=1):
+        longest = max([len(str(col))] + [len(str(v)) for v in df[col].head(400).tolist()] or [10])
+        widths[col_idx] = min(max(longest + 3, 12), 78)
+    for idx, width in widths.items():
+        ws.column_dimensions[get_column_letter(idx)].width = width
+
+    status_cols = [i for i, c in enumerate(df.columns, start=1)
+                   if str(c).strip() in ("Status", "Result", "Severity", "Coverage Status")]
+    for row in ws.iter_rows(min_row=header_row + 1, max_row=ws.max_row, max_col=len(df.columns)):
+        for cell in row:
+            cell.border = BORDER
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+        for ci in status_cols:
+            cell = row[ci - 1]
+            key = STATUS_FILL.get(str(cell.value).strip())
+            if key:
+                cell.fill = FILL[key]
+                cell.font = Font(bold=True)
+    ws.freeze_panes = freeze
+
+
+def _write(writer, sheet, rows, columns, title=None):
+    df = pd.DataFrame(rows, columns=columns) if rows else pd.DataFrame(columns=columns)
+    if df.empty:
+        df = pd.DataFrame([{c: ("— none found —" if i == 0 else "") for i, c in enumerate(columns)}],
+                          columns=columns)
+    startrow = 0
+    df.to_excel(writer, sheet_name=sheet[:31], index=False, startrow=startrow)
+    _style_sheet(writer.sheets[sheet[:31]], df, title)
+    return df
+
+
+def _load_metric(load, metric, default="—"):
+    for row in load:
+        if row.get("metric") == metric:
+            return row.get("value", default)
     return default
 
 
-def _sheet(wb, title, headers, rows, widths=None, status_col=None, sev_col=None):
-    ws = wb.create_sheet(title[:31])
-    ws.append(headers)
-    for c, _ in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=c)
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        cell.border = THIN
-    for r in rows:
-        ws.append(r)
-    # styling
-    for ri in range(2, ws.max_row + 1):
-        for ci in range(1, len(headers) + 1):
-            cell = ws.cell(row=ri, column=ci)
-            cell.alignment = WRAP
-            cell.border = THIN
-        if status_col:
-            sc = ws.cell(row=ri, column=status_col)
-            v = str(sc.value or "").upper()
-            if v == "PASSED" or v == "PASS" or v == "OK":
-                sc.fill = PASS_FILL
-            elif v == "FAILED" or v == "FAIL" or v == "BROKEN":
-                sc.fill = FAIL_FILL
-            elif v == "SKIPPED":
-                sc.fill = SKIP_FILL
-            sc.alignment = CENTER
-        if sev_col:
-            vc = ws.cell(row=ri, column=sev_col)
-            v = str(vc.value or "").upper()
-            if v == "HIGH":
-                vc.fill = SEV_HIGH
-            elif v == "MEDIUM":
-                vc.fill = SEV_MED
-            elif v == "LOW":
-                vc.fill = SEV_LOW
-            vc.alignment = CENTER
-    widths = widths or [22] * len(headers)
-    for i, w in enumerate(widths, 1):
-        ws.column_dimensions[get_column_letter(i)].width = w
-    ws.freeze_panes = "A2"
-    return ws
-
-
-def build_coverage(discovery, functional):
-    """Phase 6 — map each functionality to coverage based on executed modules."""
-    tested_modules = {r["module"].upper() for r in functional}
-    passed_modules = {r["module"].upper() for r in functional if r["status"] == "PASSED"}
-
-    # functionality module -> set of test-suite module names that exercise it
-    MAP = {
-        "AUTH": {"AUTHENTICATION"},
-        "RBAC": {"RBAC"},
-        "NAVIGATION": {"NAVIGATION"},
-        "DASHBOARD": {"NAVIGATION", "USER JOURNEY", "PERFORMANCE"},
-        "LIBRARY": {"SEARCH & FILTER", "CRUD", "USER JOURNEY"},
-        "LEAVE": {"FORMS", "CRUD"},
-        "REQUESTS": {"CRUD"},
-        "NOTICES": {"NAVIGATION", "USER JOURNEY", "BROKEN LINKS"},
-        "CONTACT": {"NAVIGATION", "ACCESSIBILITY", "BROKEN LINKS"},
-        "ADMIN": {"RBAC", "USER JOURNEY"},
-        "CHAT": {"NAVIGATION"},
-        "ATTENDANCE": {"NAVIGATION"},
-        "STATUS": {"NAVIGATION"},
-        "EXAM": {"NAVIGATION"},
-        "FEES": {"NAVIGATION"},
-        "TIMETABLE": {"NAVIGATION"},
-        "CGPA": {"NAVIGATION"},
-        "OD": {"NAVIGATION"},
-        "EVENTS": {"NAVIGATION"},
-        "PROFILE": {"NAVIGATION"},
-        "CALENDAR": {"NAVIGATION"},
-        "LANDING": {"SMOKE", "PERFORMANCE"},
-    }
-    rows = []
-    counts = {"Fully Covered": 0, "Partially Covered": 0, "Not Covered": 0}
-    for func in discovery["functionalities"]:
-        mod = func["module"].upper()
-        suites = MAP.get(mod, set())
-        page = func["module"]
-        name = func["functionality"]
-        if suites & passed_modules:
-            # Distinguish full vs partial: dedicated suite passed = full; only indirect = partial
-            direct = {"AUTH": "AUTHENTICATION", "RBAC": "RBAC", "NAVIGATION": "NAVIGATION",
-                      "LIBRARY": "SEARCH & FILTER", "LEAVE": "FORMS", "ADMIN": "RBAC"}.get(mod)
-            if direct and direct in passed_modules:
-                status, remark = "Fully Covered", f"Exercised by {direct} suite (passing)."
-                counts["Fully Covered"] += 1
-            else:
-                status, remark = "Partially Covered", "Reached via navigation/journey/smoke; no dedicated assertion suite."
-                counts["Partially Covered"] += 1
-        elif suites & tested_modules:
-            status, remark = "Partially Covered", "Relevant suite ran but did not fully pass."
-            counts["Partially Covered"] += 1
-        else:
-            status, remark = "Not Covered", "No automated UI test maps to this functionality (admin sub-tab CRUD)."
-            counts["Not Covered"] += 1
-        rows.append([page, name, status, remark])
-    return rows, counts
+def _load_headline(load):
+    if not load:
+        return "not executed"
+    return (f"{_load_metric(load, 'Concurrent Virtual Users')} users · "
+            f"{_load_metric(load, 'Throughput (RPS)')} · "
+            f"avg {_load_metric(load, 'Response Time — Average')}")
 
 
 def generate():
-    discovery = _load("discovery", {"functionalities": [], "counts": {}})
-    audit = _load("audit", {})
-    functional = _load("functional", [])
-    api = _load("api", [])
-    broken = _load("broken_links", [])
-    a11y = _load("accessibility", [])
-    perf = _load("performance", [])
-    journeys = _load("journeys", [])
-    ui = _load("ui", [])
-    security = _load("security", [])
+    discovery = _load("discovery.json")
+    audit = _load("audit.json")
+    if not discovery or not audit:
+        raise SystemExit("Run discover.py and audit.py first — data/ is incomplete.")
 
-    passed = sum(1 for r in functional if r["status"] == "PASSED")
-    failed = sum(1 for r in functional if r["status"] == "FAILED")
-    skipped = sum(1 for r in functional if r["status"] == "SKIPPED")
+    functional = collectors.read("functional")
+    api_rows = collectors.read("api")
+    journeys = collectors.read("journeys")
+    defects_run = collectors.read("defects")
+    links = collectors.read("broken_links")
+    a11y = collectors.read("accessibility")
+    ui = collectors.read("ui")
+    perf = collectors.read("performance")
+    security = collectors.read("security")
+    load = collectors.read("load")
+    load_endpoints = collectors.read("load_endpoints")
+
+    coverage = analyse_coverage(discovery, functional, api_rows, journeys)
+
+    passed = sum(1 for t in functional if t["status"] == "Passed")
+    failed = sum(1 for t in functional if t["status"] == "Failed")
+    skipped = sum(1 for t in functional if t["status"] == "Skipped")
     total = len(functional)
 
-    cov_rows, cov_counts = build_coverage(discovery, functional)
-    total_func = len(cov_rows) or 1
-    coverage_pct = round(
-        (cov_counts["Fully Covered"] + 0.5 * cov_counts["Partially Covered"]) / total_func * 100, 1)
+    full = sum(1 for c in coverage if c["Coverage Status"] == "Fully Covered")
+    part = sum(1 for c in coverage if c["Coverage Status"] == "Partially Covered")
+    none_ = sum(1 for c in coverage if c["Coverage Status"] == "Not Covered")
+    cov_pct = round((full + 0.5 * part) / len(coverage) * 100, 1) if coverage else 0.0
 
-    # defects = static defects + failed functional tests + broken links + high/med a11y
-    defect_rows = []
-    bid = 1
-    for d in audit.get("defects", []):
-        defect_rows.append([f"BUG-{bid:03d}", d["module"], d["description"], d["steps"],
-                            d["severity"], d["evidence"], d["status"]])
-        bid += 1
-    for r in functional:
-        if r["status"] == "FAILED":
-            defect_rows.append([f"BUG-{bid:03d}", r["module"], f"Test failed: {r['scenario']}",
-                                f"Run test {r['test_id']}", "High", r["screenshot"] or r["actual"], "Open"])
-            bid += 1
-    for b in broken:
-        if str(b.get("result")) == "BROKEN":
-            defect_rows.append([f"BUG-{bid:03d}", "Broken Link", f"{b['url']} returned {b['status']}",
-                                f"Open {b['source']} and follow link", "Medium", b["url"], "Open"])
-            bid += 1
+    # ---- defects: static findings + runtime findings, de-duplicated ----
+    all_defects, seen = [], set()
+    for d in audit["defects"]:
+        key = d["description"][:90]
+        if key in seen:
+            continue
+        seen.add(key)
+        all_defects.append({
+            "Bug ID": "", "Module": d["module"], "Description": d["description"],
+            "Steps to Reproduce": d["steps"], "Severity": d["severity"],
+            "Evidence": d["evidence"], "Status": d["status"], "Source": "Static code audit",
+        })
+    for d in defects_run:
+        key = d["description"][:90]
+        if key in seen:
+            continue
+        seen.add(key)
+        all_defects.append({
+            "Bug ID": "", "Module": d["module"], "Description": d["description"],
+            "Steps to Reproduce": d["steps"], "Severity": d["severity"],
+            "Evidence": d["evidence"], "Status": d["status"], "Source": "Test execution",
+        })
+    order = {"High": 0, "Medium": 1, "Low": 2}
+    all_defects.sort(key=lambda d: order.get(d["Severity"], 3))
+    for i, d in enumerate(all_defects, start=1):
+        d["Bug ID"] = f"BUG-{i:03d}"
 
-    total_bugs = len(defect_rows)
+    recommendations = build_recommendations(audit, functional, coverage, all_defects,
+                                            security, a11y, perf)
+    code_health = build_code_health(audit, discovery)
 
-    # ── Workbook ──────────────────────────────────────────────────────────
-    wb = Workbook()
-    wb.remove(wb.active)
+    t = discovery["totals"]
+    now = datetime.now()
 
-    # 1. Executive Summary
-    ws = wb.create_sheet("Executive Summary")
-    ws["A1"] = "CampusAssist — Master Test & Audit Report"
-    ws["A1"].font = TITLE_FONT
-    ws.merge_cells("A1:B1")
+    # ── Executive Summary ───────────────────────────────────────────────────
     summary = [
-        ("Project Name", "CampusAssist — College Helpdesk Chatbot"),
-        ("Stack", "React 18 + Vite · Express · MongoDB (JWT auth)"),
-        ("Scan Date", datetime.now().strftime("%Y-%m-%d %H:%M")),
-        ("Environment", config.BASE_URL + " (local in-memory seed)"),
-        ("Total Files (excl. deps)", discovery.get("counts", {}).get("total_files_excl_deps", "—")),
-        ("Total Pages (React routes)", len(discovery["routes"]["public"]) + len(discovery["routes"]["student"]) + len(discovery["routes"]["admin"]) if discovery.get("routes") else "—"),
-        ("Total Functionalities", discovery.get("counts", {}).get("functionalities", len(cov_rows))),
+        ("Project Name", config.PROJECT_NAME),
+        ("Application Under Test", config.BASE_URL),
+        ("Scan / Execution Date", now.strftime("%d %B %Y, %H:%M")),
+        ("Test Framework", "Python · Selenium WebDriver · Pytest · Page Object Model"),
+        ("Browser", "Google Chrome (headless)" if config.HEADLESS else "Google Chrome"),
+        ("", ""),
+        ("── SCOPE ──", ""),
+        ("Total Files Scanned", t["files_scanned"]),
+        ("Application Source Files", t["source_files"]),
+        ("Total Pages / Screens", t["pages"]),
+        ("Shared Components", t["components"]),
+        ("Total Routes", t["routes"]),
+        ("Backend API Endpoints", t["api_endpoints"]),
+        ("Database Models", t["models"]),
+        ("Total Functionalities Discovered", t["functionalities"]),
+        ("", ""),
+        ("── TEST EXECUTION ──", ""),
         ("Total Tests Executed", total),
         ("Passed", passed),
         ("Failed", failed),
         ("Skipped", skipped),
         ("Pass Rate", f"{round(passed / total * 100, 1) if total else 0}%"),
-        ("Functional Coverage", f"{coverage_pct}%"),
-        ("  • Fully Covered", cov_counts["Fully Covered"]),
-        ("  • Partially Covered", cov_counts["Partially Covered"]),
-        ("  • Not Covered", cov_counts["Not Covered"]),
-        ("Total Bugs / Findings", total_bugs),
-        ("API Endpoints Checked", len(api)),
-        ("Broken Links Found", sum(1 for b in broken if str(b.get('result')) == 'BROKEN')),
+        ("Total Execution Time", f"{round(sum(t_.get('duration_s', 0) for t_ in functional) / 60, 1)} min"),
+        ("", ""),
+        ("── FUNCTIONAL COVERAGE ──", ""),
+        ("Fully Covered", full),
+        ("Partially Covered", part),
+        ("Not Covered", none_),
+        ("Coverage Percentage", f"{cov_pct}%"),
+        ("", ""),
+        ("── BASELINE / LOAD TEST ──", ""),
+        ("Concurrent Virtual Users", _load_metric(load, "Concurrent Virtual Users", "not executed")),
+        ("Sustained Duration", _load_metric(load, "Test Duration")),
+        ("Total Requests Served", _load_metric(load, "Total Requests")),
+        ("Throughput", _load_metric(load, "Throughput (RPS)")),
+        ("Error Rate", _load_metric(load, "Error Rate")),
+        ("Response Time — Min / Avg / Max",
+         f'{_load_metric(load, "Response Time — Min")} / '
+         f'{_load_metric(load, "Response Time — Average")} / '
+         f'{_load_metric(load, "Response Time — Max")}'),
+        ("Response Time — p95", _load_metric(load, "Response Time — p95")),
+        ("Load Test Verdict", _load_metric(load, "Baseline Verdict")),
+        ("", ""),
+        ("── QUALITY FINDINGS ──", ""),
+        ("Total Bugs Found", len(all_defects)),
+        ("  · High Severity", sum(1 for d in all_defects if d["Severity"] == "High")),
+        ("  · Medium Severity", sum(1 for d in all_defects if d["Severity"] == "Medium")),
+        ("  · Low Severity", sum(1 for d in all_defects if d["Severity"] == "Low")),
+        ("Unused / Dead-weight Files", len(audit["unused_files"])),
+        ("Dead-Code Findings", len(audit["dead_code"])),
+        ("Broken Links", sum(1 for l in links if l["result"] == "Broken")),
         ("Accessibility Findings", len(a11y)),
+        ("UI Validation Findings", len(ui)),
+        ("Security Observations", len(security)),
+        ("API Checks Executed", len(api_rows)),
+        ("User Journeys Executed", len(journeys)),
+        ("", ""),
+        ("── VERDICT ──", ""),
+        ("Release Recommendation",
+         "GO — no failing functional tests" if failed == 0 else
+         f"CONDITIONAL — {failed} failing test(s) require triage before sign-off"),
+        ("Highest Risk Area",
+         (sorted(all_defects, key=lambda d: order.get(d["Severity"], 3))[0]["Module"]
+          if all_defects else "None identified")),
     ]
-    r = 3
-    for k, v in summary:
-        ws.cell(row=r, column=1, value=k).font = Font(bold=True)
-        ws.cell(row=r, column=1).border = THIN
-        c = ws.cell(row=r, column=2, value=v)
-        c.border = THIN
-        if k in ("Passed",):
-            c.fill = PASS_FILL
-        if k in ("Failed",) and failed:
-            c.fill = FAIL_FILL
-        if k in ("Skipped",) and skipped:
-            c.fill = SKIP_FILL
-        r += 1
-    ws.column_dimensions["A"].width = 30
-    ws.column_dimensions["B"].width = 52
 
-    # 2. Functional Test Results
-    _sheet(wb, "Functional Test Results",
-           ["Test ID", "Module", "Scenario", "Expected Result", "Actual Result", "Status", "Execution Time", "Screenshot Path"],
-           [[r["test_id"], r["module"], r["scenario"], r["expected"], r["actual"], r["status"], r["time"], r["screenshot"]]
-            for r in functional],
-           widths=[10, 16, 34, 38, 44, 11, 13, 40], status_col=6)
+    with pd.ExcelWriter(config.REPORT_XLSX, engine="openpyxl") as writer:
+        df = pd.DataFrame(summary, columns=["Metric", "Value"])
+        df.to_excel(writer, sheet_name="Executive Summary", index=False)
+        ws = writer.sheets["Executive Summary"]
+        _style_sheet(ws, df, "CampusAssist — Master Test & Audit Report")
+        ws.column_dimensions["A"].width = 38
+        ws.column_dimensions["B"].width = 76
+        for row in ws.iter_rows(min_row=3, max_row=ws.max_row, max_col=2):
+            label = str(row[0].value or "")
+            if label.startswith("──"):
+                for c in row:
+                    c.fill = FILL["info"]
+                    c.font = Font(bold=True, color=NAVY)
 
-    # 3. Functional Coverage
-    _sheet(wb, "Functional Coverage",
-           ["Page / Module", "Functionality", "Coverage Status", "Remarks"],
-           cov_rows, widths=[16, 42, 18, 50], status_col=None)
+        _write(writer, "Functional Test Results",
+               [{"Test ID": t_["test_id"].split("::")[-1],
+                 "Module": t_["module"],
+                 "Scenario": t_["scenario"],
+                 "Expected Result": t_["expected"],
+                 "Actual Result": t_["actual"],
+                 "Status": t_["status"],
+                 "Execution Time (s)": t_["duration_s"],
+                 "Screenshot Path": t_["screenshot"],
+                 "Full Node ID": t_["test_id"]} for t_ in functional],
+               ["Test ID", "Module", "Scenario", "Expected Result", "Actual Result",
+                "Status", "Execution Time (s)", "Screenshot Path", "Full Node ID"],
+               f"Functional Test Results — {passed} passed / {failed} failed / {skipped} skipped")
 
-    # 4. Defect Report
-    _sheet(wb, "Defect Report",
-           ["Bug ID", "Module", "Description", "Steps to Reproduce", "Severity", "Evidence", "Status"],
-           defect_rows, widths=[10, 16, 42, 36, 11, 38, 10], sev_col=5)
+        _write(writer, "Functional Coverage", coverage,
+               ["Page", "Functionality", "Module", "Type", "Coverage Status",
+                "Source File(s)", "Remarks"],
+               f"Functional Coverage — {cov_pct}% ({full} full, {part} partial, {none_} none)")
 
-    # 5. Unused Files
-    _sheet(wb, "Unused Files",
-           ["File Name", "Path", "Reason", "Severity"],
-           [[u["file"], u["path"], u["reason"], u["severity"]] for u in audit.get("unused_files", [])],
-           widths=[26, 34, 60, 11], sev_col=4)
+        _write(writer, "Defect Report", all_defects,
+               ["Bug ID", "Module", "Description", "Steps to Reproduce", "Severity",
+                "Evidence", "Status", "Source"],
+               f"Defect Report — {len(all_defects)} finding(s)")
 
-    # 6. Dead Code
-    _sheet(wb, "Dead Code",
-           ["File", "Function or Class", "Line Number", "Recommendation"],
-           [[d["file"], d["function_or_class"], d["line"], d["recommendation"]] for d in audit.get("dead_code", [])]
-           or [["—", "No dead code / TODO markers found in app source", "—", "Source is clean (legacy duplication tracked separately)."]],
-           widths=[34, 30, 12, 60])
+        _write(writer, "Unused Files",
+               [{"File Name": u["file"], "Path": u["path"], "Reason": u["reason"],
+                 "Severity": u["severity"], "Lines": u.get("lines", 0)}
+                for u in audit["unused_files"]],
+               ["File Name", "Path", "Reason", "Severity", "Lines"],
+               f"Unused / Dead-weight Files — {len(audit['unused_files'])} item(s)")
 
-    # 7. Broken Links
-    _sheet(wb, "Broken Links",
-           ["URL", "Source Page", "Status Code", "Result"],
-           [[b["url"], b["source"], b["status"], b["result"]] for b in broken]
-           or [["—", "—", "—", "No links scanned"]],
-           widths=[58, 18, 14, 14], status_col=4)
+        _write(writer, "Dead Code",
+               [{"File": d["file"], "Function or Class": d["symbol"], "Line Number": d["line"],
+                 "Severity": d["severity"], "Recommendation": d["recommendation"]}
+                for d in audit["dead_code"]],
+               ["File", "Function or Class", "Line Number", "Severity", "Recommendation"],
+               f"Dead Code — {len(audit['dead_code'])} finding(s)")
 
-    # 8. Accessibility Findings
-    _sheet(wb, "Accessibility Findings",
-           ["Page", "Issue", "Severity", "Recommendation"],
-           [[a["page"], a["issue"], a["severity"], a["recommendation"]] for a in a11y]
-           or [["—", "No accessibility issues detected by smoke checks", "Low", "Run a full axe-core audit for depth."]],
-           widths=[18, 50, 11, 55], sev_col=3)
+        _write(writer, "Broken Links",
+               [{"URL": l["url"], "Source Page": l["source_page"],
+                 "Status Code": l["status_code"], "Result": l["result"]} for l in links],
+               ["URL", "Source Page", "Status Code", "Result"],
+               f"Broken Link Validation — {len(links)} link(s) checked")
 
-    # 9. API Validation Results
-    _sheet(wb, "API Validation Results",
-           ["Endpoint", "Method", "Expected Status", "Actual Status", "Result"],
-           [[a["endpoint"], a["method"], a["expected"], a["actual"], a["result"]] for a in api]
-           or [["—", "—", "—", "—", "No API checks run"]],
-           widths=[34, 10, 16, 14, 12], status_col=5)
+        _write(writer, "Accessibility Findings",
+               [{"Page": a["page"], "Issue": a["issue"], "Severity": a["severity"],
+                 "Recommendation": a["recommendation"]} for a in a11y],
+               ["Page", "Issue", "Severity", "Recommendation"],
+               f"Accessibility Findings — {len(a11y)} issue(s)")
 
-    # 10. UI Validation Findings
-    _sheet(wb, "UI Validation Findings",
-           ["Page", "Issue", "Severity", "Evidence"],
-           [[u["page"], u["issue"], u["severity"], u["evidence"]] for u in ui]
-           or [["All tested pages", "Rendered with non-empty body and visible headings; no layout errors thrown",
-                "Low", "See Functional Test Results + screenshots/"]],
-           widths=[20, 46, 11, 44], sev_col=3)
+        _write(writer, "API Validation Results",
+               [{"Endpoint": a["endpoint"], "Method": a["method"],
+                 "Expected Status": a["expected"], "Actual Status": a["actual"],
+                 "Result": a["result"], "Note": a.get("note", "")} for a in api_rows],
+               ["Endpoint", "Method", "Expected Status", "Actual Status", "Result", "Note"],
+               f"API Validation — {len(api_rows)} check(s)")
 
-    # 11. Performance Observations
-    _sheet(wb, "Performance Observations",
-           ["Page", "Load Time", "Observation", "Recommendation"],
-           [[p["page"], p["load_time"], p["observation"], p["recommendation"]] for p in perf]
-           or [["—", "—", "No performance samples", "—"]],
-           widths=[24, 14, 36, 46])
+        _write(writer, "UI Validation Findings",
+               [{"Page": u["page"], "Issue": u["issue"], "Severity": u["severity"],
+                 "Evidence": u["evidence"]} for u in ui],
+               ["Page", "Issue", "Severity", "Evidence"],
+               f"UI Validation — {len(ui)} finding(s)")
 
-    # 12. User Journey Results
-    _sheet(wb, "User Journey Results",
-           ["Journey Name", "Steps", "Result", "Evidence"],
-           [[j["journey"], j["steps"], j["result"], j["evidence"]] for j in journeys]
-           or [["—", "—", "—", "No journeys recorded"]],
-           widths=[34, 50, 12, 44], status_col=3)
+        _write(writer, "Performance Observations",
+               [{"Page": p["page"], "Load Time (ms)": p["load_ms"],
+                 "Observation": p["observation"], "Recommendation": p["recommendation"]}
+                for p in perf],
+               ["Page", "Load Time (ms)", "Observation", "Recommendation"],
+               f"Performance Observations — {len(perf)} measurement(s)")
 
-    # 13. Security Observations
-    sec_rows = [[s["area"], s["observation"], s["severity"], s["recommendation"]] for s in security]
-    sec_rows += [
-        ["Transport", "Local audit ran over HTTP; production is HTTPS on Render.", "Info", "Enforce HTTPS + HSTS in production."],
-        ["Headers", "Helmet CSP, frameAncestors:none and rate limiting are configured in backend/server.js.", "Info", "Keep CSP tight; review 'unsafe-inline' usage."],
-        ["Auth", "JWT issued for 30 days; passwords hashed with bcrypt (cost 12).", "Low", "Consider shorter token TTL + refresh tokens."],
-        ["Registration", "New accounts require admin approval before login (approvalStatus gate).", "Info", "Good control — keep enforced server-side."],
+        _write(writer, "Load Test Results",
+               [{"Metric": l["metric"], "Value": l["value"],
+                 "Observation": l.get("observation", ""),
+                 "Recommendation": l.get("recommendation", "")} for l in load],
+               ["Metric", "Value", "Observation", "Recommendation"],
+               f"Baseline / Load Test — {_load_headline(load)}")
+
+        _write(writer, "Load Test By Endpoint",
+               [{"Endpoint": e["endpoint"], "Requests": e["requests"],
+                 "Successful": e["ok"], "Errors": e["errors"],
+                 "Throughput (req/sec)": e["rps"], "Min (ms)": e["min_ms"],
+                 "Average (ms)": e["avg_ms"], "p95 (ms)": e["p95_ms"],
+                 "Max (ms)": e["max_ms"]} for e in load_endpoints],
+               ["Endpoint", "Requests", "Successful", "Errors", "Throughput (req/sec)",
+                "Min (ms)", "Average (ms)", "p95 (ms)", "Max (ms)"],
+               f"Load Test — per-endpoint breakdown ({len(load_endpoints)} endpoints)")
+
+        _write(writer, "User Journey Results",
+               [{"Journey Name": j["name"], "Steps": j["steps"], "Result": j["result"],
+                 "Evidence": j["evidence"]} for j in journeys],
+               ["Journey Name", "Steps", "Result", "Evidence"],
+               f"End-to-End User Journeys — {len(journeys)} executed")
+
+        _write(writer, "Security Observations",
+               [{"Area": s["area"], "Observation": s["observation"], "Severity": s["severity"],
+                 "Recommendation": s["recommendation"]} for s in security],
+               ["Area", "Observation", "Severity", "Recommendation"],
+               f"Security Observations — {len(security)} item(s)")
+
+        _write(writer, "Code Health Summary", code_health,
+               ["Category", "Finding", "Severity", "Recommendation"],
+               "Code Health Summary")
+
+        _write(writer, "Recommendations", recommendations,
+               ["Priority", "Recommendation", "Business Impact"],
+               "Prioritised Recommendations")
+
+        # ---- supporting inventories ----
+        _write(writer, "Discovered Functionality",
+               [{"Module": f["module"], "Page / Route": f["page"],
+                 "Functionality": f["functionality"], "Type": f["category"],
+                 "Source File(s)": ", ".join(f["sources"]), "Detail": f.get("detail", "")}
+                for f in discovery["functionalities"]],
+               ["Module", "Page / Route", "Functionality", "Type", "Source File(s)", "Detail"],
+               f"Phase 1 Discovery — {t['functionalities']} functionalities mapped to source")
+
+        _write(writer, "API Inventory",
+               [{"Endpoint": e["endpoint"], "Method": e["method"],
+                 "Access Level": e["role"], "Module": e["module"], "Source File": e["file"]}
+                for e in discovery["endpoints"]],
+               ["Endpoint", "Method", "Access Level", "Module", "Source File"],
+               f"Backend API Inventory — {t['api_endpoints']} endpoints")
+
+        _write(writer, "Route Map",
+               [{"Route": r["path"], "Access": r["access"]} for r in discovery["routes"]],
+               ["Route", "Access"],
+               f"Application Route Map — {t['routes']} routes")
+
+    print(f"  Tests      : {total} ({passed} passed, {failed} failed, {skipped} skipped)")
+    print(f"  Coverage   : {cov_pct}% ({full} full / {part} partial / {none_} none)")
+    print(f"  Defects    : {len(all_defects)}")
+    print(f"  -> {config.REPORT_XLSX.name}")
+
+    _write_markdown(discovery, audit, functional, coverage, all_defects, security,
+                    a11y, ui, perf, journeys, links, api_rows, recommendations,
+                    passed, failed, skipped, cov_pct, full, part, none_, load)
+    return config.REPORT_XLSX
+
+
+# ── FINAL_AUDIT_REPORT.md ───────────────────────────────────────────────────
+def _write_markdown(discovery, audit, functional, coverage, defects, security, a11y, ui,
+                    perf, journeys, links, api_rows, recommendations,
+                    passed, failed, skipped, cov_pct, full, part, none_, load=()):
+    t = discovery["totals"]
+    total = len(functional)
+    now = datetime.now().strftime("%d %B %Y, %H:%M")
+    high = [d for d in defects if d["Severity"] == "High"]
+
+    lines = [
+        "# CampusAssist — Final Audit Report",
+        "",
+        f"**Generated:** {now}  ",
+        f"**Application under test:** {config.BASE_URL}  ",
+        "**Framework:** Python · Selenium WebDriver · Pytest · Page Object Model  ",
+        f"**Master workbook:** `selenium_model/MASTER_TEST_AUDIT_REPORT.xlsx`",
+        "",
+        "---",
+        "",
+        "## 1. Executive summary",
+        "",
+        f"| Metric | Value |",
+        f"|---|---|",
+        f"| Files scanned | {t['files_scanned']} |",
+        f"| Pages / components | {t['pages']} / {t['components']} |",
+        f"| Routes | {t['routes']} |",
+        f"| API endpoints | {t['api_endpoints']} |",
+        f"| Functionalities discovered | {t['functionalities']} |",
+        f"| Tests executed | {total} |",
+        f"| Passed / Failed / Skipped | {passed} / {failed} / {skipped} |",
+        f"| Functional coverage | {cov_pct}% ({full} full, {part} partial, {none_} none) |",
+        f"| Defects found | {len(defects)} ({len(high)} high) |",
+        f"| User journeys executed | {len(journeys)} |",
+        f"| Load test | {_load_headline(load)} |",
+        "",
+        f"**Release recommendation:** "
+        + ("GO — every executed functional test passed."
+           if failed == 0 else
+           f"CONDITIONAL — {failed} failing test(s) need triage before sign-off."),
+        "",
+        "---",
+        "",
+        "## 2. What was tested",
+        "",
+        "- **Authentication** — unified login for all three roles, email/register-number/case "
+        "handling, invalid credentials, account enumeration, field validation, password "
+        "visibility, remember-me, logout, session teardown, registration, approval gating and "
+        "first-run setup sealing.",
+        "- **Authorization** — route guards for unauthenticated access, cross-portal isolation "
+        "for all three roles, server-side adminOnly/facultyOnly enforcement, token tampering, "
+        "privilege escalation via the registration and login bodies, and per-owner data scoping.",
+        "- **Navigation** — every student, faculty and admin destination, all 19 admin panel "
+        "tabs, topbar controls, mobile bottom navigation, theme switching and the legacy URL "
+        "redirect contract.",
+        "- **Forms** — mandatory-field validation, invalid input, boundary values (password "
+        "length, oversized payloads, long text) and valid submissions.",
+        "- **CRUD** — full create/read/update/delete lifecycles for requests, notices, events, "
+        "departments and leave, including owner scoping and workflow-integrity checks.",
+        "- **Search, filters, sorting, tables and pagination** — exact, partial, empty and "
+        "no-match searches; category and status filters; table rendering; ordering guarantees.",
+        "- **Modals, notifications, uploads and downloads.**",
+        "- **End-to-end journeys** — nine complete multi-step workflows.",
+        "- **Additional layers** — smoke, regression, broken links, API contract validation, "
+        "accessibility, UI integrity and performance.",
+        "",
+        "---",
+        "",
+        "## 3. Highest-severity findings",
+        "",
     ]
-    _sheet(wb, "Security Observations",
-           ["Area", "Observation", "Severity", "Recommendation"],
-           sec_rows, widths=[16, 56, 11, 46], sev_col=3)
 
-    # 14. Code Health Summary
-    _sheet(wb, "Code Health Summary",
-           ["Category", "Finding", "Severity", "Recommendation"],
-           [[c["category"], c["finding"], c["severity"], c["recommendation"]] for c in audit.get("code_health", [])]
-           + [["Large modules", f"{len(audit.get('large_files', []))} source files exceed 300 lines (see below).",
-               "Low", "Refactor large page/route modules into smaller units."]],
-           widths=[20, 56, 11, 46], sev_col=3)
+    if high:
+        for d in high[:12]:
+            lines += [f"### {d['Bug ID']} — {d['Module']}", "",
+                      d["Description"], "",
+                      f"*Reproduce:* {d['Steps to Reproduce']}  ",
+                      f"*Evidence:* `{d['Evidence']}`", ""]
+    else:
+        lines += ["No high-severity defects were identified.", ""]
 
-    # 14b. Large files appended as its own quick sheet
-    _sheet(wb, "Large Files",
-           ["File", "Lines", "Severity"],
-           [[l["file"], l["lines"], l["severity"]] for l in audit.get("large_files", [])]
-           or [["—", "—", "None ≥300 lines"]],
-           widths=[50, 10, 11], sev_col=3)
-
-    # 15. Recommendations
-    recs = [
-        ["High", "Implement a real 'Forgot Password' flow or hide the placeholder link.", "Avoids user confusion and support tickets; closes a visible UX gap."],
-        ["High", "Add data-testid attributes to key controls (login, nav, forms).", "Makes automation stable and cuts future QA maintenance cost."],
-        ["Medium", "Remove/relocate the legacy static HTML site and root debug scripts.", "Eliminates duplicate logic and reduces security & maintenance surface."],
-        ["Medium", "Add automated CRUD tests for admin sub-tabs (notices/events/requests).", "Covers the highest-risk write paths currently only partially tested."],
-        ["Medium", "Run a full axe-core accessibility audit and fix labelling/lang gaps.", "Improves compliance and usability for assistive tech."],
-        ["Low", "Refactor modules >300 lines (Landing, Profile, Register, Dashboard).", "Improves readability and lowers regression risk."],
-        ["Low", "Relocate committed screenshots/reports under /docs and gitignore artifacts.", "Cleaner repo, smaller clones, clearer history."],
-        ["Low", "Shorten JWT TTL and add refresh tokens.", "Reduces blast radius of a leaked token."],
+    lines += [
+        "---",
+        "",
+        "## 4. Code health",
+        "",
+        f"- **{len(audit['unused_files'])} unused / dead-weight files**, including "
+        f"{sum(1 for u in audit['unused_files'] if u['kind'] == 'duplicate-tree')} full clone "
+        "directories of the project and "
+        f"{sum(1 for u in audit['unused_files'] if u['kind'] == 'sensitive-data')} files of bulk "
+        "student personal data committed to version control.",
+        f"- **{len(audit['dead_code'])} dead-code findings**: orphan exports, unreachable "
+        "functions and oversized modules.",
+        f"- **{sum(1 for u in audit['unused_files'] if u['kind'] == 'orphan-component')} orphan "
+        "React components** left behind by the move to a unified login.",
+        "",
+        "---",
+        "",
+        "## 5. Coverage gaps",
+        "",
+        f"{none_} discovered functionalities have no automated coverage. The largest clusters:",
+        "",
     ]
-    _sheet(wb, "Recommendations",
-           ["Priority", "Recommendation", "Business Impact"],
-           recs, widths=[12, 60, 56], sev_col=None, status_col=None)
-    # color priority col
-    rs = wb["Recommendations"]
-    for ri in range(2, rs.max_row + 1):
-        c = rs.cell(row=ri, column=1)
-        v = str(c.value).upper()
-        c.fill = SEV_HIGH if v == "HIGH" else SEV_MED if v == "MEDIUM" else SEV_LOW
-        c.alignment = CENTER
 
-    out = config.ROOT / "MASTER_TEST_AUDIT_REPORT.xlsx"
-    wb.save(out)
-    print(f"[report] workbook saved -> {out} ({len(wb.sheetnames)} sheets)")
+    gaps = {}
+    for c in coverage:
+        if c["Coverage Status"] == "Not Covered":
+            gaps[c["Module"]] = gaps.get(c["Module"], 0) + 1
+    for mod, n in sorted(gaps.items(), key=lambda kv: -kv[1])[:10]:
+        lines.append(f"- **{mod}** — {n} uncovered functionality item(s)")
 
-    _write_markdown(discovery, audit, functional, api, broken, a11y, perf, journeys,
-                    cov_counts, coverage_pct, defect_rows,
-                    dict(total=total, passed=passed, failed=failed, skipped=skipped, bugs=total_bugs))
-    return out
+    lines += [
+        "",
+        "---",
+        "",
+        "## 6. Baseline / load test",
+        "",
+    ]
+    if load:
+        lines += [
+            f"{_load_metric(load, 'Concurrent Virtual Users')} virtual users were held active "
+            f"against the API continuously for {_load_metric(load, 'Test Duration')}, "
+            "browsing the endpoint mix a real student, faculty member and administrator hit "
+            "on a normal day.",
+            "",
+            "| Metric | Value | Observation |",
+            "|---|---|---|",
+        ]
+        for row in load:
+            lines.append(f"| {row['metric']} | {row['value']} | {row.get('observation', '')} |")
+    else:
+        lines.append("_Load test was not executed in this run._")
 
+    lines += [
+        "",
+        "---",
+        "",
+        "## 7. Prioritised recommendations",
+        "",
+        "| Priority | Recommendation | Business impact |",
+        "|---|---|---|",
+    ]
+    for r in recommendations:
+        lines.append(f"| {r['Priority']} | {r['Recommendation']} | {r['Business Impact']} |")
 
-def _write_markdown(discovery, audit, functional, api, broken, a11y, perf, journeys,
-                    cov_counts, coverage_pct, defect_rows, stats):
-    lines = []
-    A = lines.append
-    A("# CampusAssist — Final QA Audit Report\n")
-    A(f"_Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}_\n")
-    A("## 1. Executive Summary\n")
-    A(f"- **Project:** CampusAssist — College Helpdesk (React + Express + MongoDB)")
-    A(f"- **Tests executed:** {stats['total']}  |  **Passed:** {stats['passed']}  |  "
-      f"**Failed:** {stats['failed']}  |  **Skipped:** {stats['skipped']}")
-    A(f"- **Pass rate:** {round(stats['passed']/stats['total']*100,1) if stats['total'] else 0}%")
-    A(f"- **Functional coverage:** {coverage_pct}% "
-      f"(Full: {cov_counts['Fully Covered']}, Partial: {cov_counts['Partially Covered']}, "
-      f"None: {cov_counts['Not Covered']})")
-    A(f"- **Total bugs / findings:** {stats['bugs']}")
-    A(f"- **API endpoints checked:** {len(api)}  |  **Broken links:** "
-      f"{sum(1 for b in broken if str(b.get('result'))=='BROKEN')}  |  "
-      f"**Accessibility findings:** {len(a11y)}\n")
-
-    A("## 2. Discovery (Phase 1)\n")
-    c = discovery.get("counts", {})
-    A(f"- React pages: {c.get('react_pages')} · Admin tabs: {c.get('admin_tabs')} · "
-      f"Components: {c.get('components')} · Backend route files: {c.get('backend_routes')} · "
-      f"Models: {c.get('backend_models')}")
-    A(f"- Catalogued functionalities: {c.get('functionalities')}")
-    A(f"- Routes: {', '.join(discovery['routes']['student'][:6])} … (+admin, +public)\n")
-
-    A("## 3. Test Results by Module\n")
-    by_mod = {}
-    for r in functional:
-        by_mod.setdefault(r["module"], {"p": 0, "f": 0, "s": 0})
-        k = "p" if r["status"] == "PASSED" else "f" if r["status"] == "FAILED" else "s"
-        by_mod[r["module"]][k] += 1
-    A("| Module | Passed | Failed | Skipped |")
-    A("|---|---|---|---|")
-    for m, v in sorted(by_mod.items()):
-        A(f"| {m} | {v['p']} | {v['f']} | {v['s']} |")
-    A("")
-
-    A("## 4. Coverage (Phase 6)\n")
-    A(f"- Fully Covered: **{cov_counts['Fully Covered']}**")
-    A(f"- Partially Covered: **{cov_counts['Partially Covered']}**")
-    A(f"- Not Covered: **{cov_counts['Not Covered']}** (mainly admin sub-tab CRUD write paths)\n")
-
-    A("## 5. Code Audit (Phase 2)\n")
-    s = audit.get("summary", {})
-    A(f"- Unused / legacy files: {s.get('unused_files')}")
-    A(f"- Large modules (≥300 lines): {s.get('large_files')}")
-    A(f"- TODO/FIXME markers in app source: {s.get('todos')} (clean)")
-    A(f"- Code-health findings: {s.get('code_health_findings')}")
-    A("\nKey themes: legacy static HTML site duplicates the React SPA; ad-hoc debug scripts and "
-      "screenshots committed at repo root; a few large page modules worth refactoring.\n")
-
-    A("## 6. Top Defects / Findings\n")
-    for d in defect_rows[:10]:
-        A(f"- **[{d[4]}] {d[1]}** — {d[2]}")
-    A("")
-
-    A("## 7. Recommendations\n")
-    A("1. **High** — Implement or hide the placeholder 'Forgot Password' link.")
-    A("2. **High** — Add `data-testid` hooks for stable automation.")
-    A("3. **Medium** — Remove the legacy static site / debug scripts (duplicate logic).")
-    A("4. **Medium** — Add admin sub-tab CRUD automation; full axe-core a11y audit.")
-    A("5. **Low** — Refactor >300-line modules; relocate committed artifacts.\n")
-
-    A("## 8. Deliverables\n")
-    A("- `MASTER_TEST_AUDIT_REPORT.xlsx` — 16-sheet master report")
-    A("- `html_report.html` — pytest-html execution report")
-    A("- `screenshots/` — pass/fail screenshots")
-    A("- `browser_console.log`, `selenium.log`, `backend-server.log` — logs")
-    A("- `data/*.json` — raw evidence (discovery, audit, results)\n")
+    lines += [
+        "",
+        "---",
+        "",
+        "## 8. Deliverables",
+        "",
+        "| Artifact | Path |",
+        "|---|---|",
+        "| Master Excel report | `selenium_model/MASTER_TEST_AUDIT_REPORT.xlsx` |",
+        "| HTML execution report | `selenium_model/execution_report.html` |",
+        f"| Screenshots ({len(list(config.SCREENSHOT_DIR.glob('*.png')))}) | `selenium_model/screenshots/` |",
+        "| Browser console log | `selenium_model/logs/browser_console.log` |",
+        "| Selenium driver log | `selenium_model/logs/selenium.log` |",
+        "| Backend server log | `selenium_model/logs/backend-server.log` |",
+        "| Raw phase data (JSON) | `selenium_model/data/` |",
+        "| This report | `selenium_model/FINAL_AUDIT_REPORT.md` |",
+        "",
+        "## 9. Reproducing this run",
+        "",
+        "```bash",
+        "pip install -r selenium_model/requirements.txt",
+        "node backend/dev-local.js          # seeded in-memory backend on :5000",
+        "python selenium_model/run.py       # all seven phases, end to end",
+        "```",
+        "",
+    ]
 
     (config.ROOT / "FINAL_AUDIT_REPORT.md").write_text("\n".join(lines), encoding="utf-8")
-    print(f"[report] markdown saved -> {config.ROOT / 'FINAL_AUDIT_REPORT.md'}")
+    print("  -> FINAL_AUDIT_REPORT.md")
 
 
 if __name__ == "__main__":

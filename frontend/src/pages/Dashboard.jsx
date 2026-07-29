@@ -223,38 +223,18 @@ export default function Dashboard() {
           })}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div className="card">
-            <div className="card-header"><div><div className="card-title">🔔 Recent Notifications</div><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Campus-wide</div></div><Link to="/notices" className="link text-sm">View All</Link></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {!notices && <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)' }}>Loading…</div>}
-              {notices && !notices.length && (
-                <p style={{ fontSize: 13.5, color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>No notices at this time.</p>
-              )}
-              {(notices || []).slice(0, 3).map(n => (
-                <div key={n._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 10, background: 'var(--bg2)', borderRadius: 8 }}>
-                  <div style={{ flex: 1, marginRight: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <p style={{ fontSize: 13.5, margin: 0 }}>{n.title}</p>
-                      {n.category && <span className={`badge ${NOTICE_BADGE[n.category] || 'badge-muted'}`} style={{ fontSize: 10 }}>{n.category}</span>}
-                    </div>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatDate(noticeDate(n))}</span>
-                  </div>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{timeAgo(noticeDate(n))}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="card">
-            <div className="card-header"><div className="card-title">📄 Marksheet Status</div></div>
-            {!requests && <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)' }}>Loading…</div>}
-            {requests && !latestMarksheet && (
-              <p style={{ fontSize: 13.5, color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>No marksheet request yet.</p>
-            )}
-            {latestMarksheet && marksheetSteps(latestMarksheet.status).map(s => (
-              <div className="step-row" key={s.label}><div className="step-left"><div className={`step-dot ${s.dot}`}></div><span style={{ fontSize: 13.5 }}>{s.label}</span></div><span className={`badge ${s.badge}`}>{s.text}</span></div>
-            ))}
-          </div>
+        {/* Marksheet Status sits directly in the grid — it used to share a stacked
+            column with a "Recent Notifications" card, which was removed. The
+            /notices page and the topbar bell remain the entry points for notices. */}
+        <div className="card">
+          <div className="card-header"><div className="card-title">📄 Marksheet Status</div></div>
+          {!requests && <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)' }}>Loading…</div>}
+          {requests && !latestMarksheet && (
+            <p style={{ fontSize: 13.5, color: 'var(--text-muted)', textAlign: 'center', padding: 16 }}>No marksheet request yet.</p>
+          )}
+          {latestMarksheet && marksheetSteps(latestMarksheet.status).map(s => (
+            <div className="step-row" key={s.label}><div className="step-left"><div className={`step-dot ${s.dot}`}></div><span style={{ fontSize: 13.5 }}>{s.label}</span></div><span className={`badge ${s.badge}`}>{s.text}</span></div>
+          ))}
         </div>
       </div>
     </Layout>

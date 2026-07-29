@@ -99,3 +99,11 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# Release signing — never commit signing material
+*.jks
+*.keystore
+keystore.properties
+
+# Android Studio project state — the template above lists only some .idea files
+.idea/

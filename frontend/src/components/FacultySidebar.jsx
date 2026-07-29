@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
-import { getUser, logout } from '../services/auth';
+import { getUser } from '../services/auth';
+import { useLogout } from '../hooks/useLogout';
 
 // Faculty portal navigation. Every target lives under /faculty/* — this sidebar
 // contains ONLY faculty features and never any student or admin navigation.
@@ -21,6 +22,7 @@ const NAV_LINKS = [
 
 export default function FacultySidebar({ open, onClose }) {
   const user = getUser();
+  const logout = useLogout();
   return (
     <aside className={`sidebar${open ? ' open' : ''}`} id="sidebar">
       <div className="sidebar-header">

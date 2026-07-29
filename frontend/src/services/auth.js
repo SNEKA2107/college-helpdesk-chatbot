@@ -48,7 +48,18 @@ export function homePath() {
   return '/student/dashboard';
 }
 
+/** The one path a logged-out user belongs on. Keep call sites off string literals. */
+export const LOGIN_PATH = '/login';
+
+/**
+ * Logout for callers that live OUTSIDE the React tree — currently just the 401
+ * handler in services/api.js, which has no access to the router.
+ *
+ * This does a full page load, so it depends on the host serving index.html for
+ * unknown paths (see frontend/vercel.json). Components must prefer
+ * hooks/useLogout.js, which routes client-side and needs no such fallback.
+ */
 export function logout() {
   clearSession();
-  window.location.href = '/login';
+  window.location.assign(LOGIN_PATH);
 }

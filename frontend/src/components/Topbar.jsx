@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useUnreadNotices } from '../hooks/useUnreadNotices';
-import { getUser, logout } from '../services/auth';
+import { getUser } from '../services/auth';
+import { useLogout } from '../hooks/useLogout';
 
 export default function Topbar({ title, onMenuClick }) {
   const { current, next, cycle } = useTheme();
   const unread = useUnreadNotices();
   const user = getUser();
+  const logout = useLogout();
 
   return (
     <header className="topbar">

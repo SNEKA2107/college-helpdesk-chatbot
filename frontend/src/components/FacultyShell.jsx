@@ -4,7 +4,8 @@ import FacultySidebar from './FacultySidebar';
 import TempPasswordBanner from './TempPasswordBanner';
 import { useTheme } from '../hooks/useTheme';
 import { usePageAnimations } from '../hooks/usePageAnimations';
-import { getUser, logout } from '../services/auth';
+import { getUser } from '../services/auth';
+import { useLogout } from '../hooks/useLogout';
 
 /**
  * Authenticated faculty page shell: FacultySidebar + topbar + content.
@@ -15,6 +16,7 @@ export default function FacultyShell({ title, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { current, next, cycle } = useTheme();
   const user = getUser();
+  const logout = useLogout();
   usePageAnimations();
 
   return (

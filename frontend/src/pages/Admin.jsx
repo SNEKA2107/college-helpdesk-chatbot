@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiCall } from '../services/api';
-import { getUser, logout } from '../services/auth';
+import { getUser } from '../services/auth';
+import { useLogout } from '../hooks/useLogout';
 import OverviewTab from './admin/OverviewTab';
 import RequestsTab from './admin/RequestsTab';
 import LeavesTab from './admin/LeavesTab';
@@ -59,6 +60,7 @@ const EMPTY_DATA = { requests: [], leaves: [], notices: [], students: [], messag
 
 export default function Admin() {
   const user = getUser();
+  const logout = useLogout();
   const [tab, setTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [data, setData] = useState(EMPTY_DATA);

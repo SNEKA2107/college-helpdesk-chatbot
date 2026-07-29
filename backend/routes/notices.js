@@ -3,21 +3,14 @@ const Notice  = require('../models/Notice');
 const { protect, adminOnly } = require('../middleware/auth');
 const { logAudit } = require('../utils/audit');
 const { summarizeNotice } = require('../services/summarizer');
+const { fail, notFound } = require('../utils/apiError');
+const { resolveDepartment } = require('../services/departments');
 
 const router = express.Router();
 
-// Audiences a given user is allowed to receive. Students get 'all', 'student'
-// and their own department; admins get everything role-targeted at them.
-function audiencesFor(user) {
-  if (user.role === 'admin') return ['all', 'admin'];
-  const list = ['all', 'student'];
-  if (user.department) list.push(user.department);
-  return list;
-}
-
 // GET /api/notices — notices visible to the requester.
-//  • Students: only published, non-expired notices whose audience matches them.
-//  • Admins:   the full management view (every status), optionally filtered by ?status / ?category.
+//  • Students/faculty: only published, active, non-expired notices addressed to them.
+//  • Admins:           the full management view (every status), optionally filtered by ?status / ?category.
 router.get('/', protect, async (req, res) => {
   try {
     const { category, status } = req.query;
@@ -28,18 +21,9 @@ router.get('/', protect, async (req, res) => {
       filter = {};
       if (status) filter.status = status;
     } else {
-      const now = new Date();
-      filter = {
-        // $nin matches 'published' AND legacy rows with no status field (backward compatible).
-        status:   { $nin: ['draft', 'archived'] },
-        isActive: { $ne: false },
-        // $and of two OR-groups: audience match (legacy rows with no audience are treated as 'all'),
-        // and not-expired (no expiry set, or expiry in the future).
-        $and: [
-          { $or: [{ audience: { $in: audiencesFor(req.user) } }, { audience: { $exists: false } }, { audience: null }] },
-          { $or: [{ expiresAt: null }, { expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }] },
-        ],
-      };
+      // Shared visibility rules (published + active + unexpired + audience match)
+      // live on the model so every reader-facing query stays in step.
+      filter = Notice.liveFilter(req.user);
     }
     if (category) filter.category = category;
 
@@ -48,7 +32,7 @@ router.get('/', protect, async (req, res) => {
     const notices = await Notice.find(filter).sort({ pinned: -1, publishedAt: -1, createdAt: -1 });
     res.json({ success: true, count: notices.length, notices });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the notice request.');
   }
 });
 
@@ -58,8 +42,14 @@ function stripHtml(str) {
 }
 
 // Validate/normalise an audience value; defaults to 'all' when missing or invalid.
-function normaliseAudience(value) {
-  return Notice.AUDIENCES.includes(value) ? value : 'all';
+// A notice may target everyone, a role, or any ACTIVE department — department
+// codes now come from the Department collection, not a hardcoded list, so a
+// newly created department can be targeted immediately (audit finding H-1).
+async function normaliseAudience(value) {
+  if (!value) return 'all';
+  if (Notice.ROLE_AUDIENCES.includes(value)) return value;
+  const dept = await resolveDepartment(value);
+  return dept.ok ? dept.code : 'all';
 }
 
 // POST /api/notices — Create notice (admin). Supports saving as draft or publishing.
@@ -81,7 +71,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
       postedBy:    req.user.name,
       createdBy:   req.user._id,
       status:      lifecycle,
-      audience:    normaliseAudience(audience),
+      audience:    await normaliseAudience(audience),
       pinned:      !!pinned,
       summary:     ai.summary,
       keyDates:    ai.keyDates,
@@ -94,7 +84,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
     await logAudit(req, lifecycle === 'draft' ? 'notice.draft' : 'notice.create', 'Notice', notice._id, { title: notice.title, category: notice.category, audience: notice.audience });
     res.status(201).json({ success: true, message: lifecycle === 'draft' ? 'Draft saved' : 'Notice published', notice });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the notice request.');
   }
 });
 
@@ -105,7 +95,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     const update = { ...req.body };
     if (update.title)    update.title    = stripHtml(update.title);
     if (update.content)  update.content  = stripHtml(update.content);
-    if (update.audience) update.audience = normaliseAudience(update.audience);
+    if (update.audience) update.audience = await normaliseAudience(update.audience);
     if ('expiresAt' in update) update.expiresAt = update.expiresAt ? new Date(update.expiresAt) : null;
 
     const current = await Notice.findById(req.params.id);
@@ -135,7 +125,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     }
     res.json({ success: true, notice });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the notice request.');
   }
 });
 
@@ -143,10 +133,11 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {
     const notice = await Notice.findByIdAndDelete(req.params.id);
-    if (notice) await logAudit(req, 'notice.delete', 'Notice', notice._id, { title: notice.title });
+    if (!notice) return notFound(res, 'Notice');   // audit finding L-1
+    await logAudit(req, 'notice.delete', 'Notice', notice._id, { title: notice.title });
     res.json({ success: true, message: 'Notice deleted' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not delete the notice.');
   }
 });
 

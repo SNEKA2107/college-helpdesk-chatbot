@@ -2,6 +2,7 @@ const express = require('express');
 const Marks   = require('../models/Marks');
 const User    = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -51,7 +52,7 @@ router.get('/', protect, async (req, res) => {
     const marks = await Marks.find(marksFilter(req, sid)).sort({ semester: 1, subject: 1 });
     res.json({ success: true, count: marks.length, marks });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the marks request.');
   }
 });
 
@@ -62,7 +63,7 @@ router.get('/cgpa', protect, async (req, res) => {
     const marks = await Marks.find(marksFilter(req, sid)).sort({ semester: 1, subject: 1 });
     res.json({ success: true, ...computeCgpa(marks) });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the marks request.');
   }
 });
 
@@ -97,7 +98,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
         },
         $setOnInsert: { studentId: studentId.toUpperCase() },
       },
-      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, rawResult: true }
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, includeResultMetadata: true }
     );
     const created = !record.lastErrorObject?.updatedExisting;
     res.status(created ? 201 : 200).json({
@@ -109,7 +110,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
     if (err.code === 11000) {
       return res.status(409).json({ success: false, message: 'Marks already exist for this student, semester, and subject.' });
     }
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the marks request.');
   }
 });
 
@@ -120,7 +121,7 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     if (!deleted) return res.status(404).json({ success: false, message: 'Marks record not found.' });
     res.json({ success: true, message: 'Marks record deleted.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the marks request.');
   }
 });
 

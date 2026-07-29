@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { apiCall } from '../services/api';
-import { getUser, logout } from '../services/auth';
+import { getUser } from '../services/auth';
+import { useLogout } from '../hooks/useLogout';
 import { useToast } from '../hooks/useToast';
 import '../styles/profile.css';
 
@@ -23,6 +24,7 @@ function DetailRow({ label, value, valueStyle }) {
 
 export default function Profile() {
   const showToast = useToast();
+  const logout = useLogout();
   const photoInputRef = useRef(null);
   const [user, setUser] = useState(() => getUser());
   const [stats, setStats] = useState(null);

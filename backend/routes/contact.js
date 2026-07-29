@@ -1,6 +1,7 @@
 const express = require('express');
 const Contact = require('../models/Contact');
 const { protect, adminOnly } = require('../middleware/auth');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ router.post('/', protect, async (req, res) => {
     });
     res.status(201).json({ success: true, message: 'Message sent to the office.', contact });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -36,7 +37,7 @@ router.get('/', protect, adminOnly, async (req, res) => {
     const messages = await Contact.find().sort({ createdAt: -1 });
     res.json({ success: true, count: messages.length, messages });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 
@@ -47,7 +48,7 @@ router.put('/:id/resolve', protect, adminOnly, async (req, res) => {
     if (!msg) return res.status(404).json({ success: false, message: 'Message not found' });
     res.json({ success: true, message: 'Marked as resolved', contact: msg });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the request.');
   }
 });
 

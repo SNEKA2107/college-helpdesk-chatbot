@@ -1,6 +1,7 @@
 const express = require('express');
 const CalendarEvent = require('../models/CalendarEvent');
 const { protect, adminOnly } = require('../middleware/auth');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get('/', protect, async (req, res) => {
     const entries = await CalendarEvent.find(filter).sort({ date: 1 });
     res.json({ success: true, count: entries.length, entries });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the calendar request.');
   }
 });
 
@@ -37,7 +38,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
     });
     res.status(201).json({ success: true, message: 'Calendar entry created', entry });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the calendar request.');
   }
 });
 
@@ -60,7 +61,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (!entry) return res.status(404).json({ success: false, message: 'Calendar entry not found' });
     res.json({ success: true, message: 'Calendar entry updated', entry });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the calendar request.');
   }
 });
 
@@ -71,7 +72,7 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     if (!deleted) return res.status(404).json({ success: false, message: 'Calendar entry not found' });
     res.json({ success: true, message: 'Calendar entry deleted' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the calendar request.');
   }
 });
 

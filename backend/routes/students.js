@@ -2,6 +2,9 @@ const express = require('express');
 const User    = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
 const { logAudit } = require('../utils/audit');
+const { fail, badRequest, notFound } = require('../utils/apiError');
+const { initialiseStudent } = require('../services/studentInit');
+const { resolveDepartment } = require('../services/departments');
 
 const router = express.Router();
 
@@ -21,7 +24,7 @@ router.get('/', protect, adminOnly, async (req, res) => {
     const students = await User.find(filter).select('-password').sort({ studentId: 1 });
     res.json({ success: true, count: students.length, students });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the student request.');
   }
 });
 
@@ -32,11 +35,13 @@ router.get('/pending', protect, adminOnly, async (req, res) => {
       .select('-password').sort({ createdAt: -1 });
     res.json({ success: true, count: students.length, students });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the student request.');
   }
 });
 
-// PUT /api/students/:id/approve — admin: approve a pending registration
+// PUT /api/students/:id/approve — admin: approve a pending registration.
+// Approval also provisions the default records a working portal needs
+// (audit finding M-1) — see services/studentInit.js.
 router.put('/:id/approve', protect, adminOnly, async (req, res) => {
   try {
     const student = await User.findByIdAndUpdate(
@@ -44,11 +49,23 @@ router.put('/:id/approve', protect, adminOnly, async (req, res) => {
       { approvalStatus: 'approved', approvedBy: req.user._id, approvedAt: new Date(), rejectionReason: '' },
       { new: true },
     ).select('-password');
-    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
-    await logAudit(req, 'registration.approve', 'User', student._id, { studentId: student.studentId, name: student.name });
-    res.json({ success: true, message: 'Registration approved', student });
+    if (!student) return notFound(res, 'Student');
+
+    const init = await initialiseStudent(student);
+
+    await logAudit(req, 'registration.approve', 'User', student._id, {
+      studentId: student.studentId, name: student.name, feeRecordCreated: init.fee,
+    });
+    res.json({
+      success: true,
+      message: init.errors.length
+        ? `Registration approved, but some defaults could not be created: ${init.errors.join(', ')}.`
+        : 'Registration approved',
+      student,
+      initialised: init,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not approve the registration.');
   }
 });
 
@@ -65,7 +82,7 @@ router.put('/:id/reject', protect, adminOnly, async (req, res) => {
     await logAudit(req, 'registration.reject', 'User', student._id, { studentId: student.studentId, name: student.name, reason });
     res.json({ success: true, message: 'Registration rejected', student });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the student request.');
   }
 });
 
@@ -82,7 +99,7 @@ router.get('/search/:query', protect, adminOnly, async (req, res) => {
     }).select('-password').limit(20);
     res.json({ success: true, students });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the student request.');
   }
 });
 
@@ -93,7 +110,7 @@ router.get('/:id', protect, adminOnly, async (req, res) => {
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
     res.json({ success: true, student });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the student request.');
   }
 });
 
@@ -107,12 +124,32 @@ router.put('/:id', protect, async (req, res) => {
     }
     const allowed = ['name', 'phone', 'semester', 'year', 'section'];
     if (isAdmin) allowed.push('department', 'isActive', 'role');
+
+    // Audit finding L-3: silently dropping fields the caller is not allowed to
+    // set returned 200 as though the change had been applied. Reject explicitly.
+    const submitted = Object.keys(req.body || {});
+    const rejected = submitted.filter(f => !allowed.includes(f));
+    if (rejected.length) {
+      return badRequest(res, `You cannot change: ${rejected.join(', ')}.`);
+    }
+
     const updates = {};
     allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
-    const student = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password');
+
+    // Departments are data now — validate against the Department collection.
+    if (updates.department !== undefined) {
+      const dept = await resolveDepartment(updates.department);
+      if (!dept.ok) return badRequest(res, dept.message);
+      updates.department = dept.code;
+    }
+
+    const student = await User.findByIdAndUpdate(
+      req.params.id, updates, { new: true, runValidators: true },
+    ).select('-password');
+    if (!student) return notFound(res, 'Student');
     res.json({ success: true, student });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not update the student.');
   }
 });
 

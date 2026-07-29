@@ -1,4 +1,4 @@
-import { clearSession } from './auth';
+import { logout } from './auth';
 
 const PROD_API = 'https://college-helpdesk-chatbot-l4bk.onrender.com/api';
 
@@ -31,8 +31,8 @@ export async function apiCall(endpoint, options = {}) {
       ...options,
     });
     if (res.status === 401) {
-      clearSession();
-      window.location.href = '/login';
+      // No router here — this is module scope, outside the React tree.
+      logout();
       return { ok: false, error: 'Session expired. Please log in again.' };
     }
     const data = await res.json();

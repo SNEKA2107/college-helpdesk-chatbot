@@ -3,6 +3,7 @@ const { protect, adminOnly } = require('../middleware/auth');
 const KnowledgeDocument = require('../models/KnowledgeDocument');
 const QueryLog = require('../models/QueryLog');
 const { logAudit } = require('../utils/audit');
+const { fail, notFound } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -65,7 +66,7 @@ router.get('/analytics', protect, adminOnly, async (req, res) => {
     });
   } catch (err) {
     console.error('Knowledge analytics error:', err.message);
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the knowledge-base request.');
   }
 });
 
@@ -83,7 +84,7 @@ router.get('/', protect, adminOnly, async (req, res) => {
     const documents = await KnowledgeDocument.find(filter).sort({ updatedAt: -1 }).select(LIGHT);
     res.json({ success: true, count: documents.length, documents });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the knowledge-base request.');
   }
 });
 
@@ -94,7 +95,7 @@ router.get('/:id', protect, adminOnly, async (req, res) => {
     if (!doc) return res.status(404).json({ success: false, message: 'Document not found' });
     res.json({ success: true, document: doc });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the knowledge-base request.');
   }
 });
 
@@ -124,7 +125,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
     const out = doc.toObject(); delete out.fileData;
     res.status(201).json({ success: true, message: 'Document saved', document: out });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the knowledge-base request.');
   }
 });
 
@@ -140,7 +141,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     await logAudit(req, 'knowledge.update', 'KnowledgeDocument', doc._id, { title: doc.title });
     res.json({ success: true, document: doc });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the knowledge-base request.');
   }
 });
 
@@ -148,10 +149,11 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {
     const doc = await KnowledgeDocument.findByIdAndDelete(req.params.id);
-    if (doc) await logAudit(req, 'knowledge.delete', 'KnowledgeDocument', doc._id, { title: doc.title });
+    if (!doc) return notFound(res, 'Document');   // audit finding L-1
+    await logAudit(req, 'knowledge.delete', 'KnowledgeDocument', doc._id, { title: doc.title });
     res.json({ success: true, message: 'Document deleted' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the knowledge-base request.');
   }
 });
 

@@ -1,75 +1,145 @@
-# CampusAssist — Final QA Audit Report
+# CampusAssist — Final Audit Report
 
-_Generated: 2026-06-22 10:45_
+**Generated:** 29 July 2026, 01:36  
+**Application under test:** http://localhost:5000  
+**Framework:** Python · Selenium WebDriver · Pytest · Page Object Model  
+**Master workbook:** `selenium_model/MASTER_TEST_AUDIT_REPORT.xlsx`
 
-## 1. Executive Summary
+---
 
-- **Project:** CampusAssist — College Helpdesk (React + Express + MongoDB)
-- **Tests executed:** 337  |  **Passed:** 337  |  **Failed:** 0  |  **Skipped:** 0
-- **Pass rate:** 100.0%
-- **Functional coverage:** 82.2% (Full: 29, Partial: 16, None: 0)
-- **Total bugs / findings:** 2
-- **API endpoints checked:** 60  |  **Broken links:** 0  |  **Accessibility findings:** 27
+## 1. Executive summary
 
-## 2. Discovery (Phase 1)
+| Metric | Value |
+|---|---|
+| Files scanned | 2364 |
+| Pages / components | 64 / 28 |
+| Routes | 46 |
+| API endpoints | 139 |
+| Functionalities discovered | 574 |
+| Tests executed | 330 |
+| Passed / Failed / Skipped | 330 / 0 / 0 |
+| Functional coverage | 65.5% (196 full, 360 partial, 18 none) |
+| Defects found | 13 (3 high) |
+| User journeys executed | 9 |
+| Load test | 100 users · 166.7 req/sec · avg 487.6 ms |
 
-- React pages: 21 · Admin tabs: 15 · Components: 6 · Backend route files: 16 · Models: 16
-- Catalogued functionalities: 45
-- Routes: /dashboard, /chat, /requests, /attendance, /status, /exam … (+admin, +public)
+**Release recommendation:** GO — every executed functional test passed.
 
-## 3. Test Results by Module
+---
 
-| Module | Passed | Failed | Skipped |
-|---|---|---|---|
-| ACCESSIBILITY | 21 | 0 | 0 |
-| API VALIDATION | 45 | 0 | 0 |
-| AUTHENTICATION | 7 | 0 | 0 |
-| BROKEN LINKS | 1 | 0 | 0 |
-| CRUD | 3 | 0 | 0 |
-| FORMS | 5 | 0 | 0 |
-| HTTP ROUTES | 70 | 0 | 0 |
-| NAVIGATION | 19 | 0 | 0 |
-| PERFORMANCE | 21 | 0 | 0 |
-| RBAC | 4 | 0 | 0 |
-| ROUTE CONTRACT | 98 | 0 | 0 |
-| SEARCH & FILTER | 4 | 0 | 0 |
-| SECURITY | 11 | 0 | 0 |
-| SMOKE | 4 | 0 | 0 |
-| UI VALIDATION | 21 | 0 | 0 |
-| USER JOURNEY | 3 | 0 | 0 |
+## 2. What was tested
 
-## 4. Coverage (Phase 6)
+- **Authentication** — unified login for all three roles, email/register-number/case handling, invalid credentials, account enumeration, field validation, password visibility, remember-me, logout, session teardown, registration, approval gating and first-run setup sealing.
+- **Authorization** — route guards for unauthenticated access, cross-portal isolation for all three roles, server-side adminOnly/facultyOnly enforcement, token tampering, privilege escalation via the registration and login bodies, and per-owner data scoping.
+- **Navigation** — every student, faculty and admin destination, all 19 admin panel tabs, topbar controls, mobile bottom navigation, theme switching and the legacy URL redirect contract.
+- **Forms** — mandatory-field validation, invalid input, boundary values (password length, oversized payloads, long text) and valid submissions.
+- **CRUD** — full create/read/update/delete lifecycles for requests, notices, events, departments and leave, including owner scoping and workflow-integrity checks.
+- **Search, filters, sorting, tables and pagination** — exact, partial, empty and no-match searches; category and status filters; table rendering; ordering guarantees.
+- **Modals, notifications, uploads and downloads.**
+- **End-to-end journeys** — nine complete multi-step workflows.
+- **Additional layers** — smoke, regression, broken links, API contract validation, accessibility, UI integrity and performance.
 
-- Fully Covered: **29**
-- Partially Covered: **16**
-- Not Covered: **0** (mainly admin sub-tab CRUD write paths)
+---
 
-## 5. Code Audit (Phase 2)
+## 3. Highest-severity findings
 
-- Unused / legacy files: 62
-- Large modules (≥300 lines): 10
-- TODO/FIXME markers in app source: 0 (clean)
-- Code-health findings: 4
+### BUG-001 — Backend / Security headers
 
-Key themes: legacy static HTML site duplicates the React SPA; ad-hoc debug scripts and screenshots committed at repo root; a few large page modules worth refactoring.
+Content-Security-Policy allows 'unsafe-inline' for scripts and permits a third-party CDN (cdnjs.cloudflare.com). This materially weakens the XSS protection CSP exists to provide.
 
-## 6. Top Defects / Findings
+*Reproduce:* 1. Open backend/server.js  2. Inspect the helmet contentSecurityPolicy directives  
+*Evidence:* `backend/server.js (scriptSrc directive)`
 
-- **[Low] Auth/UX** — 'Forgot password?' link is a non-functional placeholder (preventDefault, no flow).
-- **[Medium] Repo hygiene** — Legacy static HTML site and React SPA coexist, duplicating routes/logic.
+### BUG-002 — Authentication
 
-## 7. Recommendations
+There is no self-service password reset. The login page's 'Forgot password?' control only displays a message telling the user to contact the admin office, so a locked-out user has no in-product recovery path.
 
-1. **High** — Implement or hide the placeholder 'Forgot Password' link.
-2. **High** — Add `data-testid` hooks for stable automation.
-3. **Medium** — Remove the legacy static site / debug scripts (duplicate logic).
-4. **Medium** — Add admin sub-tab CRUD automation; full axe-core a11y audit.
-5. **Low** — Refactor >300-line modules; relocate committed artifacts.
+*Reproduce:* 1. Go to /login  2. Click 'Forgot password?'  3. Only an informational message appears  
+*Evidence:* `frontend/src/pages/Login.jsx, backend/routes/auth.js`
+
+### BUG-003 — Authentication
+
+'Forgot password?' provides guidance only — there is no self-service reset flow, so a locked-out user depends entirely on manual admin intervention.
+
+*Reproduce:* 1. Open /login  2. Click 'Forgot password?'  3. Only an informational message appears  
+*Evidence:* `frontend/src/pages/Login.jsx`
+
+---
+
+## 4. Code health
+
+- **97 unused / dead-weight files**, including 7 full clone directories of the project and 4 files of bulk student personal data committed to version control.
+- **8 dead-code findings**: orphan exports, unreachable functions and oversized modules.
+- **3 orphan React components** left behind by the move to a unified login.
+
+---
+
+## 5. Coverage gaps
+
+18 discovered functionalities have no automated coverage. The largest clusters:
+
+- **Feature Modules** — 11 uncovered functionality item(s)
+- **External Integrations** — 7 uncovered functionality item(s)
+
+---
+
+## 6. Baseline / load test
+
+100 virtual users were held active against the API continuously for 60 s, browsing the endpoint mix a real student, faculty member and administrator hit on a normal day.
+
+| Metric | Value | Observation |
+|---|---|---|
+| Concurrent Virtual Users | 100 | Normal expected classroom concurrency held for the full window |
+| Test Duration | 60 s | Traffic sustained continuously for 61.7s of wall-clock time |
+| Total Requests | 10,280 | 10,280 successful, 0 errors |
+| Throughput (RPS) | 166.7 req/sec | The API served roughly 166 requests every second |
+| Error Rate | 0.0% | Share of responses outside the 2xx/3xx range |
+| Response Time — Min | 70.4 ms | Fastest single response |
+| Response Time — Average | 487.6 ms | Budget 500 ms — within budget |
+| Response Time — Median (p50) | 471.1 ms | Typical user experience |
+| Response Time — p90 | 737.7 ms | 9 in 10 requests were faster than this |
+| Response Time — p95 | 841.2 ms | Budget 1000 ms — within budget |
+| Response Time — p99 | 1004.4 ms | Worst-case tail for 1 in 100 requests |
+| Response Time — Max | 1419.7 ms | Slowest single response observed |
+| Rate Limiter During Test | 100000 req/min per IP | The API rate-limits per source IP. Every virtual user here shares one IP, so the ceiling was raised for the benchmark; the production default is 150. |
+| Baseline Verdict | PASS | PASS — response times stayed within budget under normal load |
+
+---
+
+## 7. Prioritised recommendations
+
+| Priority | Recommendation | Business impact |
+|---|---|---|
+| P1 — Critical | Resolve 1 high-severity security observation(s), starting with the Content-Security-Policy 'unsafe-inline' allowance and JWT-in-localStorage storage. | A single XSS becomes full account takeover across student, faculty and admin roles. |
+| P1 — Critical | Remove 4 file(s) of bulk student personal data from version control and purge them from git history. | Committed PII is a data-protection breach and cannot be undone by deletion alone. |
+| P2 — High | Close the 18 uncovered functionality gap(s) — the faculty portal write paths and admin academic tabs are the largest clusters. | Untested paths are where regressions reach production unnoticed. |
+| P2 — High | Delete the 7 clone/snapshot director(ies) checked into the repository (demo-clone, viva-clone, viva-clone2, …). | Duplicate trees drift from source and make it ambiguous which code actually ships. |
+| P2 — High | Add stable data-testid attributes to interactive elements across the three portals. | The suite currently binds to CSS classes and visible text, so routine styling or copy changes break tests that were not actually affected by the change. |
+| P2 — High | Fix 7 high-severity accessibility issue(s) — chiefly icon-only buttons and form controls with no accessible name. | Blocks screen-reader users outright and is a compliance risk for a public institution. |
+| P3 — Medium | Remove or re-route the 3 orphan component(s) left behind by the unified-login change (RoleSelect, FacultyLogin, RoleCard). | Dead screens mislead maintainers into thinking retired flows are still live. |
+| P3 — Medium | Split the 5 oversized module(s) — facultyPortal.js (843 lines) and global.css (1205 lines) are the worst offenders. | Large modules slow review and raise the chance of a merge conflict becoming a bug. |
+| P4 — Low | Consolidate the 100+ root-level status/report markdown files into docs/ with one authoritative README. | Contributors cannot tell which document is current, so none of them are trusted. |
+| P4 — Low | Wire this suite into CI so `python selenium_model/run.py` runs on every pull request. | Turns a point-in-time audit into a standing regression gate. |
+
+---
 
 ## 8. Deliverables
 
-- `MASTER_TEST_AUDIT_REPORT.xlsx` — 16-sheet master report
-- `html_report.html` — pytest-html execution report
-- `screenshots/` — pass/fail screenshots
-- `browser_console.log`, `selenium.log`, `backend-server.log` — logs
-- `data/*.json` — raw evidence (discovery, audit, results)
+| Artifact | Path |
+|---|---|
+| Master Excel report | `selenium_model/MASTER_TEST_AUDIT_REPORT.xlsx` |
+| HTML execution report | `selenium_model/execution_report.html` |
+| Screenshots (327) | `selenium_model/screenshots/` |
+| Browser console log | `selenium_model/logs/browser_console.log` |
+| Selenium driver log | `selenium_model/logs/selenium.log` |
+| Backend server log | `selenium_model/logs/backend-server.log` |
+| Raw phase data (JSON) | `selenium_model/data/` |
+| This report | `selenium_model/FINAL_AUDIT_REPORT.md` |
+
+## 9. Reproducing this run
+
+```bash
+pip install -r selenium_model/requirements.txt
+node backend/dev-local.js          # seeded in-memory backend on :5000
+python selenium_model/run.py       # all seven phases, end to end
+```

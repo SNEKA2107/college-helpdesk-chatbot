@@ -1,11 +1,10 @@
 const mongoose = require('mongoose');
 
-// Department codes that may be targeted by a department-specific notice.
-// Kept in sync with the student-facing departments in models/User.js (excludes 'Admin').
-const DEPARTMENTS = ['IT', 'CSE', 'AIML', 'AIDS', 'Bioinformatics', 'ECE', 'EEE', 'MECH', 'CIVIL'];
-
-// Allowed audiences: everyone, a role, or a single department.
-const AUDIENCES = ['all', 'student', 'admin', ...DEPARTMENTS];
+// Non-department audiences. A notice may also target a single department by
+// storing its code here — validated against the Department collection in
+// routes/notices.js rather than a hardcoded enum, so new departments work
+// immediately (audit finding H-1).
+const ROLE_AUDIENCES = ['all', 'student', 'faculty', 'admin'];
 
 const noticeSchema = new mongoose.Schema({
   title:     { type: String, required: true },
@@ -21,7 +20,7 @@ const noticeSchema = new mongoose.Schema({
 
   // Audience targeting. 'all' = everyone, 'student'/'admin' = role-scoped,
   // a department code = that department's students only.
-  audience:  { type: String, enum: AUDIENCES, default: 'all' },
+  audience:  { type: String, default: 'all', trim: true },
 
   // When the notice went live. Set on publish; used for sort + "time ago".
   // Optional/nullable so drafts have no publish date; backfilled from createdAt for legacy rows.
@@ -51,8 +50,53 @@ const noticeSchema = new mongoose.Schema({
   pinned:    { type: Boolean, default: false },
 }, { timestamps: true });
 
+/**
+ * Audience tags a user is entitled to receive: 'all', their role, and any
+ * department they belong to. `extraDepts` covers faculty, whose reach comes from
+ * assigned classes rather than a single `department` field.
+ *
+ * Roles map to their own tag — a faculty member is NOT a student, so they must
+ * not inherit student-targeted notices (and vice versa).
+ */
+noticeSchema.statics.audiencesFor = function (user, extraDepts = []) {
+  if (!user) return ['all'];
+  if (user.role === 'admin') return ['all', 'admin'];
+  const roleTag = user.role === 'faculty' ? 'faculty' : 'student';
+  const tags = ['all', roleTag, user.department, ...extraDepts];
+  return [...new Set(tags.filter(Boolean))];
+};
+
+/**
+ * Filter matching notices that are LIVE for `user` right now: published, not
+ * deactivated, not past expiry, and addressed to one of their audiences.
+ *
+ * Every reader-facing query must go through this so the visibility rules cannot
+ * drift apart — the faculty dashboard and notification feeds previously applied
+ * their own narrower conditions and kept serving expired notices.
+ *
+ * Legacy rows written before status/audience/isActive existed have those fields
+ * absent; they are treated as published, active and addressed to everyone.
+ */
+noticeSchema.statics.liveFilter = function (user, extraDepts = []) {
+  return {
+    status: { $nin: ['draft', 'archived'] },
+    isActive: { $ne: false },
+    $and: [
+      { $or: [
+        { audience: { $in: this.audiencesFor(user, extraDepts) } },
+        { audience: { $exists: false } },
+        { audience: null },
+      ] },
+      { $or: [
+        { expiresAt: null },
+        { expiresAt: { $exists: false } },
+        { expiresAt: { $gt: new Date() } },
+      ] },
+    ],
+  };
+};
+
 const Notice = mongoose.model('Notice', noticeSchema);
-Notice.DEPARTMENTS = DEPARTMENTS;
-Notice.AUDIENCES = AUDIENCES;
+Notice.ROLE_AUDIENCES = ROLE_AUDIENCES;
 
 module.exports = Notice;

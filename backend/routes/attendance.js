@@ -2,6 +2,7 @@ const express    = require('express');
 const Attendance = require('../models/Attendance');
 const User       = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -37,7 +38,7 @@ router.get('/summary', protect, async (req, res) => {
 
     res.json({ success: true, summary, overall, totalClasses, totalPresent });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the attendance request.');
   }
 });
 
@@ -50,7 +51,7 @@ router.get('/', protect, async (req, res) => {
     const records = await Attendance.find(filter).sort({ date: -1 }).limit(100);
     res.json({ success: true, count: records.length, records });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the attendance request.');
   }
 });
 
@@ -66,6 +67,11 @@ router.post('/', protect, adminOnly, async (req, res) => {
 
     // CRIT-04: idempotent mark — one record per student+subject+day. Re-marking the
     // same slot updates the status instead of creating a duplicate.
+    //
+    // NOTE: the option below must stay `includeResultMetadata`. Mongoose 8 dropped
+    // the older `rawResult` and IGNORES it silently, which left `result.value`
+    // undefined and `updatedExisting` unreadable — so every re-mark reported
+    // "created" and returned no record.
     const day = Attendance.startOfDayUTC(date);
     const result = await Attendance.findOneAndUpdate(
       { student: student._id, subject, date: day },
@@ -73,7 +79,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
         $set: { status: status || 'Present', markedBy: req.user.name },
         $setOnInsert: { studentId: studentId.toUpperCase() },
       },
-      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, rawResult: true }
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, includeResultMetadata: true }
     );
     const created = !result.lastErrorObject?.updatedExisting;
     res.status(created ? 201 : 200).json({
@@ -85,7 +91,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
     if (err.code === 11000) {
       return res.status(409).json({ success: false, message: 'Attendance already recorded for this student, subject, and date.' });
     }
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the attendance request.');
   }
 });
 
@@ -110,7 +116,7 @@ router.post('/bulk', protect, adminOnly, async (req, res) => {
           $set: { status: r.status || 'Present', markedBy: req.user.name },
           $setOnInsert: { studentId: r.studentId.toUpperCase() },
         },
-        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, rawResult: true }
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true, includeResultMetadata: true }
       );
       if (result.lastErrorObject?.updatedExisting) updatedCount++; else createdCount++;
     }
@@ -122,7 +128,7 @@ router.post('/bulk', protect, adminOnly, async (req, res) => {
       skipped,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the attendance request.');
   }
 });
 

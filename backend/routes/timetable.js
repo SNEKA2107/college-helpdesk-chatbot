@@ -3,6 +3,8 @@ const { protect, adminOnly } = require('../middleware/auth');
 const Timetable = require('../models/Timetable');
 const { detectConflicts } = require('../utils/timetableConflicts');
 const { logAudit } = require('../utils/audit');
+const { fail, badRequest } = require('../utils/apiError');
+const { resolveDepartment } = require('../services/departments');
 
 const router = express.Router();
 
@@ -42,7 +44,7 @@ router.get('/', protect, async (req, res) => {
     if (!timetable) return res.status(404).json({ success: false, message: 'No timetable has been published for your class yet.' });
     res.json({ success: true, timetable });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the timetable request.');
   }
 });
 
@@ -64,7 +66,7 @@ router.get('/today', protect, async (req, res) => {
       subjects,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the timetable request.');
   }
 });
 
@@ -74,21 +76,31 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     const timetables = await Timetable.find().sort({ updatedAt: -1 });
     res.json({ success: true, timetables });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the timetable request.');
   }
 });
 
 // POST /api/timetable — Admin: create timetable (always starts as DRAFT)
 router.post('/', protect, adminOnly, async (req, res) => {
+  // Audit finding M-2: an empty/partial body used to reach Mongoose and return a
+  // 500 with the raw validation text. Check the required fields up front.
+  const { department, semester, academicYear } = req.body || {};
+  if (!department)   return badRequest(res, 'Department is required.');
+  if (!semester)     return badRequest(res, 'Semester is required.');
+  if (!academicYear) return badRequest(res, 'Academic year is required (e.g. 2026-2027).');
+
+  const dept = await resolveDepartment(department);
+  if (!dept.ok) return badRequest(res, dept.message);
+
   try {
     // New timetables are drafts until explicitly published — never auto-visible to students.
-    const tt = await Timetable.create({ ...req.body, status: 'draft', publishedAt: undefined });
+    const tt = await Timetable.create({ ...req.body, department: dept.code, status: 'draft', publishedAt: undefined });
     await logAudit(req, 'timetable.create', 'Timetable', tt._id, {
       department: tt.department, semester: tt.semester, year: tt.year, section: tt.section,
     });
     res.status(201).json({ success: true, timetable: tt });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not create the timetable.');
   }
 });
 
@@ -104,7 +116,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     await logAudit(req, 'timetable.update', 'Timetable', tt._id, { status: tt.status });
     res.json({ success: true, timetable: tt });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the timetable request.');
   }
 });
 
@@ -117,7 +129,7 @@ router.get('/:id/conflicts', protect, adminOnly, async (req, res) => {
     const conflicts = detectConflicts(tt, others);
     res.json({ success: true, conflicts });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the timetable request.');
   }
 });
 
@@ -141,7 +153,7 @@ router.put('/:id/publish', protect, adminOnly, async (req, res) => {
     });
     res.json({ success: true, timetable: tt });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the timetable request.');
   }
 });
 
@@ -153,7 +165,7 @@ router.put('/:id/archive', protect, adminOnly, async (req, res) => {
     await logAudit(req, 'timetable.archive', 'Timetable', tt._id, {});
     res.json({ success: true, timetable: tt });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the timetable request.');
   }
 });
 

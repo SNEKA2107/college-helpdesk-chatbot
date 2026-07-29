@@ -11,6 +11,7 @@ import FacultyLayout from '../layouts/FacultyLayout';
 const Landing    = lazy(() => import('../pages/Landing'));
 const Login      = lazy(() => import('../pages/Login'));
 const Register   = lazy(() => import('../pages/Register'));
+const Setup      = lazy(() => import('../pages/Setup'));
 const Dashboard  = lazy(() => import('../pages/Dashboard'));
 const Chat       = lazy(() => import('../pages/Chat'));
 const Requests   = lazy(() => import('../pages/Requests'));
@@ -95,6 +96,8 @@ export default function AppRoutes() {
         <Route path="/welcome" element={<Landing />} />
         <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
         <Route path="/register" element={<RedirectIfAuthed><Register /></RedirectIfAuthed>} />
+        {/* First-run administrator setup. Self-disables once an admin exists. */}
+        <Route path="/setup" element={<Setup />} />
 
         {/* Legacy per-role entry points → unified login. Declared before the
             guarded /student, /faculty and /admin blocks so the static "login"

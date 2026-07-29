@@ -14,3 +14,14 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      # ── Optional integrations ────────────────────────────────────────────────
+      # The app starts and runs without these; it logs a warning and degrades:
+      #   ANTHROPIC_API_KEY absent → AI Copilot uses the keyword/knowledge-base path
+      #   EMAIL_USER/EMAIL_PASS absent → notification emails are skipped
+      # Uncomment and set them in the Render dashboard to enable the full feature.
+      # - key: ANTHROPIC_API_KEY
+      #   sync: false
+      # - key: EMAIL_USER
+      #   sync: false
+      # - key: EMAIL_PASS
+      #   sync: false

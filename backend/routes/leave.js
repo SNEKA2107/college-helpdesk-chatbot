@@ -4,6 +4,7 @@ const User    = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
 const { sendEmail, emailTemplate } = require('../utils/email');
 const { logAudit } = require('../utils/audit');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -60,7 +61,7 @@ router.get('/', protect, async (req, res) => {
     const leaves = await Leave.find(filter).select('-document').sort({ createdAt: -1 });
     res.json({ success: true, count: leaves.length, leaves });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the leave request.');
   }
 });
 
@@ -85,7 +86,7 @@ router.get('/:id/document', protect, async (req, res) => {
       documentType: leave.documentType || '',
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the leave request.');
   }
 });
 
@@ -111,7 +112,7 @@ router.post('/', protect, async (req, res) => {
     });
     res.status(201).json({ success: true, message: 'Leave application submitted successfully', leave });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the leave request.');
   }
 });
 
@@ -158,7 +159,7 @@ router.put('/:id/status', protect, adminOnly, async (req, res) => {
 
     res.json({ success: true, message: `Leave ${status.toLowerCase()}`, leave });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the leave request.');
   }
 });
 
@@ -176,7 +177,7 @@ router.delete('/:id', protect, async (req, res) => {
     await leave.deleteOne();
     res.json({ success: true, message: 'Leave application cancelled' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the leave request.');
   }
 });
 

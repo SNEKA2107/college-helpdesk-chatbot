@@ -1,13 +1,32 @@
 const express = require('express');
 const { protect, adminOnly } = require('../middleware/auth');
 const Fee = require('../models/Fee');
+const { fail } = require('../utils/apiError');
+const { ensureFeeRecord } = require('../services/studentInit');
 
 const router = express.Router();
+
+/**
+ * The student's own fee record, provisioning it on first read if missing.
+ *
+ * Audit finding M-1 was only half-closed by provisioning on approval: every
+ * student approved BEFORE that change — and every seeded account — still had no
+ * Fee document, so their Fees page stayed a permanent 404. Creating it lazily
+ * here fixes those accounts too, and ensureFeeRecord() is idempotent so a
+ * student who already has a record is untouched.
+ */
+async function ownFeeRecord(user) {
+  const existing = await Fee.findOne({ student: user._id });
+  if (existing) return existing;
+  if (user.role !== 'student' || user.approvalStatus !== 'approved') return null;
+  const { fee } = await ensureFeeRecord(user);
+  return fee;
+}
 
 // GET /api/fees — Student's own fee record
 router.get('/', protect, async (req, res) => {
   try {
-    const fee = await Fee.findOne({ student: req.user._id });
+    const fee = await ownFeeRecord(req.user);
     if (!fee) return res.status(404).json({ success: false, message: 'No fee record found.' });
 
     const amountPaid   = fee.history.reduce((sum, p) => sum + p.amount, 0);
@@ -30,7 +49,7 @@ router.get('/', protect, async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the fee request.');
   }
 });
 
@@ -45,7 +64,9 @@ router.post('/payment', protect, async (req, res) => {
     return res.status(400).json({ success: false, message: 'Amount must be a positive number not exceeding ₹5,00,000.' });
   }
   try {
-    const fee = await Fee.findOne({ student: req.user._id });
+    // Same lazy provisioning as the GET, so a student who lands straight on the
+    // payment form is not blocked by a missing record.
+    const fee = await ownFeeRecord(req.user);
     if (!fee) return res.status(404).json({ success: false, message: 'No fee record found.' });
 
     // CRIT-05: reject overpayment — a student can never record more than the balance due.
@@ -72,7 +93,7 @@ router.post('/payment', protect, async (req, res) => {
 
     res.status(201).json({ success: true, message: 'Payment recorded. It is pending verification by the admin office.', payment });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the fee request.');
   }
 });
 
@@ -82,7 +103,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     const fees = await Fee.find().populate('student', 'name studentId department');
     res.json({ success: true, count: fees.length, fees });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the fee request.');
   }
 });
 
@@ -104,7 +125,7 @@ router.put('/:feeId/payments/:index/verify', protect, adminOnly, async (req, res
 
     res.json({ success: true, message: 'Payment verified.', payment: fee.history[idx] });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the fee request.');
   }
 });
 

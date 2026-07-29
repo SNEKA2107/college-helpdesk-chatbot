@@ -1,62 +1,102 @@
-"""One-shot orchestrator for the full CampusAssist audit.
+"""One-shot orchestrator for the complete CampusAssist audit.
 
-Runs: Phase 1 discovery -> Phase 2 audit -> Phase 3-5 Selenium tests (pytest)
--> Phase 6 coverage + Phase 7 master report. Continues even if tests fail.
+Runs every phase in order and never aborts on a test failure:
 
-Prereq: backend running at http://localhost:5000 (node backend/dev-local.js).
-Usage:  python selenium_model/run.py
+  Phase 1  Project discovery          -> data/discovery.json
+  Phase 2  Static code audit          -> data/audit.json
+  Phase 3  Selenium framework         (this package)
+  Phase 4  E2E functional testing     ) pytest
+  Phase 5  Smoke/regression/API/a11y/ )
+           perf/UI/security/links     )
+  Phase 6  Functional coverage        ) report_generator
+  Phase 7  Master Excel + MD report   )
+
+Prerequisites
+-------------
+  pip install -r selenium_model/requirements.txt
+  node backend/dev-local.js        # seeded in-memory backend on http://localhost:5000
+
+Usage
+-----
+  python selenium_model/run.py                 # everything
+  python selenium_model/run.py --report-only   # rebuild reports from the last run
+  python selenium_model/run.py -k authentication   # pass a filter through to pytest
 """
+from __future__ import annotations
+
 import subprocess
 import sys
-import urllib.request
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
-import config
-import discover
-import audit
-import report_generator
+
+import apiclient          # noqa: E402
+import audit              # noqa: E402
+import collectors         # noqa: E402
+import config             # noqa: E402
+import discover           # noqa: E402
+import loadtest           # noqa: E402
+import report_generator   # noqa: E402
 
 
-def _backend_up():
-    try:
-        with urllib.request.urlopen(config.BASE_URL + "/", timeout=5) as r:
-            return r.status == 200
-    except Exception:
-        return False
+def banner(text):
+    print("\n" + "=" * 76)
+    print(text)
+    print("=" * 76)
 
 
-def main():
-    print("=" * 70)
-    print("CampusAssist — Automated Audit & E2E Test Suite")
-    print("=" * 70)
+def main(argv):
+    report_only = "--report-only" in argv
+    extra = [a for a in argv if a != "--report-only"]
 
-    if not _backend_up():
-        print(f"⚠️  Backend not reachable at {config.BASE_URL}.")
-        print("    Start it first:  node backend/dev-local.js")
-        print("    (Continuing anyway — Selenium tests will fail and be recorded as such.)")
+    banner("CampusAssist — Automated Audit & End-to-End Test Suite")
+    print(f"Target      : {config.BASE_URL}")
+    print(f"Output      : {config.REPORT_XLSX}")
+    print(f"Browser     : Chrome ({'headless' if config.HEADLESS else 'headed'})")
+
+    reachable = apiclient.backend_up()
+    print(f"Backend     : {'reachable' if reachable else 'NOT REACHABLE'}")
+    if not reachable and not report_only:
+        print("\n  The backend is not answering at " + config.BASE_URL)
+        print("  Start it first:  node backend/dev-local.js")
+        print("  Continuing anyway — failures will be recorded rather than hidden.\n")
+
+    started = time.time()
+
+    if not report_only:
+        banner("Phase 1 — Project Discovery")
+        discover.discover()
+
+        banner("Phase 2 — Static Code Audit")
+        audit.audit()
+
+        banner("Phases 3-5 — Selenium E2E, API, Security, A11y, Performance")
+        collectors.reset()
+        cmd = [sys.executable, "-m", "pytest", str(ROOT / "tests"),
+               "-c", str(ROOT / "pytest.ini"), "--rootdir", str(ROOT)] + extra
+        proc = subprocess.run(cmd, cwd=str(ROOT))
+        print(f"\npytest exit code: {proc.returncode} "
+              "(a non-zero code is expected when defects are found — results are still reported)")
+
+        banner("Phase 5b — Baseline / Load Test")
+        loadtest.run()
     else:
-        print(f"✅ Backend reachable at {config.BASE_URL}")
+        banner("Report-only mode — reusing the previous run's data")
 
-    print("\n── Phase 1: Discovery ──")
-    discover.discover()
-    print("\n── Phase 2: Code Audit ──")
-    audit.audit()
-
-    print("\n── Phase 3-5: Selenium E2E + additional testing ──")
-    # Reset console log for a clean run
-    (ROOT / "browser_console.log").write_text("", encoding="utf-8")
-    cmd = [sys.executable, "-m", "pytest", str(ROOT / "tests"),
-           "-c", str(ROOT / "pytest.ini"), "--rootdir", str(ROOT)]
-    proc = subprocess.run(cmd, cwd=str(ROOT))
-    print(f"\npytest exit code: {proc.returncode} (non-zero is OK — failures are reported)")
-
-    print("\n── Phase 6-7: Coverage + Master Report ──")
+    banner("Phases 6-7 — Coverage Analysis & Master Report")
     report_generator.generate()
 
-    print("\n✅ Done. See selenium_model/MASTER_TEST_AUDIT_REPORT.xlsx")
+    elapsed = round((time.time() - started) / 60, 1)
+    banner("Done")
+    print(f"Total time  : {elapsed} min")
+    print(f"Workbook    : {config.REPORT_XLSX}")
+    print(f"HTML report : {config.REPORT_HTML}")
+    print(f"Markdown    : {ROOT / 'FINAL_AUDIT_REPORT.md'}")
+    print(f"Screenshots : {len(list(config.SCREENSHOT_DIR.glob('*.png')))} captured")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(sys.argv[1:]))

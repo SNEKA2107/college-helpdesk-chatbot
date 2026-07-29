@@ -2,6 +2,7 @@ const express = require('express');
 const { protect, adminOnly } = require('../middleware/auth');
 const Book         = require('../models/Book');
 const BorrowedBook = require('../models/BorrowedBook');
+const { fail, badRequest } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.get('/', protect, async (req, res) => {
     const books = await Book.find(query).sort({ title: 1 });
     res.json({ success: true, count: books.length, books });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the library request.');
   }
 });
 
@@ -28,7 +29,7 @@ router.get('/borrowed', protect, async (req, res) => {
       .populate('book', 'isbn category');
     res.json({ success: true, count: borrowed.length, borrowed });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the library request.');
   }
 });
 
@@ -52,17 +53,22 @@ router.post('/renew/:borrowId', protect, async (req, res) => {
     if (!record) return res.status(404).json({ success: false, message: 'Borrowed book not found.' });
     res.json({ success: true, message: 'Book renewal requested. Librarian will confirm within 24 hours.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the library request.');
   }
 });
 
 // POST /api/library — Admin: add a book
 router.post('/', protect, adminOnly, async (req, res) => {
+  // Audit finding M-2: a bad body is a client error, not a server fault.
+  const { title, author } = req.body || {};
+  if (!title || !String(title).trim())  return badRequest(res, 'Book title is required.');
+  if (!author || !String(author).trim()) return badRequest(res, 'Book author is required.');
+
   try {
     const book = await Book.create(req.body);
     res.status(201).json({ success: true, book });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not add the book.');
   }
 });
 
@@ -73,7 +79,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (!book) return res.status(404).json({ success: false, message: 'Book not found.' });
     res.json({ success: true, book });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not complete the library request.');
   }
 });
 

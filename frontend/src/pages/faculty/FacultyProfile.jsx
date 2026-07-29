@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import FacultyShell from '../../components/FacultyShell';
 import { apiCall } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
-import { getUser, setSession } from '../../services/auth';
+import { getUser, setSession, updateSessionUser } from '../../services/auth';
 import { fileToDataUrl } from '../../utils/download';
 import '../../styles/faculty.css';
 
@@ -58,8 +58,13 @@ export default function FacultyProfile() {
     setPwSaving(true);
     const res = await apiCall('/auth/change-password', { method: 'PUT', body: JSON.stringify({ currentPassword: pw.currentPassword, newPassword: pw.newPassword }) });
     setPwSaving(false);
-    if (res.ok) { showToast('Password changed', 'success'); setPw({ currentPassword: '', newPassword: '', confirm: '' }); }
-    else showToast(res.error || 'Could not change password', 'error');
+    if (res.ok) {
+      showToast('Password changed', 'success');
+      setPw({ currentPassword: '', newPassword: '', confirm: '' });
+      // The account is off its temporary password now — drop the prompt banner.
+      updateSessionUser({ mustChangePassword: false });
+      setF(prev => (prev ? { ...prev, mustChangePassword: false } : prev));
+    } else showToast(res.error || 'Could not change password', 'error');
   }
 
   const rows = [

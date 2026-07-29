@@ -1,6 +1,7 @@
 const express = require('express');
 const AuditLog = require('../models/AuditLog');
 const { protect, adminOnly } = require('../middleware/auth');
+const { fail } = require('../utils/apiError');
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ router.get('/', protect, adminOnly, async (req, res) => {
     const logs = await AuditLog.find(filter).sort({ timestamp: -1 }).limit(limit);
     res.json({ success: true, count: logs.length, logs });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return fail(res, err, 'Could not load the audit log.');
   }
 });
 

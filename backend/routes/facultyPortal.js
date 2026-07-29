@@ -106,10 +106,10 @@ router.get('/dashboard', async (req, res) => {
     // Pending leave/OD from the faculty's departments.
     const pendingLeaves = await Leave.countDocuments({ department: { $in: depts }, status: 'Pending' });
 
-    // Recent notices visible to this faculty (its own + all/department-targeted).
+    // Recent notices visible to this faculty: anything live for them (all /
+    // faculty / their departments, unexpired) plus their own published posts.
     const recentNotices = await Notice.find({
-      status: 'published',
-      $or: [{ audience: 'all' }, { audience: { $in: depts } }, { createdBy: fac._id }],
+      $or: [Notice.liveFilter(fac, depts), { createdBy: fac._id, status: 'published' }],
     }).sort({ publishedAt: -1, createdAt: -1 }).limit(5).select('title category publishedAt createdAt');
 
     res.json({
@@ -758,11 +758,10 @@ router.get('/notifications', async (req, res) => {
     const depts = [...new Set(classes.map(c => c.department).filter(Boolean))];
     const items = [];
 
-    // Admin & department notices (not the faculty's own).
+    // Admin & department notices addressed to this faculty (not their own posts).
     const notices = await Notice.find({
-      status: 'published',
+      ...Notice.liveFilter(fac, depts),
       createdBy: { $ne: fac._id },
-      $or: [{ audience: 'all' }, { audience: { $in: depts } }],
     }).sort({ publishedAt: -1, createdAt: -1 }).limit(15).select('title category publishedAt createdAt postedBy');
     notices.forEach(n => items.push({
       type: 'notice', icon: '📢', title: n.title,

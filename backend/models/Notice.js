@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 // storing its code here — validated against the Department collection in
 // routes/notices.js rather than a hardcoded enum, so new departments work
 // immediately (audit finding H-1).
-const ROLE_AUDIENCES = ['all', 'student', 'admin'];
+const ROLE_AUDIENCES = ['all', 'student', 'faculty', 'admin'];
 
 const noticeSchema = new mongoose.Schema({
   title:     { type: String, required: true },
@@ -49,6 +49,52 @@ const noticeSchema = new mongoose.Schema({
   isActive:  { type: Boolean, default: true },
   pinned:    { type: Boolean, default: false },
 }, { timestamps: true });
+
+/**
+ * Audience tags a user is entitled to receive: 'all', their role, and any
+ * department they belong to. `extraDepts` covers faculty, whose reach comes from
+ * assigned classes rather than a single `department` field.
+ *
+ * Roles map to their own tag — a faculty member is NOT a student, so they must
+ * not inherit student-targeted notices (and vice versa).
+ */
+noticeSchema.statics.audiencesFor = function (user, extraDepts = []) {
+  if (!user) return ['all'];
+  if (user.role === 'admin') return ['all', 'admin'];
+  const roleTag = user.role === 'faculty' ? 'faculty' : 'student';
+  const tags = ['all', roleTag, user.department, ...extraDepts];
+  return [...new Set(tags.filter(Boolean))];
+};
+
+/**
+ * Filter matching notices that are LIVE for `user` right now: published, not
+ * deactivated, not past expiry, and addressed to one of their audiences.
+ *
+ * Every reader-facing query must go through this so the visibility rules cannot
+ * drift apart — the faculty dashboard and notification feeds previously applied
+ * their own narrower conditions and kept serving expired notices.
+ *
+ * Legacy rows written before status/audience/isActive existed have those fields
+ * absent; they are treated as published, active and addressed to everyone.
+ */
+noticeSchema.statics.liveFilter = function (user, extraDepts = []) {
+  return {
+    status: { $nin: ['draft', 'archived'] },
+    isActive: { $ne: false },
+    $and: [
+      { $or: [
+        { audience: { $in: this.audiencesFor(user, extraDepts) } },
+        { audience: { $exists: false } },
+        { audience: null },
+      ] },
+      { $or: [
+        { expiresAt: null },
+        { expiresAt: { $exists: false } },
+        { expiresAt: { $gt: new Date() } },
+      ] },
+    ],
+  };
+};
 
 const Notice = mongoose.model('Notice', noticeSchema);
 Notice.ROLE_AUDIENCES = ROLE_AUDIENCES;

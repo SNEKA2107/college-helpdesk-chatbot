@@ -8,18 +8,9 @@ const { resolveDepartment } = require('../services/departments');
 
 const router = express.Router();
 
-// Audiences a given user is allowed to receive. Students get 'all', 'student'
-// and their own department; admins get everything role-targeted at them.
-function audiencesFor(user) {
-  if (user.role === 'admin') return ['all', 'admin'];
-  const list = ['all', 'student'];
-  if (user.department) list.push(user.department);
-  return list;
-}
-
 // GET /api/notices — notices visible to the requester.
-//  • Students: only published, non-expired notices whose audience matches them.
-//  • Admins:   the full management view (every status), optionally filtered by ?status / ?category.
+//  • Students/faculty: only published, active, non-expired notices addressed to them.
+//  • Admins:           the full management view (every status), optionally filtered by ?status / ?category.
 router.get('/', protect, async (req, res) => {
   try {
     const { category, status } = req.query;
@@ -30,18 +21,9 @@ router.get('/', protect, async (req, res) => {
       filter = {};
       if (status) filter.status = status;
     } else {
-      const now = new Date();
-      filter = {
-        // $nin matches 'published' AND legacy rows with no status field (backward compatible).
-        status:   { $nin: ['draft', 'archived'] },
-        isActive: { $ne: false },
-        // $and of two OR-groups: audience match (legacy rows with no audience are treated as 'all'),
-        // and not-expired (no expiry set, or expiry in the future).
-        $and: [
-          { $or: [{ audience: { $in: audiencesFor(req.user) } }, { audience: { $exists: false } }, { audience: null }] },
-          { $or: [{ expiresAt: null }, { expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }] },
-        ],
-      };
+      // Shared visibility rules (published + active + unexpired + audience match)
+      // live on the model so every reader-facing query stays in step.
+      filter = Notice.liveFilter(req.user);
     }
     if (category) filter.category = category;
 

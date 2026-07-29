@@ -14,6 +14,7 @@ const CATEGORIES = ['general', 'urgent', 'exam', 'fee', 'holiday'];
 const ROLE_AUDIENCES = [
   { value: 'all', label: 'Everyone' },
   { value: 'student', label: 'All Students' },
+  { value: 'faculty', label: 'All Faculty' },
   { value: 'admin', label: 'Admins only' },
 ];
 
@@ -33,6 +34,7 @@ export default function NoticesTab({ data, setData, loaded }) {
 
   const showToast = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [editId, setEditId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('published');
 
   // Legacy notices created before the lifecycle fields exist have no `status`; treat them as published.
@@ -71,6 +73,40 @@ export default function NoticesTab({ data, setData, loaded }) {
     }
   }
 
+  // Load an existing notice into the compose card, which doubles as the editor.
+  function startEdit(n) {
+    setEditId(n._id);
+    setForm({
+      title: n.title || '',
+      content: n.content || '',
+      category: n.category || 'general',
+      audience: n.audience || 'all',
+      // <input type="date"> needs yyyy-mm-dd; the API returns an ISO timestamp.
+      expiresAt: n.expiresAt ? new Date(n.expiresAt).toISOString().slice(0, 10) : '',
+      pinned: !!n.pinned,
+    });
+  }
+
+  function cancelEdit() { setEditId(null); setForm(EMPTY_FORM); }
+
+  async function saveEdit() {
+    const title = form.title.trim();
+    const content = form.content.trim();
+    if (!title) { showToast('Notice title is required', 'error'); return; }
+    if (!content) { showToast('Notice content is required', 'error'); return; }
+    const res = await apiCall(`/notices/${editId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        title, content, category: form.category, audience: form.audience,
+        pinned: form.pinned,
+        // null (not undefined) so clearing the field actually removes the expiry.
+        expiresAt: form.expiresAt || null,
+      }),
+    });
+    if (res.ok) { patchLocal(res.data.notice); cancelEdit(); showToast('Notice updated', 'success'); }
+    else showToast(res.error || 'Update failed', 'error');
+  }
+
   async function setStatus(notice, status) {
     const verb = { published: 'Publish', archived: 'Archive' }[status];
     if (status === 'archived' && !window.confirm('Archive this notice? Students will no longer see it.')) return;
@@ -84,6 +120,7 @@ export default function NoticesTab({ data, setData, loaded }) {
     const res = await apiCall(`/notices/${id}`, { method: 'DELETE' });
     if (res.ok) {
       setData(d => ({ ...d, notices: d.notices.filter(n => n._id !== id) }));
+      if (editId === id) cancelEdit();   // don't leave the editor bound to a deleted notice
       showToast('Notice deleted', 'info');
     } else {
       showToast(res.error || 'Delete failed', 'error');
@@ -99,7 +136,7 @@ export default function NoticesTab({ data, setData, loaded }) {
       </div>
       <div className="grid-2 mb-6">
         <div className="card">
-          <div className="card-header"><div className="card-title">➕ Compose Notice</div></div>
+          <div className="card-header"><div className="card-title">{editId ? '✏️ Edit Notice' : '➕ Compose Notice'}</div></div>
           <div className="form-group">
             <label className="form-label">Title *</label>
             <input type="text" className="form-input" placeholder="Notice title"
@@ -142,8 +179,17 @@ export default function NoticesTab({ data, setData, loaded }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => saveNotice('draft')}>Save Draft</button>
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => saveNotice('published')}>Publish</button>
+            {editId ? (
+              <>
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={cancelEdit}>Cancel</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveEdit}>Save Changes</button>
+              </>
+            ) : (
+              <>
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => saveNotice('draft')}>Save Draft</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => saveNotice('published')}>Publish</button>
+              </>
+            )}
           </div>
         </div>
 
@@ -175,6 +221,7 @@ export default function NoticesTab({ data, setData, loaded }) {
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                  <button className="btn btn-sm btn-secondary" style={{ padding: '4px 10px' }} onClick={() => startEdit(n)}>Edit</button>
                   {effStatus(n) !== 'published' && (
                     <button className="btn btn-sm" style={{ background: 'var(--secondary)', color: '#fff', padding: '4px 10px' }} onClick={() => setStatus(n, 'published')}>Publish</button>
                   )}

@@ -37,11 +37,12 @@ def test_security_header_present(record_property, header, substr):
     _code, headers, _ = request("/")
     val = headers.get(header)
     present = val is not None and (substr is None or substr.lower() in val.lower())
-    collectors.security.append({
-        "area": "HTTP headers", "severity": "Info",
-        "observation": f"{header}: {val if val else 'MISSING'}",
-        "recommendation": "Keep Helmet hardening headers enabled." if present
-                          else f"Enable the {header} header."})
+    collectors.security(
+        "HTTP headers",
+        f"{header}: {val if val else 'MISSING'}",
+        "Info",
+        "Keep Helmet hardening headers enabled." if present
+        else f"Enable the {header} header.")
     record_property("actual", f"{header}={val!r}")
     assert present
 
@@ -80,9 +81,10 @@ def test_login_rate_limit_headers(record_property):
     _c, headers, _ = request("/api/auth/login", method="POST",
                              body={"studentId": "x", "password": "y"}, base=config.BASE_URL)
     has = any(k.lower().startswith("ratelimit") for k in headers)
-    collectors.security.append({
-        "area": "Rate limiting", "severity": "Info",
-        "observation": f"RateLimit headers on /auth/login present={has}",
-        "recommendation": "Keep express-rate-limit on auth + global API routes."})
+    collectors.security(
+        "Rate limiting",
+        f"RateLimit headers on /auth/login present={has}",
+        "Info",
+        "Keep express-rate-limit on auth + global API routes.")
     record_property("actual", f"ratelimit headers present={has}")
     assert has

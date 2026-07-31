@@ -42,6 +42,17 @@ jobs:
       SEED_ADMIN_PASSWORD: admin@123
       SEED_STUDENT_PASSWORD: student123
       SEED_FACULTY_PASSWORD: faculty123
+
+      # The whole suite drives the API from one IP, so the production per-IP
+      # ceilings (server.js: AUTH_RATE_LIMIT=20 per 15 min, GLOBAL_RATE_LIMIT=150
+      # per min) throttle the test run rather than any attacker: the run logged
+      # 183 HTTP 429s and ~190 tests failed downstream of them. Raising the
+      # ceilings here only changes this ephemeral runner — the defaults in
+      # server.js are untouched, so production behaviour is unchanged, and
+      # test_quality.py::test_rate_limiting_is_active_on_login still asserts the
+      # limiter is attached by reading its RateLimit-* headers.
+      AUTH_RATE_LIMIT: '100000'
+      GLOBAL_RATE_LIMIT: '100000'
       PYTHONUTF8: '1'
 
     steps:

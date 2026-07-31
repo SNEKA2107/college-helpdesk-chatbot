@@ -53,9 +53,7 @@ def test_api_endpoints_respond(driver, record_property):
             server_errors += 1
         else:
             result = "PASS"          # other 2xx/4xx still a valid handled response
-        collectors.api.append({
-            "endpoint": path, "method": method,
-            "expected": expected, "actual": actual, "result": result})
+        collectors.api_result(path, method, expected, actual, result)
     record_property("actual", f"{len(config.API_ENDPOINTS)} endpoints checked; server errors (5xx/conn)={server_errors}")
     assert server_errors == 0
 
@@ -65,13 +63,12 @@ def test_protected_endpoint_requires_auth(driver, record_property):
     record_property("scenario", "Protected endpoint rejects requests without a token")
     record_property("expected", "GET /students without a token returns 401")
     code = _call("GET", "/students")
-    collectors.api.append({
-        "endpoint": "/students (no token)", "method": "GET",
-        "expected": 401, "actual": code,
-        "result": "PASS" if code == 401 else "FAIL"})
-    collectors.security.append({
-        "area": "Authentication", "severity": "Info",
-        "observation": f"Unauthenticated GET /api/students returned {code} (expected 401 — endpoint protected).",
-        "recommendation": "Keep JWT middleware enforced on all data endpoints."})
+    collectors.api_result("/students (no token)", "GET", 401, code,
+                          "PASS" if code == 401 else "FAIL")
+    collectors.security(
+        "Authentication",
+        f"Unauthenticated GET /api/students returned {code} (expected 401 — endpoint protected).",
+        "Info",
+        "Keep JWT middleware enforced on all data endpoints.")
     record_property("actual", f"GET /students without token -> {code}")
     assert code == 401

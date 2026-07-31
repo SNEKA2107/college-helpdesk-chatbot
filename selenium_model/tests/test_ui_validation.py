@@ -28,8 +28,8 @@ def test_ui_renders_structure(driver, record_property, route):
         By.CSS_SELECTOR, "header, nav, main, aside, form, table, .card, .page-header, h1, h2, button")
     displayed = body.is_displayed()
     if text_len < 20 or not structural:
-        collectors.ui.append({
-            "page": route, "issue": "Sparse/empty render (no structural elements detected)",
-            "severity": "Medium", "evidence": f"body chars={text_len}, structural els={len(structural)}"})
+        collectors.ui_finding(
+            route, "Sparse/empty render (no structural elements detected)",
+            "Medium", f"body chars={text_len}, structural els={len(structural)}")
     record_property("actual", f"body displayed={displayed}, chars={text_len}, structural els={len(structural)}")
     assert displayed and text_len >= 20 and len(structural) >= 1

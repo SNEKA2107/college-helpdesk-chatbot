@@ -23,15 +23,17 @@ def test_page_load_time(driver, record_property, route):
     record_property("scenario", f"Measure load time of {route}")
     record_property("expected", f"Load time recorded for {route} (soft budget {BUDGET_MS} ms)")
     goto(driver, route)
-    ms = BasePage(driver).load_time_ms()
+    # BasePage.load_time_ms was renamed to load_ms in 03dd12a and this caller was
+    # missed, so all 25 parametrisations raised AttributeError. The replacement
+    # reports 0 rather than None when the Navigation Timing API gives nothing, so
+    # normalise it back to None to keep the "unavailable" branch below working.
+    ms = BasePage(driver).load_ms() or None
     if ms is None:
         obs, rec = "Timing API unavailable", "Re-measure with Lighthouse/CDP"
     elif ms <= BUDGET_MS:
         obs, rec = f"Within budget ({BUDGET_MS} ms)", "No action needed"
     else:
         obs, rec = f"Exceeds {BUDGET_MS} ms soft budget", "Consider code-splitting / asset optimisation"
-    collectors.performance.append({
-        "page": route, "load_time": f"{ms} ms" if ms is not None else "n/a",
-        "observation": obs, "recommendation": rec})
+    collectors.performance(route, f"{ms} ms" if ms is not None else "n/a", obs, rec)
     record_property("actual", f"{route} load time = {ms} ms")
     assert True

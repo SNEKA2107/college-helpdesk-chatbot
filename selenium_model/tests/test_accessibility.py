@@ -46,8 +46,7 @@ def _audit_page(driver, page_name):
     if not driver.find_elements(By.TAG_NAME, "h1"):
         findings.append(("No <h1> heading on page", "Low", "Add a top-level <h1> for document outline"))
     for issue, sev, rec in findings:
-        collectors.accessibility.append({
-            "page": page_name, "issue": issue, "severity": sev, "recommendation": rec})
+        collectors.accessibility(page_name, issue, sev, rec)
     return findings
 
 

@@ -42,8 +42,7 @@ def test_collect_and_validate_links(driver, record_property):
                 continue
             # only check same-origin links to avoid flaky external timeouts
             if config.BASE_URL not in href:
-                collectors.broken_links.append({
-                    "url": href, "source": page, "status": "skipped (external)", "result": "Not checked"})
+                collectors.broken_link(href, page, "skipped (external)", "Not checked")
                 continue
             if href in seen:
                 continue
@@ -53,8 +52,6 @@ def test_collect_and_validate_links(driver, record_property):
             ok = code in (200, 204, 301, 302, 304)
             if not ok:
                 broken += 1
-            collectors.broken_links.append({
-                "url": href, "source": page, "status": code,
-                "result": "OK" if ok else "BROKEN"})
+            collectors.broken_link(href, page, code, "OK" if ok else "BROKEN")
     record_property("actual", f"checked {checked} same-origin links across {len(pages)} pages; broken={broken}")
     assert broken == 0

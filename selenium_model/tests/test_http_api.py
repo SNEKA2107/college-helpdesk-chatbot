@@ -28,8 +28,7 @@ def _meta(rp, scenario, expected):
 
 
 def _record(endpoint, method, expected, actual, result):
-    collectors.api.append({"endpoint": endpoint, "method": method,
-                           "expected": expected, "actual": actual, "result": result})
+    collectors.api_result(endpoint, method, expected, actual, result)
 
 
 @pytest.fixture(scope="module")

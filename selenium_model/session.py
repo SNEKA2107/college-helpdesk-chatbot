@@ -12,10 +12,34 @@ import config
 _TOKEN_CACHE = {}   # (student_id) -> (user_dict, token)
 
 
+def _token_still_valid(token):
+    """Is this cached JWT still accepted by the API?
+
+    POST /api/auth/logout increments the account's tokenVersion, revoking every
+    token issued to it. authed_driver injects the cached token straight into
+    localStorage, so once the logout tests run, a stale token here makes the SPA
+    treat the browser as signed out and every guarded route bounces to /login.
+    """
+    req = urllib.request.Request(
+        config.API_BASE + "/auth/me",
+        headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status == 200
+    except Exception:                                        # noqa: BLE001
+        return False
+
+
 def api_login(student_id, password):
-    """Return (user_dict, token) by calling the real login endpoint (cached)."""
-    if student_id in _TOKEN_CACHE:
-        return _TOKEN_CACHE[student_id]
+    """Return (user_dict, token) by calling the real login endpoint (cached).
+
+    Revalidated before reuse — see _token_still_valid.
+    """
+    cached = _TOKEN_CACHE.get(student_id)
+    if cached is not None:
+        if _token_still_valid(cached[1]):
+            return cached
+        del _TOKEN_CACHE[student_id]
     data = json.dumps({"studentId": student_id, "password": password}).encode()
     req = urllib.request.Request(
         config.API_BASE + "/auth/login", data=data,

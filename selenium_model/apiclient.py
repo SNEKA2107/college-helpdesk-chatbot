@@ -65,9 +65,20 @@ _token_cache: dict[str, str] = {}
 
 
 def login_token(role: str) -> str | None:
-    """Authenticate a seeded role and cache its JWT for the session."""
-    if role in _token_cache:
-        return _token_cache[role]
+    """Authenticate a seeded role and cache its JWT.
+
+    The cache is revalidated before reuse. POST /api/auth/logout increments the
+    account's tokenVersion, which revokes every token ever issued to it, so the
+    moment any test logs a role out the JWT cached here goes dead and every
+    later call returns 401 "Session has expired". Caching it for the whole run
+    without checking made ~190 tests fail downstream of the logout tests. A real
+    client re-authenticates when its session is revoked; so does this one.
+    """
+    cached = _token_cache.get(role)
+    if cached is not None:
+        if api("/auth/me", token=cached).status == 200:
+            return cached
+        del _token_cache[role]
     if role not in config.ROLES:
         return None
     identifier, password, _ = config.ROLES[role]

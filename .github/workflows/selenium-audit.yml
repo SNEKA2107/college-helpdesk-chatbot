@@ -1,6 +1,6 @@
 name: Selenium E2E Audit
 
-# Runs the full 337-case Selenium audit suite against a freshly seeded backend.
+# Runs the full Selenium audit suite against a freshly seeded backend.
 on:
   push:
     branches: [main, demo-branch]
@@ -11,51 +11,85 @@ on:
       - '.github/workflows/selenium-audit.yml'
   pull_request:
     branches: [main]
+    # Kept in sync with the push paths above by hand: GitHub Actions does not
+    # support YAML anchors, so this cannot be factored out.
+    paths:
+      - 'selenium_model/**'
+      - 'frontend/**'
+      - 'backend/**'
+      - '.github/workflows/selenium-audit.yml'
   workflow_dispatch:
+
+# A newer push to the same ref makes an in-flight run obsolete — cancel it
+# rather than paying for a result nobody will read.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   e2e-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    env:
+      # selenium_model/config.py signs in with these fixed credentials. Without
+      # them backend/utils/seedPassword.js generates a random password per role
+      # and every authenticated test fails at the login step. These seed a
+      # throwaway in-memory Mongo that dies with the runner — not real secrets.
+      SEED_ADMIN_PASSWORD: admin@123
+      SEED_STUDENT_PASSWORD: student123
+      SEED_FACULTY_PASSWORD: faculty123
+      PYTHONUTF8: '1'
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: selenium_model/requirements.txt
 
       - name: Set up Chrome
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
         with:
           chrome-version: stable
 
-      - name: Install backend dependencies (incl. dev for in-memory Mongo)
-        run: npm install --ignore-scripts --prefix backend
+      # npm ci (not install) — reproducible from the lockfile and skips
+      # dependency resolution. --ignore-scripts keeps the backend postinstall
+      # from running; the audit never needs what it produces.
+      - name: Install backend dependencies
+        run: npm ci --ignore-scripts --prefix backend
 
-      - name: Install & build frontend (produces frontend/dist)
-        run: |
-          npm install --prefix frontend
-          npm run build --prefix frontend
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Build frontend (produces frontend/dist)
+        run: npm run build --prefix frontend
 
       - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r selenium_model/requirements.txt
+        run: pip install -r selenium_model/requirements.txt
 
       - name: Start backend (seeded in-memory MongoDB) and wait for readiness
         run: |
           nohup node backend/dev-local.js > selenium_model/backend-server.log 2>&1 &
           echo "Waiting for http://localhost:5000 ..."
           for i in $(seq 1 90); do
-            if curl -sf http://localhost:5000/ >/dev/null; then
+            if curl -sf http://localhost:5000/api/health >/dev/null; then
               echo "Backend is up after ${i} tries"; exit 0
             fi
             sleep 2
@@ -68,10 +102,8 @@ jobs:
           python discover.py
           python audit.py
 
-      - name: Phase 3-5 — Run Selenium E2E suite (337 cases)
+      - name: Phase 3-5 — Run Selenium E2E suite
         working-directory: selenium_model
-        env:
-          PYTHONUTF8: '1'
         run: python -m pytest tests
 
       - name: Phase 6-7 — Coverage analysis & master Excel report
@@ -81,13 +113,15 @@ jobs:
 
       - name: Upload audit artifacts (report, HTML, screenshots, logs)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: selenium-audit-report
+          # execution_report.html, not html_report.html — pytest.ini writes the
+          # former, so the old path silently uploaded nothing.
           path: |
             selenium_model/MASTER_TEST_AUDIT_REPORT.xlsx
             selenium_model/FINAL_AUDIT_REPORT.md
-            selenium_model/html_report.html
+            selenium_model/execution_report.html
             selenium_model/screenshots/
             selenium_model/data/
             selenium_model/*.log

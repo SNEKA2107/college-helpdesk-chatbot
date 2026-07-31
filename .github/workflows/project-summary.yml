@@ -5,27 +5,35 @@ on:
     branches:
       - '**'
 
+# Rapid pushes to the same ref only need the newest summary.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   project-summary:
     name: Generate Project Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
+    # No checkout step: this job only reads the github context and the clock,
+    # never the working tree, so cloning the repo was pure overhead.
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
       - name: Generate Project Summary
         run: |
           TIMESTAMP="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          # 📌 College Helpdesk Chatbot - Project Summary
+          # 📌 Campus HelpDesk — Project Summary
 
           ## Project Information
-          - **Project Name:** College Helpdesk Chatbot
-          - **Frontend:** React
-          - **Backend:** Java
-          - **Deployment:** GitHub Pages
+          - **Project Name:** Campus HelpDesk (College Helpdesk & Campus OS)
+          - **Frontend:** React 18 + Vite, packaged for Android with Capacitor
+          - **Backend:** Node.js + Express + MongoDB
+          - **Hosting:** Render (single service serving the API and the built SPA)
 
           ## Features
           - Student Login
@@ -42,14 +50,12 @@ jobs:
           - **Execution Timestamp:** ${TIMESTAMP}
 
           ## Deployment Information
-          - **Deployment URL:** https://sneka2107.github.io/college-helpdesk-chatbot
-          - **Deployment Status:** Success
+          - **Deployment URL:** https://college-helpdesk-chatbot-l4bk.onrender.com
+          - **Deploys From:** pushes to \`main\` (Render auto-deploy)
 
-          ## Future Enhancements
-          - Selenium End-to-End Testing
-          - Automated Build Validation
-          - Continuous Integration and Deployment
-          - Regression Testing
+          ## Continuous Integration
+          - Selenium end-to-end audit suite (\`.github/workflows/selenium-audit.yml\`)
+          - Backend unit and security test suite (\`npm test\` in \`backend/\`)
           EOF
 
           echo "✅ Project summary generated successfully."

@@ -157,6 +157,23 @@ API_CHECKS = [
     ("/does-not-exist", "GET", None, 404),
 ]
 
+# Flat (path, method) view of the API surface, consumed by tests/test_api.py and
+# tests/test_http_api.py. It was dropped in 03dd12a when API_CHECKS replaced it,
+# but both test modules still referenced it — test_http_api.py builds PROTECTED
+# at import time, so the missing name was a collection error that failed the
+# whole CI run. Derived from API_CHECKS rather than re-listed so the two cannot
+# drift apart again.
+#
+# Only genuinely auth-gated endpoints belong here: test_http_api.py asserts that
+# every entry except the two auth POSTs returns 401/403 with no token. So an
+# endpoint qualifies when some role reaches it with 200, and it is excluded when
+# it is also reachable anonymously with 200 (public) — which drops
+# /auth/setup-status and /departments — and /does-not-exist never qualifies.
+_PUBLIC_OK = {(e, m) for e, m, role, exp in API_CHECKS if role is None and exp == 200}
+_ROLE_OK = {(e, m) for e, m, role, exp in API_CHECKS if role is not None and exp == 200}
+
+API_ENDPOINTS = [("/auth/login", "POST"), ("/auth/register", "POST")] + sorted(_ROLE_OK - _PUBLIC_OK)
+
 # ── Selenium tuning ─────────────────────────────────────────────────────────
 HEADLESS = os.environ.get("CA_HEADLESS", "1") != "0"
 PAGE_LOAD_TIMEOUT = 40

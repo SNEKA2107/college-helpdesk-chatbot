@@ -28,12 +28,15 @@ const User = require('../models/User');
 const Faculty = require('../models/Faculty');
 const Counter = require('../models/Counter');
 const { bootstrapDepartments } = require('../services/departments');
+const { seedPassword } = require('../utils/seedPassword');
 
 // ── Shared seed passwords ───────────────────────────────────────────────────
 // Hashed by the User model's pre-save hook. Documented in the final report so
 // they can be rotated before the system carries real staff.
-const FACULTY_PASSWORD = 'Faculty@2026';
-const ADMIN_PASSWORD   = 'Admin@2026';
+// Sourced from the environment, or generated and printed once. They used to be
+// fixed strings that were also published in the project documentation.
+const FACULTY_PASSWORD = seedPassword('faculty').password;
+const ADMIN_PASSWORD   = seedPassword('admin').password;
 
 // ── Name pools — combined by index, so name N is always the same person ─────
 const FIRST = [

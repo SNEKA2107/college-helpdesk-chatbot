@@ -21,7 +21,7 @@ const ROLES = [
     icon: GraduationCap,
     accent: '#4E85BF',
     accent2: '#6366f1',
-    features: ['Attendance', 'Marks', 'Timetable', 'AI Assistant'],
+    features: ['Attendance', 'Marks', 'Timetable', 'Campus HelpDesk'],
     route: '/login?role=student',
   },
   {
@@ -66,7 +66,7 @@ export default function RoleSelect() {
         transition={{ duration: 0.5, ease: 'easeOut', delay: 0.05 }}
       >
         <h1 className={s.brand}>
-          <span className={s.brandName}>CampusAssist</span> 🎓
+          <span className={s.brandName}>Campus HelpDesk</span> 🎓
         </h1>
         <p className={s.subtitle}>AI-Powered College Operating System</p>
         <p className={s.desc}>Choose your role to continue</p>
@@ -101,7 +101,7 @@ export default function RoleSelect() {
       >
         New student? <a href="/register" onClick={e => { e.preventDefault(); navigate('/register'); }}>Create an account</a>
         <span className={s.sep} aria-hidden="true">·</span>
-        <a href="/welcome" onClick={e => { e.preventDefault(); navigate('/welcome'); }}>Learn more about CampusAssist</a>
+        <a href="/welcome" onClick={e => { e.preventDefault(); navigate('/welcome'); }}>Learn more about Campus HelpDesk</a>
       </motion.p>
     </motion.main>
   );

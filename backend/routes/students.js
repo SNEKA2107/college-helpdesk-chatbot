@@ -5,21 +5,26 @@ const { logAudit } = require('../utils/audit');
 const { fail, badRequest, notFound } = require('../utils/apiError');
 const { initialiseStudent } = require('../services/studentInit');
 const { resolveDepartment } = require('../services/departments');
+const { coerceQuery, searchRegex } = require('../utils/sanitize');
 
 const router = express.Router();
 
 // GET /api/students — All students (admin only). Optional ?status=pending|approved|rejected
 router.get('/', protect, adminOnly, async (req, res) => {
   try {
-    const { dept, semester, search, status } = req.query;
+    // Every value is coerced to a scalar first: Express parses ?status[$ne]=x
+    // into a Mongo operator object, which would widen the filter if assigned raw.
+    const dept     = coerceQuery(req.query.dept);
+    const semester = coerceQuery(req.query.semester);
+    const status   = coerceQuery(req.query.status);
     const filter = { role: 'student' };
     if (dept)     filter.department = dept;
     if (semester) filter.semester   = semester;
     if (status)   filter.approvalStatus = status;
-    if (search)   filter.$or = [
-      { name:      { $regex: search, $options: 'i' } },
-      { studentId: { $regex: search, $options: 'i' } },
-    ];
+    // searchRegex escapes metacharacters and caps length, so a pathological
+    // pattern cannot be compiled and evaluated per document.
+    const rx = searchRegex(req.query.search);
+    if (rx) filter.$or = [{ name: rx }, { studentId: rx }];
 
     const students = await User.find(filter).select('-password').sort({ studentId: 1 });
     res.json({ success: true, count: students.length, students });
@@ -89,13 +94,11 @@ router.put('/:id/reject', protect, adminOnly, async (req, res) => {
 // GET /api/students/search/:query  — admin only (prevents student enumeration)
 router.get('/search/:query', protect, adminOnly, async (req, res) => {
   try {
-    const q = req.params.query;
+    const rx = searchRegex(req.params.query);
+    if (!rx) return res.json({ success: true, students: [] });
     const students = await User.find({
       role: 'student',
-      $or: [
-        { name:      { $regex: q, $options: 'i' } },
-        { studentId: { $regex: q, $options: 'i' } },
-      ]
+      $or: [{ name: rx }, { studentId: rx }],
     }).select('-password').limit(20);
     res.json({ success: true, students });
   } catch (err) {
@@ -122,8 +125,13 @@ router.put('/:id', protect, async (req, res) => {
     if (!isOwn && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
-    const allowed = ['name', 'phone', 'semester', 'year', 'section'];
-    if (isAdmin) allowed.push('department', 'isActive', 'role');
+    // semester/year/section are ADMIN-ONLY. They are the only authorization
+    // boundary protecting timetables (timetable.js:17), exam schedules
+    // (exam.js:14) and coursework (coursework.js:22), so letting a student edit
+    // their own cohort let them read another class's material by changing a
+    // string on themselves. A student who needs a correction asks the office.
+    const allowed = ['name', 'phone'];
+    if (isAdmin) allowed.push('department', 'isActive', 'role', 'semester', 'year', 'section');
 
     // Audit finding L-3: silently dropping fields the caller is not allowed to
     // set returned 200 as though the change had been applied. Reject explicitly.

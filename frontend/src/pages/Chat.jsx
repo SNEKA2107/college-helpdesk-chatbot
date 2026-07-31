@@ -7,7 +7,7 @@ import SourceChips from '../features/chat/SourceChips';
 import FollowUpPills from '../features/chat/FollowUpPills';
 import '../styles/chat.css';
 
-const WELCOME_HTML = `Hello! 👋 I'm <b>CampusAssist Copilot</b>, your AI college assistant.<br><br>
+const WELCOME_HTML = `Hello! 👋 I'm <b>Campus HelpDesk</b>, your AI college assistant.<br><br>
 I can help you with:<br>
 📘 Exams &nbsp; 💳 Fees &nbsp; 🎓 Marks &nbsp; 📊 Attendance<br>
 🔔 Notices &nbsp; 📅 Timetable &nbsp; 📝 Leave &nbsp; ☎ Contact<br><br>
@@ -83,7 +83,7 @@ export default function Chat() {
   const showWelcome = messages.length === 0 && !typing;
 
   return (
-    <Layout title="Campus Copilot">
+    <Layout title="Campus HelpDesk">
       <div className="chat-layout">
         <ConversationSidebar
           conversations={conversations}
@@ -100,7 +100,7 @@ export default function Chat() {
             <div className="bot-info">
               <div className="bot-avatar">🤖</div>
               <div>
-                <div className="bot-name">CampusAssist Copilot</div>
+                <div className="bot-name">Campus HelpDesk</div>
                 <div className="bot-status"><span className="online-dot"></span> Online · grounded in your records</div>
               </div>
             </div>
@@ -164,7 +164,7 @@ export default function Chat() {
 
           <div className="chat-input-area">
             <input
-              type="text" className="chat-input" placeholder="Ask the Copilot anything…"
+              type="text" className="chat-input" placeholder="Ask Campus HelpDesk anything…"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') submit(); }}

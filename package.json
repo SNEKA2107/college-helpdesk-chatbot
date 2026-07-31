@@ -8,5 +8,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "dependencies": "^0.0.1",
+    "launch-website": "^7.0.0"
   }
 }

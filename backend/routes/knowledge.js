@@ -4,8 +4,17 @@ const KnowledgeDocument = require('../models/KnowledgeDocument');
 const QueryLog = require('../models/QueryLog');
 const { logAudit } = require('../utils/audit');
 const { fail, notFound } = require('../utils/apiError');
+const { redactLabels } = require('../utils/redact');
+const { validateUpload, DOCUMENT_TYPES } = require('../utils/upload');
+const { pick, coerceQuery } = require('../utils/sanitize');
 
 const router = express.Router();
+
+// What an admin may change on a knowledge document. The analytics counters and
+// uploadedBy are server-owned and absent by design.
+const KB_UPDATE_FIELDS = ['title', 'category', 'docType', 'description', 'content',
+                          'section', 'tags', 'status', 'fileName', 'fileType',
+                          'fileSize', 'fileData'];
 
 // Never ship the (potentially large) base64 file blob in list/CRUD responses.
 const LIGHT = '-fileData';
@@ -53,15 +62,16 @@ router.get('/analytics', protect, adminOnly, async (req, res) => {
       success: true,
       documents: { total: docTotal, published: publishedTotal, byCategory: byCategory.map(c => ({ label: c._id || 'General', value: c.count })) },
       mostAccessedDocuments: mostAccessed.map(d => ({ label: d.title, value: d.accessCount, category: d.category })),
-      mostSearchedTopics: mostSearched.map(q => ({ label: q._id, value: q.count })),
+      // Redacted for the same reason as the AI analytics panels.
+      mostSearchedTopics: redactLabels(mostSearched.map(q => ({ label: q._id, value: q.count }))),
       missingKnowledgeAreas: missingAreas.map(m => ({ label: m._id || 'General', value: m.count })),
       queryTrends: queryTrends.map(d => ({ label: d._id.slice(5), value: d.count })),
       training: {
         datasetSize, ratedCount, helpful, notHelpful,
         helpfulRate: ratedCount ? Math.round((100 * helpful) / ratedCount) : 0,
         intentDistribution: intentDistribution.map(i => ({ label: i._id || 'general', value: i.count })),
-        mostHelpful: mostHelpful.map(q => ({ label: q._id, value: q.count })),
-        leastHelpful: leastHelpful.map(q => ({ label: q._id, value: q.count })),
+        mostHelpful: redactLabels(mostHelpful.map(q => ({ label: q._id, value: q.count }))),
+        leastHelpful: redactLabels(leastHelpful.map(q => ({ label: q._id, value: q.count }))),
       },
     });
   } catch (err) {
@@ -73,7 +83,9 @@ router.get('/analytics', protect, adminOnly, async (req, res) => {
 // GET /api/knowledge — list documents (admin). Filters: ?category= &status= &q=
 router.get('/', protect, adminOnly, async (req, res) => {
   try {
-    const { category, status, q } = req.query;
+    const category = coerceQuery(req.query.category);
+    const status   = coerceQuery(req.query.status);
+    const q        = coerceQuery(req.query.q);
     const filter = {};
     if (category && category !== 'All') filter.category = category;
     if (status) filter.status = status;
@@ -109,6 +121,16 @@ router.post('/', protect, adminOnly, async (req, res) => {
     if (!title || !title.trim()) return res.status(400).json({ success: false, message: 'Document title is required.' });
     if (!content && !fileData) return res.status(400).json({ success: false, message: 'Provide document text or upload a file.' });
 
+    // fileData was persisted with no size and no type check at all.
+    let file = null;
+    if (fileData) {
+      const r = validateUpload(fileData, fileName, fileType, {
+        allowed: DOCUMENT_TYPES, maxBytes: 5 * 1024 * 1024, label: 'Document',
+      });
+      if (!r.ok) return res.status(400).json({ success: false, message: r.error });
+      file = r.fields;
+    }
+
     const doc = await KnowledgeDocument.create({
       title: clean(title.trim()),
       category: category || 'General',
@@ -118,7 +140,8 @@ router.post('/', protect, adminOnly, async (req, res) => {
       section: clean(section || ''),
       tags: Array.isArray(tags) ? tags.map(clean) : String(tags || '').split(',').map(t => clean(t.trim())).filter(Boolean),
       status: status === 'draft' ? 'draft' : 'published',
-      fileName: fileName || '', fileType: fileType || '', fileSize: fileSize || 0, fileData: fileData || '',
+      fileName: file ? file.name : '', fileType: file ? file.type : '',
+      fileSize: file ? file.size : 0, fileData: file ? file.data : '',
       uploadedBy: req.user.name,
     });
     await logAudit(req, 'knowledge.create', 'KnowledgeDocument', doc._id, { title: doc.title, category: doc.category });
@@ -132,7 +155,19 @@ router.post('/', protect, adminOnly, async (req, res) => {
 // PUT /api/knowledge/:id — edit metadata/content (admin).
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
-    const update = { ...req.body };
+    // Allowlist: a spread let an admin overwrite accessCount, searchCount,
+    // uploadedBy and version, and fed unfiltered keys to the update caster.
+    const update = pick(req.body, KB_UPDATE_FIELDS);
+    if (update.fileData) {
+      const r = validateUpload(update.fileData, update.fileName, update.fileType, {
+        allowed: DOCUMENT_TYPES, maxBytes: 5 * 1024 * 1024, label: 'Document',
+      });
+      if (!r.ok) return res.status(400).json({ success: false, message: r.error });
+      update.fileData = r.fields.data;
+      update.fileName = r.fields.name;
+      update.fileType = r.fields.type;
+      update.fileSize = r.fields.size;
+    }
     ['title', 'description', 'content', 'section'].forEach(k => { if (update[k] != null) update[k] = clean(update[k]); });
     if (typeof update.tags === 'string') update.tags = update.tags.split(',').map(t => clean(t.trim())).filter(Boolean);
     update.$inc = { version: 1 };

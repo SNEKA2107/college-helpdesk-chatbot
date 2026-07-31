@@ -1,6 +1,6 @@
 {
-  "name": "CampusAssist",
-  "short_name": "CampusAssist",
+  "name": "Campus HelpDesk",
+  "short_name": "Campus HelpDesk",
   "description": "Your college helpdesk – requests, notices, fees and more",
   "start_url": "/",
   "scope": "/",

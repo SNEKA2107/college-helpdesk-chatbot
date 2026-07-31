@@ -19,7 +19,7 @@ export default function BottomNav() {
   return (
     <nav className="bottom-nav">
       {ITEMS.map(item)}
-      <Link to="/student/chat" className="bn-fab" title="AI Assistant">💬</Link>
+      <Link to="/student/chat" className="bn-fab" title="Campus HelpDesk">💬</Link>
       {ITEMS_AFTER.map(item)}
     </nav>
   );

@@ -24,6 +24,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt   = require('bcryptjs');
 const User     = require('./models/User');
+const { seedPassword } = require('./utils/seedPassword');
 
 // ── Name pools ──────────────────────────────────────────────────────────────
 
@@ -145,7 +146,9 @@ async function seedStudents() {
 
   // Pre-hash the shared password once (bcrypt with 12 rounds = ~250 ms)
   console.log('🔐 Pre-hashing shared password …');
-  const hashedPassword = await bcrypt.hash('student123', 12);
+  // Bulk students share one seed password so a demo login is predictable, but it
+  // is env-supplied or generated — never the published 'student123'.
+  const hashedPassword = await bcrypt.hash(seedPassword('student').password, 12);
   console.log('   Done.\n');
 
   // Build documents

@@ -53,7 +53,7 @@ export default function AnalyticsTab() {
         <h4>🧠 Knowledge Gaps — unanswered queries to add to the Knowledge Base</h4>
         {a.knowledgeGaps.length
           ? <BarList data={a.knowledgeGaps} color="#ef4444" />
-          : <div className="chart-empty">No unanswered queries — the Copilot is grounding every question. 🎉</div>}
+          : <div className="chart-empty">No unanswered queries — Campus HelpDesk is grounding every question. 🎉</div>}
       </div>
     </div>
   );

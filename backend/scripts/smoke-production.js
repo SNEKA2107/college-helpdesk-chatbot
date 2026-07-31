@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Production smoke test — verifies a deployed CampusAssist backend end to end.
+ * Production smoke test — verifies a deployed Campus HelpDesk backend end to end.
  *
  * Checks the whole release checklist against a live URL: health, auth for all
  * three roles, protected-route enforcement, role isolation, CORS for the real
@@ -31,11 +31,28 @@ if (!BASE) {
 const API = `${BASE}/api`;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || '';
 
+// Credentials come from the environment with NO fallback.
+//
+// These used to default to student123 / admin@123 / faculty123 while the script
+// pointed at a live production URL — the same values the seed scripts wrote, and
+// the same values published in the project documentation. A smoke test must
+// never carry a working password for the system it tests.
 const CREDS = {
-  student: [process.env.STUDENT_ID || '22IT101', process.env.STUDENT_PASSWORD || 'student123'],
-  admin: [process.env.ADMIN_ID || 'ADMIN01', process.env.ADMIN_PASSWORD || 'admin@123'],
-  faculty: [process.env.FACULTY_ID || 'FAC01', process.env.FACULTY_PASSWORD || 'faculty123'],
+  student: [process.env.STUDENT_ID, process.env.STUDENT_PASSWORD],
+  admin:   [process.env.ADMIN_ID,   process.env.ADMIN_PASSWORD],
+  faculty: [process.env.FACULTY_ID, process.env.FACULTY_PASSWORD],
 };
+
+const missingCreds = Object.entries(CREDS)
+  .filter(([, [id, pw]]) => !id || !pw)
+  .map(([role]) => role.toUpperCase());
+if (missingCreds.length) {
+  console.error('Missing credentials for: ' + missingCreds.join(', '));
+  console.error('Set them in the environment before running, e.g.:');
+  console.error('  STUDENT_ID=... STUDENT_PASSWORD=... ADMIN_ID=... ADMIN_PASSWORD=... \\');
+  console.error('  FACULTY_ID=... FACULTY_PASSWORD=... node backend/scripts/smoke-production.js <url>');
+  process.exit(2);
+}
 
 const results = [];
 const tokens = {};
@@ -72,7 +89,7 @@ function section(title) {
 }
 
 async function main() {
-  console.log(`\nCampusAssist production smoke test`);
+  console.log(`\nCampus HelpDesk production smoke test`);
   console.log(`Target: ${BASE}`);
   if (FRONTEND_ORIGIN) console.log(`Frontend origin: ${FRONTEND_ORIGIN}`);
 

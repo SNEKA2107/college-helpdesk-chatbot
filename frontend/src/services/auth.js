@@ -63,3 +63,32 @@ export function logout() {
   clearSession();
   window.location.assign(LOGIN_PATH);
 }
+
+/**
+ * Ask the server to invalidate the current token.
+ *
+ * POST /api/auth/logout bumps the account's tokenVersion, which the auth
+ * middleware compares against the claim in every token — so this revokes not
+ * just this browser's copy but any other copy of the same token.
+ *
+ * Deliberately fetch() rather than the api client: the api client redirects to
+ * /login on 401, which would fight with the caller's own navigation. Failures
+ * are swallowed so an offline or already-expired session still logs out locally.
+ *
+ * API_BASE is imported lazily because services/api.js imports logout() from this
+ * module — a static import here would close that cycle.
+ */
+export async function revokeServerSession() {
+  const token = localStorage.getItem('ca_token');
+  if (!token) return;
+  try {
+    const { API_BASE } = await import('./api');
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      keepalive: true,          // survives the navigation that follows
+    });
+  } catch {
+    /* offline or unreachable — the local session is cleared regardless */
+  }
+}

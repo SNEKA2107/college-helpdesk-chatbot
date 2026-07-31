@@ -4,9 +4,14 @@ const Timetable = require('../models/Timetable');
 const { detectConflicts } = require('../utils/timetableConflicts');
 const { logAudit } = require('../utils/audit');
 const { fail, badRequest } = require('../utils/apiError');
+const { pick } = require('../utils/sanitize');
 const { resolveDepartment } = require('../services/departments');
 
 const router = express.Router();
+
+// Content fields only — `status` and `publishedAt` move via /publish and /archive.
+const TIMETABLE_FIELDS = ['department', 'semester', 'academicYear', 'year',
+                          'section', 'slots', 'schedule'];
 
 // Resolve the single timetable that belongs to THIS student's cohort.
 // Hard rule: never return a timetable from a different department+semester
@@ -94,7 +99,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
 
   try {
     // New timetables are drafts until explicitly published — never auto-visible to students.
-    const tt = await Timetable.create({ ...req.body, department: dept.code, status: 'draft', publishedAt: undefined });
+    const tt = await Timetable.create({ ...pick(req.body, TIMETABLE_FIELDS), department: dept.code, status: 'draft', publishedAt: undefined });
     await logAudit(req, 'timetable.create', 'Timetable', tt._id, {
       department: tt.department, semester: tt.semester, year: tt.year, section: tt.section,
     });
@@ -108,9 +113,9 @@ router.post('/', protect, adminOnly, async (req, res) => {
 // use /publish and /archive to move lifecycle state).
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
-    const update = { ...req.body };
-    delete update.status;            // lifecycle changes go through dedicated endpoints
-    delete update.publishedAt;
+    // Allowlist rather than spread-and-delete: the deletes only removed the two
+    // keys anyone remembered, leaving every other body key reaching the caster.
+    const update = pick(req.body, TIMETABLE_FIELDS);
     const tt = await Timetable.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
     if (!tt) return res.status(404).json({ success: false, message: 'Timetable not found.' });
     await logAudit(req, 'timetable.update', 'Timetable', tt._id, { status: tt.status });

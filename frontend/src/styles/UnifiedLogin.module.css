@@ -1,5 +1,5 @@
 /* Unified login screen — the single entry point for Student / Faculty / Admin.
-   Styling follows the existing CampusAssist auth pages: a local CSS-variable
+   Styling follows the existing Campus HelpDesk auth pages: a local CSS-variable
    palette scoped to .page, overridden per data-theme (dark / light / night).
    No Tailwind — consistent with the rest of the app.
 
@@ -29,13 +29,18 @@
 
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
+  /* `clip`, not `hidden`: still hides the decorative gradient blobs, but does
+     not turn the page into a scroll container that the Android WebView pins to
+     the viewport height (which strands the card when the keyboard is open). */
   overflow: hidden;
+  overflow: clip;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 20px;
+  padding: calc(48px + var(--sa-top)) 20px calc(48px + var(--sa-bottom));
   box-sizing: border-box;
   font-family: 'Inter', system-ui, sans-serif;
   color: var(--text);
@@ -228,6 +233,14 @@
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
+/* iOS Safari zooms the viewport whenever a focused text field is under 16px,
+   and never zooms back out — leaving the login form scrolled sideways on the
+   first tap. Hold the field at exactly 16px on touch-sized screens; the 14.5px
+   above still applies on the desktop layout, where no such behaviour exists. */
+@media (max-width: 768px) {
+  .input { font-size: 16px; }
+}
+
 .input::placeholder { color: var(--text-muted); opacity: 0.75; }
 .input:focus {
   border-color: color-mix(in srgb, var(--primary) 60%, transparent);

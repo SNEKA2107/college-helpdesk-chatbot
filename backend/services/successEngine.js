@@ -139,7 +139,7 @@ async function computeSuccess(user) {
   if (placement.projects < 3)
     recommendations.push(`Build ${3 - placement.projects} more project(s) to strengthen your resume.`);
   if (engagement.score < 30)
-    recommendations.push('Use Campus Copilot regularly to stay on top of deadlines and notices.');
+    recommendations.push('Use Campus HelpDesk regularly to stay on top of deadlines and notices.');
   if (!recommendations.length)
     recommendations.push("You're on track across the board — keep maintaining attendance and CGPA, and start interview prep.");
 

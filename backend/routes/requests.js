@@ -2,10 +2,13 @@ const express  = require('express');
 const Request  = require('../models/Request');
 const User     = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
-const { sendEmail, emailTemplate } = require('../utils/email');
-const { fail } = require('../utils/apiError');
+const { sendEmail, emailTemplate, html, raw } = require('../utils/email');
+const { fail, badRequest } = require('../utils/apiError');
 
 const router = express.Router();
+
+// Valid workflow states, read from the schema so the two cannot drift apart.
+const REQUEST_STATUSES = Request.schema.path('status').enumValues;
 
 // GET /api/requests/stats
 router.get('/stats', protect, async (req, res) => {
@@ -57,15 +60,22 @@ router.post('/', protect, async (req, res) => {
 // PUT /api/requests/:id/status — update status (admin)
 router.put('/:id/status', protect, adminOnly, async (req, res) => {
   const { status, remarks } = req.body;
+  // findByIdAndUpdate does not run schema validators by default, so an arbitrary
+  // string was landing in `status` and driving the request to a state the
+  // workflow does not define — and then being reflected into the email below.
+  if (!REQUEST_STATUSES.includes(status)) {
+    return badRequest(res, `Status must be one of: ${REQUEST_STATUSES.join(', ')}.`);
+  }
+  const safeRemarks = String(remarks == null ? '' : remarks).slice(0, 1000);
   try {
     const request = await Request.findByIdAndUpdate(
       req.params.id,
       {
         status,
-        remarks: remarks || '',
+        remarks: safeRemarks,
         ...(status === 'Completed' && { completedAt: new Date() }),
       },
-      { new: true }
+      { new: true, runValidators: true }
     ).populate('student', 'name email studentId');
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
 
@@ -75,20 +85,28 @@ router.put('/:id/status', protect, adminOnly, async (req, res) => {
         'Under Review': '#facc15', 'Processing': '#60a5fa',
         'Ready for Collection': '#4ade80', 'Completed': '#4ade80', 'Rejected': '#f87171',
       };
+      // Every ${...} below is HTML-escaped by the html`` tag. The colour and the
+      // two conditional blocks are template-controlled, so they use raw().
+      const remarksRow = safeRemarks
+        ? html`<tr><td style="padding:6px 0;color:#94a3b8;">Remarks</td><td style="color:#e2e8f0;">${safeRemarks}</td></tr>`
+        : '';
+      const collectNote = status === 'Ready for Collection'
+        ? '<p style="color:#4ade80;font-weight:bold;">📍 Please collect your document from Room 101, Admin Block with your ID card.</p>'
+        : '';
       await sendEmail({
         to: request.student.email,
-        subject: `📋 Request Update: ${request.type} — CampusAssist`,
-        html: emailTemplate('Document Request Update', `
+        subject: `📋 Request Update: ${request.type} — Campus HelpDesk`,
+        html: emailTemplate('Document Request Update', html`
           <p>Dear <strong>${request.student.name}</strong>,</p>
           <p>Your document request status has been updated.</p>
           <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
             <tr><td style="padding:6px 0;color:#94a3b8;">Request Type</td><td style="color:#e2e8f0;">${request.type}</td></tr>
             <tr><td style="padding:6px 0;color:#94a3b8;">Ref Number</td><td style="color:#e2e8f0;">${request.refNumber}</td></tr>
             <tr><td style="padding:6px 0;color:#94a3b8;">New Status</td>
-              <td style="color:${statusColors[status] || '#e2e8f0'};font-weight:bold;">${status}</td></tr>
-            ${remarks ? `<tr><td style="padding:6px 0;color:#94a3b8;">Remarks</td><td style="color:#e2e8f0;">${remarks}</td></tr>` : ''}
+              <td style="color:${raw(statusColors[status] || '#e2e8f0')};font-weight:bold;">${status}</td></tr>
+            ${raw(remarksRow)}
           </table>
-          ${status === 'Ready for Collection' ? '<p style="color:#4ade80;font-weight:bold;">📍 Please collect your document from Room 101, Admin Block with your ID card.</p>' : ''}
+          ${raw(collectNote)}
         `),
       });
     }

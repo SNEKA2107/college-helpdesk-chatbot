@@ -1,15 +1,72 @@
 const express = require('express');
 const jwt     = require('jsonwebtoken');
+const bcrypt  = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const User    = require('../models/User');
 const { protect } = require('../middleware/auth');
 
 const { fail, badRequest } = require('../utils/apiError');
 const { resolveDepartment } = require('../services/departments');
+const { validateUpload, IMAGE_TYPES } = require('../utils/upload');
+const loginAttempts = require('../utils/loginAttempts');
 
 const router = express.Router();
 
-const genToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+// Token lifetime. 30 days on a bearer token with no revocation meant a copied
+// token was valid for a month; TOKEN_TTL is now short and the tokenVersion claim
+// makes revocation possible. Configurable so a demo can widen it deliberately.
+const TOKEN_TTL = process.env.TOKEN_TTL || '12h';
+
+/** Issue a token bound to the user's current session generation. */
+const genToken = (user) =>
+  jwt.sign({ id: user._id, v: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: TOKEN_TTL });
+
+/**
+ * The subset of a user record a client is given.
+ *
+ * Login and /me used to serialise the whole Mongoose document. The password was
+ * removed by toJSON, but approvedBy, rejectionReason, tokenVersion and every
+ * parent contact field went to the browser whether the view needed them or not.
+ */
+function publicUser(u) {
+  return {
+    _id: u._id, name: u.name, studentId: u.studentId, email: u.email,
+    role: u.role, department: u.department, semester: u.semester,
+    year: u.year, section: u.section, phone: u.phone, photo: u.photo,
+    designation: u.designation, qualification: u.qualification, experience: u.experience,
+    assignedSubjects: u.assignedSubjects, cgpa: u.cgpa, skills: u.skills,
+    projects: u.projects, placementOptIn: u.placementOptIn,
+    parentName: u.parentName, motherName: u.motherName, parentPhone: u.parentPhone,
+    parentEmail: u.parentEmail, parentOccupation: u.parentOccupation, parentAddress: u.parentAddress,
+    mustChangePassword: u.mustChangePassword,
+    approvalStatus: u.approvalStatus,
+    isActive: u.isActive,
+  };
+}
+
+// One password rule, applied to registration, setup AND change-password. The
+// change-password route previously enforced only a length minimum, so an account
+// could be moved to a weaker password than registration would have accepted.
+// The 72-byte ceiling is bcrypt's input limit: anything beyond it is silently
+// ignored by the hash, so a longer password is not the strength it appears.
+const COMMON_PASSWORDS = new Set([
+  'password', 'password1', 'password123', 'admin@123', 'admin123', 'student123',
+  'faculty123', 'qwerty123', '12345678', '123456789', 'letmein1', 'welcome1',
+  'iloveyou', 'abc12345', 'passw0rd', 'p@ssw0rd', 'campusassist', 'campushelpdesk', 'changeme1',
+]);
+
+const passwordRules = (field) => body(field)
+  .isString()
+  .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+  .isByteLength({ max: 72 }).withMessage('Password must be 72 bytes or fewer')
+  .matches(/[a-zA-Z]/).withMessage('Password must contain at least one letter')
+  .matches(/[\d@$!%*?&_\-#]/).withMessage('Password must contain at least one digit or special character')
+  .custom(v => {
+    if (COMMON_PASSWORDS.has(String(v).toLowerCase())) {
+      throw new Error('That password is too common. Please choose a different one.');
+    }
+    return true;
+  });
 
 // ── First-run bootstrap (audit finding C-1) ─────────────────────────────────
 // A brand-new deployment has no admin and therefore no way in. These two routes
@@ -36,10 +93,7 @@ router.post('/setup', [
   body('name').isString().trim().notEmpty().withMessage('Name is required'),
   body('studentId').isString().trim().notEmpty().withMessage('An admin username/ID is required'),
   body('email').isEmail().normalizeEmail().withMessage('A valid email is required'),
-  body('password').isString()
-    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-    .matches(/[a-zA-Z]/).withMessage('Password must contain at least one letter')
-    .matches(/[\d@$!%*?&_\-#]/).withMessage('Password must contain at least one digit or special character'),
+  passwordRules('password'),
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, message: errors.array()[0].msg });
@@ -69,8 +123,8 @@ router.post('/setup', [
     });
 
     console.log(`✅ First admin created via setup: ${user.studentId}`);
-    const token = genToken(user._id);
-    res.status(201).json({ success: true, message: 'Administrator account created', token, user });
+    const token = genToken(user);
+    res.status(201).json({ success: true, message: 'Administrator account created', token, user: publicUser(user) });
   } catch (err) {
     return fail(res, err, 'Could not complete setup.');
   }
@@ -81,11 +135,7 @@ router.post('/register', [
   body('name').isString().notEmpty().trim().withMessage('Name is required'),
   body('studentId').isString().notEmpty().trim().withMessage('Student ID is required'),
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
-  body('password')
-    .isString()
-    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-    .matches(/[a-zA-Z]/).withMessage('Password must contain at least one letter')
-    .matches(/[\d@$!%*?&_\-#]/).withMessage('Password must contain at least one digit or special character'),
+  passwordRules('password'),
   body('department').isString().notEmpty().withMessage('Department is required'),
 ], async (req, res) => {
   const errors = validationResult(req);
@@ -156,14 +206,47 @@ async function findByIdentifier(identifier) {
  * Verify a credential and the account's state.
  * @returns {{ok: true, user}} | {{ok: false, status: number, message: string}}
  */
+// A real bcrypt hash (of a value nobody knows) compared against when no account
+// matches. Without it the function returned before ever reaching bcrypt, so an
+// unknown identifier answered in a fraction of the time a wrong password took —
+// a timing channel that undid the carefully generic error message below.
+const DUMMY_HASH = bcrypt.hashSync('placeholder-for-constant-time-comparison', 12);
+
 async function authenticate(identifier, password, { requireRole } = {}) {
+  // Per-ACCOUNT throttling, on top of the per-IP limiter. IP throttling alone
+  // does nothing about credential stuffing spread across many source addresses;
+  // this counter follows the target account instead of the source host.
+  const state = loginAttempts.check(identifier);
+  if (state.locked) {
+    return {
+      ok: false,
+      status: 429,
+      message: `Too many failed attempts for this account. Try again in ${Math.ceil(state.retryAfterSec / 60)} minute(s).`,
+      retryAfterSec: state.retryAfterSec,
+    };
+  }
+  // Progressive delay once a few attempts have failed: negligible for someone
+  // who mistyped, costly for an automated run.
+  if (state.delayMs) await new Promise(r => setTimeout(r, state.delayMs));
+
   const user = await findByIdentifier(identifier);
 
   // One generic message for "no such account" AND "wrong password" — telling
   // them apart would let anyone enumerate valid register numbers.
   const rejected = { ok: false, status: 401, message: 'Invalid credentials. Please check your ID or email and password.' };
-  if (!user || !(await user.matchPassword(password))) return rejected;
-  if (requireRole && user.role !== requireRole) return rejected;
+  if (!user) {
+    await bcrypt.compare(String(password || ''), DUMMY_HASH);  // spend the same time
+    loginAttempts.recordFailure(identifier);
+    return rejected;
+  }
+  if (!(await user.matchPassword(password))) {
+    loginAttempts.recordFailure(identifier);
+    return rejected;
+  }
+  if (requireRole && user.role !== requireRole) {
+    loginAttempts.recordFailure(identifier);
+    return rejected;
+  }
 
   if (!user.isActive) {
     return { ok: false, status: 403, message: 'Account is deactivated. Contact the admin.' };
@@ -177,6 +260,9 @@ async function authenticate(identifier, password, { requireRole } = {}) {
     const reason = user.rejectionReason ? ` Reason: ${user.rejectionReason}.` : '';
     return { ok: false, status: 403, message: `Your registration was not approved.${reason} Please contact the college office.` };
   }
+  // Correct credentials clear the counter, so a legitimate user who mistyped a
+  // few times is not carrying penalty into their next session.
+  loginAttempts.recordSuccess(identifier);
   return { ok: true, user };
 }
 
@@ -204,11 +290,15 @@ router.post('/login', [
   const { identifier, studentId, email, password } = req.body;
   try {
     const result = await authenticate(identifier || studentId || email, password);
-    if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
+    if (!result.ok) {
+      // Retry-After lets a well-behaved client back off instead of hammering.
+      if (result.retryAfterSec) res.set('Retry-After', String(result.retryAfterSec));
+      return res.status(result.status).json({ success: false, message: result.message });
+    }
 
     // The role on the returned user is what the client redirects on.
-    const token = genToken(result.user._id);
-    res.json({ success: true, message: 'Login successful', token, user: result.user });
+    const token = genToken(result.user);
+    res.json({ success: true, message: 'Login successful', token, user: publicUser(result.user) });
   } catch (err) {
     return fail(res, err, 'Could not complete the request. Please try again.');
   }
@@ -226,9 +316,12 @@ router.post('/faculty-login', [
 
   try {
     const result = await authenticate(req.body.email, req.body.password, { requireRole: 'faculty' });
-    if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
-    const token = genToken(result.user._id);
-    res.json({ success: true, message: 'Login successful', token, user: result.user });
+    if (!result.ok) {
+      if (result.retryAfterSec) res.set('Retry-After', String(result.retryAfterSec));
+      return res.status(result.status).json({ success: false, message: result.message });
+    }
+    const token = genToken(result.user);
+    res.json({ success: true, message: 'Login successful', token, user: publicUser(result.user) });
   } catch (err) {
     return fail(res, err, 'Could not complete the request. Please try again.');
   }
@@ -236,13 +329,13 @@ router.post('/faculty-login', [
 
 // GET /api/auth/me (protected)
 router.get('/me', protect, async (req, res) => {
-  res.json({ success: true, user: req.user });
+  res.json({ success: true, user: publicUser(req.user) });
 });
 
 // PUT /api/auth/change-password (protected)
 router.put('/change-password', protect, [
   body('currentPassword').notEmpty().withMessage('Current password is required'),
-  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
+  passwordRules('newPassword'),
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
@@ -261,8 +354,32 @@ router.put('/change-password', protect, [
     // prompting for a change (audit finding C-2 — the flag was written when an
     // admin provisioned a faculty login but nothing ever cleared it).
     user.mustChangePassword = false;
+    // The pre-save hook bumps tokenVersion, so every OTHER session is signed out.
     await user.save();
-    res.json({ success: true, message: 'Password changed successfully.', mustChangePassword: false });
+
+    // Issue a replacement token for the caller, otherwise the client that just
+    // changed its own password would be logged out by its own request.
+    const token = genToken(user);
+    res.json({
+      success: true,
+      message: 'Password changed successfully. Other devices have been signed out.',
+      mustChangePassword: false,
+      token,
+    });
+  } catch (err) {
+    return fail(res, err, 'Could not complete the request. Please try again.');
+  }
+});
+
+// POST /api/auth/logout — end the session server-side.
+//
+// There was no such endpoint: logout cleared localStorage and nothing else, so a
+// token copied beforehand kept working for its full lifetime. Incrementing
+// tokenVersion invalidates every token issued to this account.
+router.post('/logout', protect, async (req, res) => {
+  try {
+    await User.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 } });
+    res.json({ success: true, message: 'Signed out.' });
   } catch (err) {
     return fail(res, err, 'Could not complete the request. Please try again.');
   }
@@ -277,8 +394,13 @@ router.put('/change-password', protect, [
 // their parent details, and losing `semester` dropped them out of their cohort
 // (faculty roster, timetable, exam schedule and coursework all key off it).
 // `year`/`section` were already guarded this way; the rest now match.
+//
+// semester/year/section are deliberately NOT here. They decide which cohort's
+// timetable, exam schedule, assignments and study materials the account can
+// read, so a self-service edit was a one-request way into another class's data.
+// An admin sets them through PUT /api/students/:id.
 const PROFILE_TEXT_FIELDS = [
-  'phone', 'semester', 'year', 'section',
+  'phone',
   'parentName', 'motherName', 'parentPhone', 'parentEmail', 'parentOccupation', 'parentAddress',
 ];
 
@@ -291,8 +413,17 @@ router.put('/profile', protect, async (req, res) => {
   if (!name || !String(name).trim()) {
     return res.status(400).json({ success: false, message: 'Name is required.' });
   }
-  if (photo !== undefined && typeof photo === 'string' && photo.length > 7 * 1024 * 1024) {
-    return res.status(400).json({ success: false, message: 'Photo is too large. Please use an image under 5 MB.' });
+  // A raw length check accepted any content at all — a text/html or SVG data URL
+  // stored here is served straight back to whoever views the profile. The shared
+  // validator checks the MIME against an image allowlist, confirms the declared
+  // type agrees, verifies the magic bytes and caps the DECODED size.
+  let photoFields = null;
+  if (photo !== undefined && photo !== null && photo !== '') {
+    const check = validateUpload(photo, 'photo', undefined, {
+      allowed: IMAGE_TYPES, maxBytes: 5 * 1024 * 1024, label: 'Photo',
+    });
+    if (!check.ok) return res.status(400).json({ success: false, message: check.error });
+    photoFields = check.fields;
   }
 
   try {
@@ -302,10 +433,12 @@ router.put('/profile', protect, async (req, res) => {
     for (const field of PROFILE_TEXT_FIELDS) {
       if (body[field] !== undefined) update[field] = String(body[field] == null ? '' : body[field]).trim();
     }
-    if (photo !== undefined) update.photo = photo;
+    // '' clears the photo; a supplied value is the validated data URL.
+    if (photo === '' || photo === null) update.photo = '';
+    else if (photoFields) update.photo = photoFields.data;
 
     const user = await User.findByIdAndUpdate(req.user._id, update, { new: true, runValidators: true });
-    res.json({ success: true, message: 'Profile updated successfully.', user });
+    res.json({ success: true, message: 'Profile updated successfully.', user: publicUser(user) });
   } catch (err) {
     return fail(res, err, 'Could not complete the request. Please try again.');
   }

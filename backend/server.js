@@ -40,14 +40,46 @@ const app = express();
 // ===== TRUST PROXY — required for correct IP resolution behind Render/Nginx =====
 app.set('trust proxy', 1);
 
+/**
+ * SHA-256 hashes of the inline <script> blocks in the built index.html.
+ *
+ * The shell carries one inline script: it stamps the saved theme onto <html>
+ * before the bundle parses, which is the whole point of putting it there — do it
+ * from React and the user sees a flash of the wrong theme first. A blanket
+ * 'unsafe-inline' would let it run again but would also re-open script injection,
+ * which is the one thing this CSP exists to stop. Hashing the exact bytes allows
+ * precisely that script and nothing else, and re-reading the file at boot means a
+ * change to the snippet can never silently fall out of the policy.
+ */
+function inlineScriptHashes() {
+  try {
+    const shell = require('fs').readFileSync(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'), 'utf8');
+    const hashes = [];
+    for (const m of shell.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
+      const digest = require('crypto').createHash('sha256').update(m[1], 'utf8').digest('base64');
+      hashes.push(`'sha256-${digest}'`);
+    }
+    return hashes;
+  } catch {
+    return [];   // API-only deployment: there is no shell to hash.
+  }
+}
+
 // ===== SECURITY HEADERS =====
 app.use(helmet({
   crossOriginResourcePolicy: false,
   contentSecurityPolicy: {
     directives: {
       defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-      scriptSrcAttr: ["'unsafe-inline'"],  // helmet defaults to 'none', which kills the app's inline onclick handlers
+      // No 'unsafe-inline' and no external script CDN. The exemption used to be
+      // justified by the legacy static site's inline onclick handlers, but that
+      // site is retired (see the static-files section below — only the React
+      // build is served now), so nothing needs it and it was cancelling out the
+      // single protection CSP exists to provide.
+      scriptSrc:   ["'self'", ...inlineScriptHashes()],
+      scriptSrcAttr: ["'none'"],
+      // styleSrc keeps 'unsafe-inline': the React build emits inline style
+      // attributes, and inline CSS is not a script-execution vector.
       styleSrc:    ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc:     ["'self'", "https://fonts.gstatic.com"],
       imgSrc:      ["'self'", "data:", "blob:"],
@@ -64,28 +96,44 @@ app.use(helmet({
 // must be on this list or the browser blocks the response and the UI reports
 // "Cannot connect to server". Set FRONTEND_URL to the deployed frontend origin.
 // EXTRA_ORIGINS accepts a comma-separated list for any additional hosts.
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://127.0.0.1:5500',
-  process.env.RENDER_EXTERNAL_URL,  // Render sets this to the service's own URL
-  process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,  // this deployment's own URL
-  ...String(process.env.EXTRA_ORIGINS || '').split(',').map(s => s.trim()),
-  'https://college-helpdesk-chatbot-l4bk.onrender.com',
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+// Localhost origins are for local development only. They used to be in the list
+// unconditionally, which meant a production deploy would accept requests from
+// anything running on a developer's (or an attacker's) machine.
+const DEV_ORIGINS = [
   'http://localhost:5500',
+  'http://127.0.0.1:5500',
   'http://127.0.0.1:3000',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
   'http://localhost:5173',   // Vite dev server (React frontend)
   'http://localhost:4173',   // Vite preview server
+];
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL || (IS_PRODUCTION ? null : 'http://127.0.0.1:5500'),
+  process.env.RENDER_EXTERNAL_URL,  // Render sets this to the service's own URL
+  process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,  // this deployment's own URL
+  ...String(process.env.EXTRA_ORIGINS || '').split(',').map(s => s.trim()),
+  'https://college-helpdesk-chatbot-l4bk.onrender.com',
+  ...(IS_PRODUCTION ? [] : DEV_ORIGINS),
   'https://localhost',       // Capacitor Android WebView
   'capacitor://localhost',   // Capacitor iOS WebView
 ].filter(Boolean);
 
 // Vercel gives every preview deployment a fresh *.vercel.app hostname, so a
-// static list can never cover them. Opt in with ALLOW_VERCEL_PREVIEWS=1 to let
-// preview builds of the frontend talk to this API; production does not need it.
+// static list can never cover them. Opt in with ALLOW_VERCEL_PREVIEWS=1.
+//
+// The pattern is anchored to a project prefix (VERCEL_PREVIEW_PREFIX, defaulting
+// to this project's name). Matching any *.vercel.app host would have admitted a
+// namespace anybody can register in — an attacker deploys their own preview and
+// it passes the origin check.
 const allowVercelPreviews = process.env.ALLOW_VERCEL_PREVIEWS === '1';
-const VERCEL_PREVIEW = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+const PREVIEW_PREFIX = (process.env.VERCEL_PREVIEW_PREFIX || 'college-helpdesk-chatbot')
+  .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const VERCEL_PREVIEW = new RegExp(`^https://${PREVIEW_PREFIX}[a-z0-9-]*\\.vercel\\.app$`, 'i');
 
 function isAllowedOrigin(origin) {
   if (allowedOrigins.includes(origin)) return true;
@@ -108,8 +156,32 @@ app.use(cors({
 // first, so every one of those friendly "file is too large" messages was
 // unreachable and users got a generic error instead. Anything genuinely oversized
 // still stops here and is answered with 413 by the error handler below.
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Only the routes that actually accept an attachment get the large parser. The
+// 10 MB limit used to apply to every endpoint, so an unauthenticated caller could
+// make /api/auth/login parse a 10 MB body before rejecting it — a cheap memory
+// and CPU amplifier. Everything else now stops at 256 KB.
+const UPLOAD_PATHS = [
+  '/api/auth/profile',
+  '/api/leave',
+  '/api/coursework',
+  '/api/faculty-portal',
+  '/api/knowledge',
+];
+const largeJson = express.json({ limit: '10mb' });
+const smallJson = express.json({ limit: '256kb' });
+
+app.use((req, res, next) => {
+  const big = UPLOAD_PATHS.some(p => req.path === p || req.path.startsWith(p + '/'));
+  return (big ? largeJson : smallJson)(req, res, next);
+});
+app.use(express.urlencoded({ extended: true, limit: '256kb' }));
+
+// Credentialed responses must not sit in a shared or back-forward cache.
+app.use('/api/', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  next();
+});
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ===== RATE LIMITING =====
@@ -217,16 +289,30 @@ app.get('/api/health', async (req, res) => {
 
   const dbState = MONGO_STATES[mongoose.connection.readyState] || 'unknown';
   const healthy = dbState === 'connected' && missingRequired.length === 0;
-  res.status(healthy ? 200 : 503).json({
-    success: healthy,
-    status: healthy ? 'ok' : 'degraded',
-    database: dbState,
-    missingEnv: missingRequired,
-    environment: process.env.NODE_ENV || 'development',
-    serverless: IS_SERVERLESS,
-    uptimeSeconds: Math.round(process.uptime()),
-    timestamp: new Date().toISOString(),
-  });
+
+  // Public body is deliberately minimal. Reporting NODE_ENV, the platform flag,
+  // uptime and the NAMES of missing environment variables told an anonymous
+  // caller exactly which deploys were misconfigured and how. An uptime probe
+  // only needs the status code and a word.
+  //
+  // The diagnostic detail is still available — set HEALTH_DIAGNOSTIC_KEY and
+  // send it as ?key= (or the x-health-key header) to get the full body.
+  const diagKey = process.env.HEALTH_DIAGNOSTIC_KEY;
+  const supplied = req.get('x-health-key') || req.query.key;
+  const showDetail = Boolean(diagKey) && supplied === diagKey;
+
+  const body = { success: healthy, status: healthy ? 'ok' : 'degraded' };
+  if (showDetail) {
+    Object.assign(body, {
+      database: dbState,
+      missingEnv: missingRequired,
+      environment: process.env.NODE_ENV || 'development',
+      serverless: IS_SERVERLESS,
+      uptimeSeconds: Math.round(process.uptime()),
+      timestamp: new Date().toISOString(),
+    });
+  }
+  res.status(healthy ? 200 : 503).json(body);
 });
 
 // ===== ROUTES =====
@@ -247,10 +333,25 @@ app.use('/api/', async (req, res, next) => {
   }
 });
 
+// The strict limiter guards EVERY route that accepts a credential, not just the
+// two it was originally mounted on. /api/auth/faculty-login, /setup and
+// /change-password reach the same credential store, and previously ran under the
+// 150/min global limit alone — roughly 112x the intended guess budget.
+//
+// It is scoped to this list rather than the whole router on purpose: /me is a
+// session check the frontend calls on every page load, and a 20-per-15-min cap
+// there would log real users out mid-session.
+const CREDENTIAL_PATHS = new Set([
+  '/login', '/faculty-login', '/register', '/setup', '/change-password',
+]);
 const authRouter = require('./routes/auth');
-app.use('/api/auth/login',    authLimiter, authRouter);
-app.use('/api/auth/register', authLimiter, authRouter);
-app.use('/api/auth',          authRouter);
+app.use('/api/auth', (req, res, next) => {
+  // req.path is relative to this mount, and query strings are already stripped.
+  if (CREDENTIAL_PATHS.has(req.path.replace(/\/+$/, '').toLowerCase() || '/')) {
+    return authLimiter(req, res, next);
+  }
+  next();
+}, authRouter);
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/students',  require('./routes/students'));
 app.use('/api/requests',  require('./routes/requests'));
@@ -286,6 +387,15 @@ const distDir = path.join(__dirname, '..', 'frontend', 'dist');
 const SERVE_FRONTEND = !IS_SERVERLESS && require('fs').existsSync(distDir);
 
 if (SERVE_FRONTEND) {
+  // Everything under /assets is content-hashed by Vite, so a given URL can never
+  // change meaning — cache it for a year and mark it immutable so browsers skip
+  // even the revalidation round-trip. The default (max-age=0) made every repeat
+  // visit re-check every chunk. The shell itself must stay uncached: it is the
+  // one file whose contents change while its URL does not.
+  app.use('/assets', express.static(path.join(distDir, 'assets'), {
+    immutable: true,
+    maxAge: '1y',
+  }));
   app.use(express.static(distDir));
 }
 
@@ -300,7 +410,7 @@ app.get('*', (req, res) => {
     // API-only deployment: say so plainly instead of pretending to be a website.
     return res.status(404).json({
       success: false,
-      message: 'This host serves the CampusAssist API only. The web app is deployed separately.',
+      message: 'This host serves the Campus HelpDesk API only. The web app is deployed separately.',
       api: '/api',
       health: '/api/health',
     });
@@ -353,7 +463,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 if (!IS_SERVERLESS) {
   app.listen(PORT, () => {
-    console.log(`🚀 CampusAssist backend running on http://localhost:${PORT}`);
+    console.log(`🚀 Campus HelpDesk backend running on http://localhost:${PORT}`);
     console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📁 Static files: ${SERVE_FRONTEND ? distDir : '(API-only — frontend hosted separately)'}`);
   });

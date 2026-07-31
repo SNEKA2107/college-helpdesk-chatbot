@@ -59,6 +59,12 @@ router.post('/payment', protect, async (req, res) => {
   if (!amount || !mode) {
     return res.status(400).json({ success: false, message: 'Amount and mode are required.' });
   }
+  // `mode` was written straight through; validate it against the schema enum so
+  // the field cannot carry arbitrary text into the admin's payment listing.
+  const MODES = Fee.schema.path('history').schema.path('mode').enumValues;
+  if (!MODES.includes(mode)) {
+    return res.status(400).json({ success: false, message: `Mode must be one of: ${MODES.join(', ')}.` });
+  }
   const parsedAmount = Number(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || parsedAmount > 500000) {
     return res.status(400).json({ success: false, message: 'Amount must be a positive number not exceeding ₹5,00,000.' });
@@ -84,12 +90,41 @@ router.post('/payment', protect, async (req, res) => {
       description: `Semester ${fee.semester} – Payment`,
       amount:      parsedAmount,
       mode,
-      txn:         txn || 'MANUAL',
+      txn:         String(txn || 'MANUAL').replace(/[^\w\-/]/g, '').slice(0, 40),
       verified:    false,                 // pending admin verification
       recordedBy:  req.user.name || 'Student',
     };
-    fee.history.push(payment);
-    await fee.save();
+
+    // Atomic append with the balance invariant IN THE QUERY.
+    //
+    // Reading the balance and then saving is a check-then-act: two concurrent
+    // requests both read the pre-payment balance, both pass the guard above and
+    // both append, so the overpayment cap could be exceeded by firing requests
+    // in parallel. Expressing the condition as a filter makes MongoDB evaluate
+    // it against the current document at write time — the second writer matches
+    // nothing and is rejected.
+    const updated = await Fee.findOneAndUpdate(
+      {
+        _id: fee._id,
+        // Sum of existing payments must still leave room for this one.
+        $expr: {
+          $lte: [
+            { $add: [{ $sum: '$history.amount' }, parsedAmount] },
+            '$total',
+          ],
+        },
+      },
+      { $push: { history: payment } },
+      { new: true },
+    );
+
+    if (!updated) {
+      // Another request consumed the remaining balance between our read and write.
+      return res.status(409).json({
+        success: false,
+        message: 'That payment would exceed the balance due. Please reload the page and try again.',
+      });
+    }
 
     res.status(201).json({ success: true, message: 'Payment recorded. It is pending verification by the admin office.', payment });
   } catch (err) {

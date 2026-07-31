@@ -14,6 +14,7 @@ const BorrowedBook = require('./models/BorrowedBook');
 const Timetable  = require('./models/Timetable');
 const Event      = require('./models/Event');
 const { buildExam } = require('./utils/demoExams');
+const { seedPassword } = require('./utils/seedPassword');
 
 // ── Relative-date helpers ───────────────────────────────────────────────────
 // All demo dates are computed relative to the day the seed runs, so a freshly
@@ -37,7 +38,8 @@ async function seed() {
   if (!existingStudent) {
     student = await User.create({
       name: 'Sneka S', studentId: '22IT101', email: 'sneka@college.edu',
-      password: 'student123', department: 'IT', semester: '5th', role: 'student'
+      password: seedPassword('student').password, mustChangePassword: true,
+      department: 'IT', semester: '5th', role: 'student'
     });
     console.log('✅ Demo student created  →  ID: 22IT101 | Password: student123');
   } else {
@@ -49,7 +51,8 @@ async function seed() {
   if (!existingAdmin) {
     await User.create({
       name: 'Admin User', studentId: 'ADMIN01', email: 'admin@college.edu',
-      password: 'admin@123', department: 'Admin', semester: '', role: 'admin'
+      password: seedPassword('admin').password, mustChangePassword: true,
+      department: 'Admin', semester: '', role: 'admin'
     });
     console.log('✅ Admin account created  →  ID: ADMIN01 | Password: admin@123');
   } else {
@@ -87,7 +90,8 @@ async function seed() {
   let facCreated = 0;
   for (const f of FACULTY) {
     if (!(await User.findOne({ studentId: f.studentId }))) {
-      await User.create({ ...f, password: 'faculty123', role: 'faculty', semester: '' });
+      await User.create({ ...f, password: seedPassword('faculty').password,
+                          mustChangePassword: true, role: 'faculty', semester: '' });
       facCreated++;
     }
   }

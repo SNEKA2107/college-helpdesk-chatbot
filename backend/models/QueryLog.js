@@ -21,4 +21,18 @@ const queryLogSchema = new mongoose.Schema({
   message:   { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },       // assistant message rated
 }, { timestamps: true });
 
-module.exports = mongoose.model('QueryLog', queryLogSchema);
+// ── Retention ───────────────────────────────────────────────────────────────
+// Every row pairs a student's question text with their identity, and the rows
+// were kept forever. A defined retention window bounds how much personal data
+// the analytics feature accumulates: MongoDB's TTL monitor removes documents
+// once `createdAt` passes the window, with no application code to run.
+//
+// The analytics screens read the last 14-30 days, so the default comfortably
+// covers every dashboard. Override with QUERYLOG_RETENTION_DAYS.
+const RETENTION_DAYS = Number(process.env.QUERYLOG_RETENTION_DAYS || 180);
+queryLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: RETENTION_DAYS * 24 * 60 * 60 });
+
+const QueryLog = mongoose.model('QueryLog', queryLogSchema);
+QueryLog.RETENTION_DAYS = RETENTION_DAYS;
+
+module.exports = QueryLog;

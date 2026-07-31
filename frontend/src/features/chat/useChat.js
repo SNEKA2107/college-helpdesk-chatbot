@@ -4,7 +4,7 @@ import { apiCall } from '../../services/api';
 const nowTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 /**
- * Campus Copilot state: conversation list (sidebar), the active transcript,
+ * Campus HelpDesk state: conversation list (sidebar), the active transcript,
  * sending, resuming and searching. Persists to /api/chat + /api/conversations.
  */
 export function useChat() {

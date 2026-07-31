@@ -12,8 +12,11 @@ export default function Layout({ title, children, mobileExtras = null, mainClass
   const [sidebarOpen, setSidebarOpen] = useState(false);
   usePageAnimations();
 
+  // `has-bottom-nav` marks this as the one shell that renders <BottomNav>, so the
+  // mobile CSS knows it may hide the topbar here (and only here) and reserve room
+  // at the bottom for the nav bar.
   return (
-    <div className="app">
+    <div className="app has-bottom-nav">
       <div className={`overlay${sidebarOpen ? ' show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-wrapper">

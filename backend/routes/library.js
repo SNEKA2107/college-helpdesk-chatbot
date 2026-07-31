@@ -3,15 +3,26 @@ const { protect, adminOnly } = require('../middleware/auth');
 const Book         = require('../models/Book');
 const BorrowedBook = require('../models/BorrowedBook');
 const { fail, badRequest } = require('../utils/apiError');
+const { coerceQuery, searchRegex, pick } = require('../utils/sanitize');
 
 const router = express.Router();
+
+// Fields an admin may set on a book. Anything else in the body is discarded.
+const BOOK_FIELDS = ['title', 'author', 'isbn', 'category', 'status', 'copies'];
 
 // GET /api/library — All books with optional search/filter
 router.get('/', protect, async (req, res) => {
   try {
-    const { search, category, status } = req.query;
     const query = {};
-    if (search)   query.$or = [{ title: new RegExp(search, 'i') }, { author: new RegExp(search, 'i') }];
+    // searchRegex escapes metacharacters and caps the length. Building the
+    // pattern from the raw parameter let any logged-in student send (a+)+$ and
+    // burn minutes of CPU per document — Mongo evaluates it server-side.
+    const rx = searchRegex(req.query.search);
+    if (rx) query.$or = [{ title: rx }, { author: rx }];
+    // coerceQuery rejects ?category[$ne]=x, which Express parses into a Mongo
+    // operator object and which would otherwise land straight in the filter.
+    const category = coerceQuery(req.query.category);
+    const status   = coerceQuery(req.query.status);
     if (category) query.category = category;
     if (status)   query.status = status;
 
@@ -65,7 +76,9 @@ router.post('/', protect, adminOnly, async (req, res) => {
   if (!author || !String(author).trim()) return badRequest(res, 'Book author is required.');
 
   try {
-    const book = await Book.create(req.body);
+    // Explicit allowlist: spreading req.body let a caller set fields the UI never
+    // offers, and supplied the sink for the mongoose update-casting advisory.
+    const book = await Book.create(pick(req.body, BOOK_FIELDS));
     res.status(201).json({ success: true, book });
   } catch (err) {
     return fail(res, err, 'Could not add the book.');
@@ -75,7 +88,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
 // PUT /api/library/:id — Admin: update a book
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
-    const book = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const book = await Book.findByIdAndUpdate(req.params.id, pick(req.body, BOOK_FIELDS), { new: true, runValidators: true });
     if (!book) return res.status(404).json({ success: false, message: 'Book not found.' });
     res.json({ success: true, book });
   } catch (err) {

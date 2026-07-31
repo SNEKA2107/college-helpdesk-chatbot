@@ -9,9 +9,25 @@ const Assignment    = require('../models/Assignment');
 const StudyMaterial = require('../models/StudyMaterial');
 const { protect, facultyOnly } = require('../middleware/auth');
 const { fail } = require('../utils/apiError');
+const { validateUpload, ATTACHMENT_TYPES, IMAGE_TYPES } = require('../utils/upload');
+const { coerceQuery } = require('../utils/sanitize');
 
 // Max base64 data-URL size for uploaded files (~7 MB, matching the profile-photo guard).
-const MAX_FILE = 7 * 1024 * 1024;
+const MAX_FILE = 5 * 1024 * 1024;   // decoded bytes
+
+// Validate an optional attachment. Returns null when none was supplied, the
+// validated data URL when it is acceptable, and sends a 400 + returns false
+// when it is not. Previously these routes checked only the base64 LENGTH, so
+// any MIME at all — text/html, image/svg+xml, an executable — was stored and
+// handed straight back by the matching download endpoint.
+function checkAttachment(res, attachment, name, type) {
+  if (attachment === undefined || attachment === null || attachment === '') return null;
+  const r = validateUpload(attachment, name, type, {
+    allowed: ATTACHMENT_TYPES, maxBytes: MAX_FILE, label: 'Attachment',
+  });
+  if (!r.ok) { res.status(400).json({ success: false, message: r.error }); return false; }
+  return r.fields;
+}
 
 const router = express.Router();
 
@@ -298,7 +314,9 @@ router.get('/leaves', async (req, res) => {
   try {
     const depts = [...new Set(assignedClasses(req.user).map(c => c.department).filter(Boolean))];
     const filter = { department: { $in: depts } };
-    if (req.query.status) filter.status = req.query.status;
+    // Coerced: ?status[$ne]=Approved would otherwise widen this past the intent.
+    const status = coerceQuery(req.query.status);
+    if (status) filter.status = status;
     const leaves = await Leave.find(filter).sort({ createdAt: -1 }).limit(200);
     res.json({ success: true, count: leaves.length, leaves });
   } catch (err) {
@@ -346,6 +364,10 @@ router.get('/notices', async (req, res) => {
 router.post('/notices', async (req, res) => {
   const { title, content, category, audience, attachment, attachmentName, attachmentType } = req.body;
   if (!title || !content) return res.status(400).json({ success: false, message: 'Title and content are required.' });
+  // This route applied no attachment guard whatsoever — not even the size cap
+  // its sibling upload routes used.
+  const att = checkAttachment(res, attachment, attachmentName, attachmentType);
+  if (att === false) return;
   try {
     const notice = await Notice.create({
       title: title.trim(),
@@ -356,9 +378,9 @@ router.post('/notices', async (req, res) => {
       publishedAt: new Date(),
       postedBy: req.user.name,
       createdBy: req.user._id,
-      attachment: attachment || '',
-      attachmentName: attachmentName || '',
-      attachmentType: attachmentType || '',
+      attachment: att ? att.data : '',
+      attachmentName: att ? att.name : '',
+      attachmentType: att ? att.type : '',
     });
     res.status(201).json({ success: true, message: 'Notice posted.', notice });
   } catch (err) {
@@ -379,7 +401,13 @@ router.put('/notices/:id', async (req, res) => {
     if (content !== undefined) notice.content = content.trim();
     if (category !== undefined) notice.category = category;
     if (audience !== undefined) notice.audience = audience;
-    if (attachment !== undefined) { notice.attachment = attachment; notice.attachmentName = attachmentName || ''; notice.attachmentType = attachmentType || ''; }
+    if (attachment !== undefined) {
+      const a = checkAttachment(res, attachment, attachmentName, attachmentType);
+      if (a === false) return;
+      notice.attachment = a ? a.data : '';
+      notice.attachmentName = a ? a.name : '';
+      notice.attachmentType = a ? a.type : '';
+    }
     await notice.save();
     res.json({ success: true, message: 'Notice updated.', notice });
   } catch (err) {
@@ -468,7 +496,8 @@ router.post('/assignments', async (req, res) => {
   }
   const sub = matchSubject(req.user, subject, section);
   if (!sub) return res.status(403).json({ success: false, message: 'You are not assigned to this subject/section.' });
-  if (attachment && attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'Attachment is too large (max 5 MB).' });
+  const att = checkAttachment(res, attachment, attachmentName, attachmentType);
+  if (att === false) return;
   const mm = maxMarks === undefined ? 100 : Number(maxMarks);
   if (!Number.isFinite(mm) || mm < 1 || mm > 1000) return res.status(400).json({ success: false, message: 'Max marks must be 1–1000.' });
   try {
@@ -478,7 +507,7 @@ router.post('/assignments', async (req, res) => {
       subject: sub.name, subjectCode: sub.code || '',
       department: sub.department, semester: sub.semester || '', section: sub.section || '',
       dueDate: new Date(dueDate), maxMarks: mm,
-      attachment: attachment || '', attachmentName: attachmentName || '', attachmentType: attachmentType || '',
+      attachment: att ? att.data : '', attachmentName: att ? att.name : '', attachmentType: att ? att.type : '',
       createdBy: req.user._id, facultyName: req.user.name,
     });
     res.status(201).json({ success: true, message: 'Assignment created.', assignment });
@@ -510,8 +539,9 @@ router.put('/assignments/:id', async (req, res) => {
     }
     if (status !== undefined && ['open', 'closed'].includes(status)) a.status = status;
     if (attachment !== undefined) {
-      if (attachment && attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'Attachment is too large (max 5 MB).' });
-      a.attachment = attachment; a.attachmentName = attachmentName || ''; a.attachmentType = attachmentType || '';
+      const f = checkAttachment(res, attachment, attachmentName, attachmentType);
+      if (f === false) return;
+      a.attachment = f ? f.data : ''; a.attachmentName = f ? f.name : ''; a.attachmentType = f ? f.type : '';
     }
     await a.save();
     res.json({ success: true, message: 'Assignment updated.', assignment: a });
@@ -592,7 +622,8 @@ router.post('/materials', async (req, res) => {
   const { title, description, subject, section, kind, attachment, attachmentName, attachmentType } = req.body;
   if (!title || !subject) return res.status(400).json({ success: false, message: 'Title and subject are required.' });
   if (!attachment) return res.status(400).json({ success: false, message: 'Please attach a file to upload.' });
-  if (attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'File is too large (max 5 MB).' });
+  const att = checkAttachment(res, attachment, attachmentName, attachmentType);
+  if (att === false) return;
   const sub = matchSubject(req.user, subject, section);
   if (!sub) return res.status(403).json({ success: false, message: 'You are not assigned to this subject/section.' });
   try {
@@ -601,7 +632,7 @@ router.post('/materials', async (req, res) => {
       subject: sub.name, subjectCode: sub.code || '',
       department: sub.department, semester: sub.semester || '', section: sub.section || '',
       kind: StudyMaterial.KINDS.includes(kind) ? kind : 'Notes',
-      attachment, attachmentName: attachmentName || '', attachmentType: attachmentType || '',
+      attachment: att.data, attachmentName: att.name, attachmentType: att.type,
       createdBy: req.user._id, facultyName: req.user.name,
     });
     res.status(201).json({ success: true, message: 'Material uploaded.', material: { ...material.toObject(), attachment: undefined } });
@@ -621,8 +652,9 @@ router.put('/materials/:id', async (req, res) => {
     if (description !== undefined) m.description = description.trim();
     if (kind !== undefined && StudyMaterial.KINDS.includes(kind)) m.kind = kind;
     if (attachment) {
-      if (attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'File is too large (max 5 MB).' });
-      m.attachment = attachment; m.attachmentName = attachmentName || ''; m.attachmentType = attachmentType || '';
+      const f = checkAttachment(res, attachment, attachmentName, attachmentType);
+      if (f === false) return;
+      if (f) { m.attachment = f.data; m.attachmentName = f.name; m.attachmentType = f.type; }
     }
     await m.save();
     res.json({ success: true, message: 'Material updated.', material: { ...m.toObject(), attachment: undefined } });
@@ -816,19 +848,33 @@ router.get('/notifications', async (req, res) => {
 router.put('/profile', async (req, res) => {
   const { name, phone, email, designation, qualification, experience, photo } = req.body;
   if (name !== undefined && !String(name).trim()) return res.status(400).json({ success: false, message: 'Name cannot be empty.' });
-  if (photo !== undefined && typeof photo === 'string' && photo.length > MAX_FILE) {
-    return res.status(400).json({ success: false, message: 'Photo is too large. Please use an image under 5 MB.' });
+  let photoFields = null;
+  if (photo !== undefined && photo !== null && photo !== '') {
+    const r = validateUpload(photo, 'photo', undefined, {
+      allowed: IMAGE_TYPES, maxBytes: MAX_FILE, label: 'Photo',
+    });
+    if (!r.ok) return res.status(400).json({ success: false, message: r.error });
+    photoFields = r.fields;
   }
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
     if (name !== undefined) user.name = String(name).trim();
     if (phone !== undefined) user.phone = String(phone).trim();
-    if (email !== undefined && String(email).trim()) user.email = String(email).trim().toLowerCase();
+    // Format-validated: this field is a login identifier, and it was previously
+    // stored verbatim, so a typo could lock the account out of the email path.
+    if (email !== undefined && String(email).trim()) {
+      const next = String(email).trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(next)) {
+        return res.status(400).json({ success: false, message: 'Please enter a valid email address.' });
+      }
+      user.email = next;
+    }
     if (designation !== undefined) user.designation = String(designation).trim();
     if (qualification !== undefined) user.qualification = String(qualification).trim();
     if (experience !== undefined) user.experience = String(experience).trim();
-    if (photo !== undefined) user.photo = photo;
+    if (photo === '' || photo === null) user.photo = '';
+    else if (photoFields) user.photo = photoFields.data;
     await user.save();
     const faculty = user.toObject(); delete faculty.password;
     res.json({ success: true, message: 'Profile updated.', faculty });

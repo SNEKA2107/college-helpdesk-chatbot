@@ -59,7 +59,7 @@ test.before(async () => {
 
   await User.create({
     name: 'Asha R', studentId: '192320001', email: 'Asha.R@college.edu',
-    password: 'student123', department: 'IT', semester: '6th',
+    password: 'Str0ngStudent!26', department: 'IT', semester: '6th',
     role: 'student', approvalStatus: 'approved',
   });
   await User.create({
@@ -92,8 +92,8 @@ test.after(async () => {
 // ── The six credential forms ────────────────────────────────────────────────
 
 const CASES = [
-  ['student register number', '192320001', 'student123', 'student'],
-  ['student email', 'asha.r@college.edu', 'student123', 'student'],
+  ['student register number', '192320001', 'Str0ngStudent!26', 'student'],
+  ['student email', 'asha.r@college.edu', 'Str0ngStudent!26', 'student'],
   ['faculty staff ID', 'FAC0101', 'Faculty@2026', 'faculty'],
   ['faculty email', 'meera.fac0101@college.edu', 'Faculty@2026', 'faculty'],
   ['admin ID', 'ADM001', 'Admin@2026', 'admin'],
@@ -114,7 +114,7 @@ for (const [label, identifier, password, role] of CASES) {
 
 test('email login is case-insensitive', async () => {
   for (const form of ['ASHA.R@COLLEGE.EDU', 'Asha.R@College.Edu', 'asha.r@college.edu']) {
-    const res = await login(form, 'student123');
+    const res = await login(form, 'Str0ngStudent!26');
     assert.strictEqual(res.status, 200, `failed for ${form}`);
     assert.strictEqual(res.body.user.studentId, '192320001');
   }
@@ -132,7 +132,7 @@ test('ID login is case-insensitive', async () => {
 
 test('a role supplied by the client is ignored', async () => {
   const res = await api('POST', '/api/auth/login', {
-    identifier: '192320001', password: 'student123', role: 'admin',
+    identifier: '192320001', password: 'Str0ngStudent!26', role: 'admin',
   });
   assert.strictEqual(res.status, 200);
   assert.strictEqual(res.body.user.role, 'student', 'privilege cannot be requested');
@@ -141,7 +141,7 @@ test('a role supplied by the client is ignored', async () => {
 // ── Backward compatibility ──────────────────────────────────────────────────
 
 test('the legacy { studentId } request shape still works', async () => {
-  const res = await api('POST', '/api/auth/login', { studentId: '192320001', password: 'student123' });
+  const res = await api('POST', '/api/auth/login', { studentId: '192320001', password: 'Str0ngStudent!26' });
   assert.strictEqual(res.status, 200);
 });
 
@@ -179,7 +179,7 @@ test('unknown account and wrong password are indistinguishable', async () => {
 });
 
 test('a missing identifier is a 400 naming what is accepted', async () => {
-  const res = await api('POST', '/api/auth/login', { password: 'student123' });
+  const res = await api('POST', '/api/auth/login', { password: 'Str0ngStudent!26' });
   assert.strictEqual(res.status, 400);
   assert.match(res.body.message, /register number|staff ID|admin ID|email/i);
 });
@@ -195,10 +195,10 @@ test('a deactivated account cannot log in', async () => {
 test('a pending student still cannot log in through the unified endpoint', async () => {
   await User.create({
     name: 'Pending P', studentId: '192320999', email: 'pending@college.edu',
-    password: 'student123', department: 'IT', semester: '1st',
+    password: 'Str0ngStudent!26', department: 'IT', semester: '1st',
     role: 'student', approvalStatus: 'pending',
   });
-  const res = await login('192320999', 'student123');
+  const res = await login('192320999', 'Str0ngStudent!26');
   assert.strictEqual(res.status, 403);
   assert.match(res.body.message, /pending admin approval/i);
 });
@@ -206,7 +206,7 @@ test('a pending student still cannot log in through the unified endpoint', async
 // ── RBAC is unchanged by the new login path ─────────────────────────────────
 
 test('RBAC still holds for tokens issued by the unified login', async () => {
-  const student = (await login('192320001', 'student123')).body.token;
+  const student = (await login('192320001', 'Str0ngStudent!26')).body.token;
   const faculty = (await login('FAC0101', 'Faculty@2026')).body.token;
   const admin = (await login('ADM001', 'Admin@2026')).body.token;
 

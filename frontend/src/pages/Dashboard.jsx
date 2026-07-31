@@ -18,7 +18,7 @@ const QUICK_ACCESS = [
   { to: '/leave',      icon: '📝', label: 'Leave Application',bg: 'linear-gradient(135deg,#ec4899,#fb7185)' },
   { to: '/notices',    icon: '🔔', label: 'Notices',          bg: 'linear-gradient(135deg,#f59e0b,#facc15)' },
   { to: '/library',    icon: '📚', label: 'Library',          bg: 'linear-gradient(135deg,#06b6d4,#22d3ee)' },
-  { to: '/chat',       icon: '💬', label: 'Chat with Bot',    bg: 'linear-gradient(135deg,#4f46e5,#818cf8)' },
+  { to: '/chat',       icon: '💬', label: 'Campus HelpDesk',  bg: 'linear-gradient(135deg,#4f46e5,#818cf8)' },
   { to: '/attendance', icon: '✅', label: 'Attendance',       bg: 'linear-gradient(135deg,#0d9488,#2dd4bf)' },
   { to: '/cgpa',       icon: '🎯', label: 'Marks & CGPA',     bg: 'linear-gradient(135deg,#4338ca,#a5b4fc)' },
   { to: '/od',         icon: '🏅', label: 'OD Request',       bg: 'linear-gradient(135deg,#ea580c,#fb923c)' },
@@ -116,7 +116,7 @@ export default function Dashboard() {
             <div className="mobile-greeting">
               {greeting()}, <span style={{ color: 'var(--primary-light)' }}>{firstName}</span> 👋
             </div>
-            <div className="mobile-subtitle">Welcome to CampusAssist</div>
+            <div className="mobile-subtitle">Welcome to Campus HelpDesk</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link to="/notices" className="mobile-notif">🔔</Link>

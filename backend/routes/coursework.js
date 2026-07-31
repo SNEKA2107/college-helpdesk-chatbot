@@ -3,6 +3,7 @@ const Assignment    = require('../models/Assignment');
 const StudyMaterial = require('../models/StudyMaterial');
 const { protect }   = require('../middleware/auth');
 const { fail } = require('../utils/apiError');
+const { validateUpload, ATTACHMENT_TYPES } = require('../utils/upload');
 
 // Student-facing coursework API (mounted at /api/coursework). Lets a student see the
 // assignments & study materials for THEIR OWN class, submit assignments, and download
@@ -11,7 +12,7 @@ const { fail } = require('../utils/apiError');
 const router = express.Router();
 
 const norm = v => (v == null ? '' : String(v).trim().toLowerCase());
-const MAX_FILE = 7 * 1024 * 1024;
+const MAX_FILE = 5 * 1024 * 1024;   // decoded bytes
 
 router.use(protect, (req, res, next) => {
   if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Student access only.' });
@@ -82,7 +83,16 @@ router.get('/assignments/:id/file', async (req, res) => {
 router.post('/assignments/:id/submit', async (req, res) => {
   const { text, attachment, attachmentName, attachmentType } = req.body;
   if (!text && !attachment) return res.status(400).json({ success: false, message: 'Add a note or attach a file to submit.' });
-  if (attachment && attachment.length > MAX_FILE) return res.status(400).json({ success: false, message: 'Attachment is too large (max 5 MB).' });
+  // Type + signature + decoded-size validation. A raw length check accepted any
+  // content, and the graded submission is downloaded by the faculty member.
+  let att = null;
+  if (attachment !== undefined && attachment !== null && attachment !== '') {
+    const r = validateUpload(attachment, attachmentName, attachmentType, {
+      allowed: ATTACHMENT_TYPES, maxBytes: MAX_FILE, label: 'Attachment',
+    });
+    if (!r.ok) return res.status(400).json({ success: false, message: r.error });
+    att = r.fields;
+  }
   try {
     const a = await Assignment.findById(req.params.id);
     if (!a) return res.status(404).json({ success: false, message: 'Assignment not found.' });
@@ -92,14 +102,19 @@ router.post('/assignments/:id/submit', async (req, res) => {
     const existing = (a.submissions || []).find(s => norm(s.studentId) === norm(req.user.studentId));
     if (existing) {
       existing.text = (text || '').trim();
-      if (attachment !== undefined) { existing.attachment = attachment || ''; existing.attachmentName = attachmentName || ''; existing.attachmentType = attachmentType || ''; }
+      if (attachment !== undefined) {
+        existing.attachment = att ? att.data : '';
+        existing.attachmentName = att ? att.name : '';
+        existing.attachmentType = att ? att.type : '';
+      }
       existing.submittedAt = new Date();
       // Re-submission clears any prior grade.
       existing.marks = null; existing.grade = ''; existing.remarks = ''; existing.gradedBy = ''; existing.gradedAt = null;
     } else {
       a.submissions.push({
         student: req.user._id, studentId: req.user.studentId, studentName: req.user.name,
-        text: (text || '').trim(), attachment: attachment || '', attachmentName: attachmentName || '', attachmentType: attachmentType || '',
+        text: (text || '').trim(),
+        attachment: att ? att.data : '', attachmentName: att ? att.name : '', attachmentType: att ? att.type : '',
         submittedAt: new Date(),
       });
     }

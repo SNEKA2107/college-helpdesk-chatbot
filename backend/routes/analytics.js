@@ -3,6 +3,7 @@ const { protect, adminOnly } = require('../middleware/auth');
 const QueryLog = require('../models/QueryLog');
 const Conversation = require('../models/Conversation');
 const { fail } = require('../utils/apiError');
+const { redactLabels } = require('../utils/redact');
 
 const router = express.Router();
 
@@ -53,11 +54,13 @@ router.get('/', protect, adminOnly, async (req, res) => {
         activeUsers: activeUsers.filter(Boolean).length,
         resolutionRate: resolved,
       },
-      topQuestions:  topQuestions.map(q => ({ label: q._id, value: q.count })),
+      // Redacted: these labels are student-written text shown to an admin, and
+      // routinely contain register numbers, phone numbers or email addresses.
+      topQuestions:  redactLabels(topQuestions.map(q => ({ label: q._id, value: q.count }))),
       categories:    byIntent.map(i => ({ label: i._id || 'general', value: i.count })),
       peakHours,
       dailyUsage:    byDay.map(d => ({ label: d._id.slice(5), value: d.count })),
-      knowledgeGaps: unanswered.map(u => ({ label: u._id, value: u.count })),
+      knowledgeGaps: redactLabels(unanswered.map(u => ({ label: u._id, value: u.count }))),
     });
   } catch (err) {
     console.error('Analytics error:', err.message);

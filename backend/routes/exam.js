@@ -3,9 +3,15 @@ const { protect, adminOnly } = require('../middleware/auth');
 const Exam = require('../models/Exam');
 const { logAudit } = require('../utils/audit');
 const { fail, badRequest } = require('../utils/apiError');
+const { pick } = require('../utils/sanitize');
 const { resolveDepartment } = require('../services/departments');
 
 const router = express.Router();
+
+// Content fields only — lifecycle moves via /publish and /archive.
+const EXAM_FIELDS = ['department', 'semester', 'year', 'section', 'theoryStart',
+                     'theoryEnd', 'practicalStart', 'practicalEnd',
+                     'hallTicketAvailable', 'schedule', 'practicals', 'instructions'];
 
 // Resolve the exam schedule for a student's cohort. Published only. Scoped to the
 // student's department+semester, then ranked by year/section specificity. A blank
@@ -99,7 +105,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
   if (!dept.ok) return badRequest(res, dept.message);
 
   try {
-    const exam = await Exam.create({ ...req.body, department: dept.code, status: 'draft', publishedAt: undefined });
+    const exam = await Exam.create({ ...pick(req.body, EXAM_FIELDS), department: dept.code, status: 'draft', publishedAt: undefined });
     await logAudit(req, 'exam.create', 'Exam', exam._id, {
       department: exam.department, semester: exam.semester, year: exam.year, section: exam.section,
     });
@@ -112,9 +118,8 @@ router.post('/', protect, adminOnly, async (req, res) => {
 // PUT /api/exam/:id — Admin: update exam content (lifecycle via /publish & /archive)
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
-    const update = { ...req.body };
-    delete update.status;
-    delete update.publishedAt;
+    // Allowlist rather than spread-and-delete (see the timetable route).
+    const update = pick(req.body, EXAM_FIELDS);
     const exam = await Exam.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
     if (!exam) return res.status(404).json({ success: false, message: 'Exam record not found.' });
     await logAudit(req, 'exam.update', 'Exam', exam._id, { status: exam.status });

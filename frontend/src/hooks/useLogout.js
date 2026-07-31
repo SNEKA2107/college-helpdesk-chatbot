@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearSession, LOGIN_PATH } from '../services/auth';
+import { clearSession, LOGIN_PATH, revokeServerSession } from '../services/auth';
 
 /**
  * Logout for components inside the router.
@@ -15,7 +15,13 @@ import { clearSession, LOGIN_PATH } from '../services/auth';
  */
 export function useLogout() {
   const navigate = useNavigate();
-  return useCallback(() => {
+  return useCallback(async () => {
+    // Tell the server to revoke the token BEFORE dropping it locally. Clearing
+    // localStorage alone left the token valid for its full lifetime, so a copy
+    // taken beforehand kept working after the user thought they had signed out.
+    // Navigation is not gated on the result: a failed or offline revoke must
+    // still let the user out of the UI.
+    await revokeServerSession();
     clearSession();
     navigate(LOGIN_PATH, { replace: true });
   }, [navigate]);

@@ -4,16 +4,23 @@ const { protect, adminOnly } = require('../middleware/auth');
 const { logAudit } = require('../utils/audit');
 const { summarizeNotice } = require('../services/summarizer');
 const { fail, notFound } = require('../utils/apiError');
+const { pick, coerceQuery } = require('../utils/sanitize');
 const { resolveDepartment } = require('../services/departments');
 
 const router = express.Router();
+
+// What an admin may change on an existing notice.
+const NOTICE_UPDATE_FIELDS = ['title', 'content', 'category', 'pinned',
+                              'expiresAt', 'status', 'audience', 'isActive'];
 
 // GET /api/notices — notices visible to the requester.
 //  • Students/faculty: only published, active, non-expired notices addressed to them.
 //  • Admins:           the full management view (every status), optionally filtered by ?status / ?category.
 router.get('/', protect, async (req, res) => {
   try {
-    const { category, status } = req.query;
+    // Coerced: Express parses ?status[$ne]=draft into a Mongo operator object.
+    const category = coerceQuery(req.query.category);
+    const status   = coerceQuery(req.query.status);
 
     let filter;
     if (req.user.role === 'admin') {
@@ -92,7 +99,10 @@ router.post('/', protect, adminOnly, async (req, res) => {
 // published→archived, expiry/audience edits, etc.
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
-    const update = { ...req.body };
+    // Allowlist instead of spreading the body: createdBy, postedBy, publishedAt
+    // and the AI summary fields are server-owned, and a spread also supplied the
+    // sink for the mongoose update-casting prototype-pollution advisory.
+    const update = pick(req.body, NOTICE_UPDATE_FIELDS);
     if (update.title)    update.title    = stripHtml(update.title);
     if (update.content)  update.content  = stripHtml(update.content);
     if (update.audience) update.audience = await normaliseAudience(update.audience);

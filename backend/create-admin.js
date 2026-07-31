@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('./models/User');
+const { seedPassword } = require('./utils/seedPassword');
 require('dotenv').config();
 
 mongoose.connect(process.env.MONGO_URI)
@@ -16,7 +17,8 @@ mongoose.connect(process.env.MONGO_URI)
       name:       'Administrator',
       studentId:  'ADMIN01',
       email:      'admin@campusassist.edu',
-      password:   'admin@123',
+      password:   seedPassword('admin').password,
+      mustChangePassword: true,
       department: 'Admin',
       role:       'admin',
     });

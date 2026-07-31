@@ -3,15 +3,17 @@ const Attendance = require('../models/Attendance');
 const User       = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
 const { fail } = require('../utils/apiError');
+const { coerceQuery } = require('../utils/sanitize');
 
 const router = express.Router();
 
 // GET /api/attendance/summary — subject-wise % for student (or by studentId for admin)
 router.get('/summary', protect, async (req, res) => {
   try {
-    const sid = (req.user.role === 'admin' && req.query.studentId)
-      ? req.query.studentId.toUpperCase()
-      : req.user.studentId;
+    // coerceQuery first: a repeated ?studentId=A&studentId=B arrives as an ARRAY,
+    // and calling .toUpperCase() on it threw a TypeError that surfaced as a 500.
+    const q = coerceQuery(req.query.studentId);
+    const sid = (req.user.role === 'admin' && q) ? q.toUpperCase() : req.user.studentId;
 
     const records = await Attendance.find({ studentId: sid });
     const map = {};
@@ -45,8 +47,9 @@ router.get('/summary', protect, async (req, res) => {
 // GET /api/attendance — records for current student (or all/filtered for admin)
 router.get('/', protect, async (req, res) => {
   try {
+    const q = coerceQuery(req.query.studentId);
     const filter = req.user.role === 'admin'
-      ? (req.query.studentId ? { studentId: req.query.studentId.toUpperCase() } : {})
+      ? (q ? { studentId: q.toUpperCase() } : {})
       : { student: req.user._id };
     const records = await Attendance.find(filter).sort({ date: -1 }).limit(100);
     res.json({ success: true, count: records.length, records });

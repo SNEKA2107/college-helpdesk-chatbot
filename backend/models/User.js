@@ -65,11 +65,20 @@ const userSchema = new mongoose.Schema({
   // (e.g. admin-provisioned faculty). Purely advisory — the client uses it to
   // prompt for a password change. Defaults false so existing rows are unaffected.
   mustChangePassword: { type: Boolean, default: false },
+  // Session revocation counter. Every issued token carries the value current at
+  // sign-in; middleware/auth.js rejects any token whose value is stale. Bumping
+  // it (logout, password change, deactivation) invalidates every token already
+  // handed out — previously nothing could, so a copied token stayed valid for
+  // its full 30-day life regardless of what the user or an admin did.
+  tokenVersion: { type: Number, default: 0 },
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
+  // A password change ends every other session. Guarded so that setting the
+  // initial password at creation does not count as a revocation event.
+  if (!this.isNew) this.tokenVersion = (this.tokenVersion || 0) + 1;
   next();
 });
 

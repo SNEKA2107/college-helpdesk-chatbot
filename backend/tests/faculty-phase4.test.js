@@ -45,21 +45,21 @@ test.before(async () => {
   await mongoose.connect(mongod.getUri());
 
   const faculty = await User.create({
-    name: 'Dr. Rao', studentId: 'FAC01', email: 'rao@college.edu', password: 'password123',
+    name: 'Dr. Rao', studentId: 'FAC01', email: 'rao@college.edu', password: 'Str0ngPassw!26',
     department: 'CSE', role: 'faculty', designation: 'Assistant Professor',
     assignedSubjects: [{ code: 'CS3491', name: 'Artificial Intelligence', department: 'CSE', semester: '5', section: 'A' }],
   });
   const student = await User.create({
-    name: 'Asha', studentId: 'CS001', email: 'asha@college.edu', password: 'password123',
+    name: 'Asha', studentId: 'CS001', email: 'asha@college.edu', password: 'Str0ngPassw!26',
     department: 'CSE', semester: '5', section: 'A', role: 'student',
   });
   const other = await User.create({
-    name: 'Ravi', studentId: 'EC001', email: 'ravi@college.edu', password: 'password123',
+    name: 'Ravi', studentId: 'EC001', email: 'ravi@college.edu', password: 'Str0ngPassw!26',
     department: 'ECE', semester: '5', section: 'A', role: 'student',
   });
   // A SECOND faculty who teaches a different class — used to verify ownership guards.
   const facultyB = await User.create({
-    name: 'Dr. Iyer', studentId: 'FAC02', email: 'iyer@college.edu', password: 'password123',
+    name: 'Dr. Iyer', studentId: 'FAC02', email: 'iyer@college.edu', password: 'Str0ngPassw!26',
     department: 'CSE', role: 'faculty',
     assignedSubjects: [{ code: 'CS3492', name: 'Databases', department: 'CSE', semester: '5', section: 'B' }],
   });
@@ -142,7 +142,7 @@ test('faculty rejects out-of-range marks', async () => {
 test('study material upload + student download flow', async () => {
   const up = await api(facToken, 'POST', '/api/faculty-portal/materials', {
     title: 'Unit 1 Notes', subject: 'Artificial Intelligence', section: 'A', kind: 'PDF',
-    attachment: 'data:text/plain;base64,SGVsbG8=', attachmentName: 'notes.pdf', attachmentType: 'application/pdf',
+    attachment: 'data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZz4+ZW5kb2JqCnRyYWlsZXI8PC9Sb290IDEgMCBSPj4KJSVFT0YK', attachmentName: 'notes.pdf', attachmentType: 'application/pdf',
   });
   assert.strictEqual(up.status, 201);
   const mid = up.body.material._id;
@@ -153,7 +153,10 @@ test('study material upload + student download flow', async () => {
 
   const file = await api(stuToken, 'GET', `/api/coursework/materials/${mid}/file`);
   assert.strictEqual(file.status, 200);
-  assert.ok(file.body.attachment.startsWith('data:text/plain'));
+  // The fixture is a real PDF declared as application/pdf and named .pdf. It
+  // used to be text/plain bytes labelled application/pdf — a mismatch the
+  // upload validator now rejects outright.
+  assert.ok(file.body.attachment.startsWith('data:application/pdf'));
 
   const denied = await api(otherStuToken, 'GET', `/api/coursework/materials/${mid}/file`);
   assert.strictEqual(denied.status, 403);
@@ -217,7 +220,7 @@ test('assignment with brief attachment: create, student downloads brief, submiss
   // Create a second assignment carrying a brief attachment.
   const create = await api(facToken, 'POST', '/api/faculty-portal/assignments', {
     title: 'AI Lab', subject: 'Artificial Intelligence', section: 'A', dueDate: '2099-01-01', maxMarks: 20,
-    attachment: 'data:application/pdf;base64,QnJpZWY=', attachmentName: 'brief.pdf', attachmentType: 'application/pdf',
+    attachment: 'data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZz4+ZW5kb2JqCnRyYWlsZXI8PC9Sb290IDEgMCBSPj4KJSVFT0YK', attachmentName: 'brief.pdf', attachmentType: 'application/pdf',
   });
   assert.strictEqual(create.status, 201);
   a2Id = create.body.assignment._id;
@@ -232,7 +235,7 @@ test('assignment with brief attachment: create, student downloads brief, submiss
 
   // Student submits WITH a file, faculty downloads that submission file.
   const sub = await api(stuToken, 'POST', `/api/coursework/assignments/${a2Id}/submit`, {
-    text: 'lab done', attachment: 'data:text/plain;base64,V29yaw==', attachmentName: 'work.txt', attachmentType: 'text/plain',
+    text: 'lab done', attachment: 'data:text/plain;base64,V29yayBzdWJtaXR0ZWQgZm9yIHRoZSBsYWIgZXhlcmNpc2Uu', attachmentName: 'work.txt', attachmentType: 'text/plain',
   });
   assert.strictEqual(sub.status, 201);
   const file = await api(facToken, 'GET', `/api/faculty-portal/assignments/${a2Id}/submissions/CS001/file`);
@@ -258,7 +261,7 @@ let matId;
 test('faculty GET /materials, GET file, PUT edit — full lifecycle', async () => {
   const up = await api(facToken, 'POST', '/api/faculty-portal/materials', {
     title: 'Unit 2', subject: 'Artificial Intelligence', section: 'A', kind: 'DOC',
-    attachment: 'data:text/plain;base64,RG9j', attachmentName: 'u2.doc', attachmentType: 'application/msword',
+    attachment: 'data:text/plain;base64,V29yayBzdWJtaXR0ZWQgZm9yIHRoZSBsYWIgZXhlcmNpc2Uu', attachmentName: 'u2.txt', attachmentType: 'text/plain',
   });
   matId = up.body.material._id;
 
@@ -298,7 +301,7 @@ test('faculty B (different class) sees none of faculty A\'s coursework via analy
 test('an admin cannot reach the student coursework API (403)', async () => {
   // Build an admin token to confirm coursework is student-only.
   const admin = await User.create({
-    name: 'Admin', studentId: 'ADM01', email: 'admin@college.edu', password: 'password123',
+    name: 'Admin', studentId: 'ADM01', email: 'admin@college.edu', password: 'Str0ngPassw!26',
     department: 'Admin', role: 'admin',
   });
   const admToken = jwt.sign({ id: admin._id }, process.env.JWT_SECRET);

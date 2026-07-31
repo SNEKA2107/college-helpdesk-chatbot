@@ -144,7 +144,7 @@ test('H-1: department codes are unique case-insensitively', async () => {
 test('H-1: a student can register into a newly created department', async () => {
   const res = await api(null, 'POST', '/api/auth/register', {
     name: 'Nila', studentId: 'RB001', email: 'nila@college.edu',
-    password: 'Student123', department: 'ROBOTICS', semester: '3rd',
+    password: 'Str0ngStudent!26', department: 'ROBOTICS', semester: '3rd',
   });
   assert.strictEqual(res.status, 201);
   assert.strictEqual(res.body.user.approvalStatus, 'pending', 'self-registration still awaits approval');
@@ -156,7 +156,7 @@ test('H-1: a student can register into a newly created department', async () => 
 test('H-1/L-2: an unknown department is a 400 listing the valid options, not a 500', async () => {
   const res = await api(null, 'POST', '/api/auth/register', {
     name: 'Ghost', studentId: 'XX001', email: 'ghost@college.edu',
-    password: 'Student123', department: 'NOPE', semester: '1st',
+    password: 'Str0ngStudent!26', department: 'NOPE', semester: '1st',
   });
   assert.strictEqual(res.status, 400);
   assert.match(res.body.message, /not a recognised department/i);
@@ -192,7 +192,7 @@ test('M-1: a student approved before the change gets a record on first read', as
   // Simulates legacy data: approved, but never passed through initialiseStudent().
   const legacy = await User.create({
     name: 'Old Student', studentId: 'LG001', email: 'legacy@college.edu',
-    password: 'Student123', department: 'CSE', semester: '5th',
+    password: 'Str0ngStudent!26', department: 'CSE', semester: '5th',
     role: 'student', approvalStatus: 'approved',
   });
   assert.strictEqual(await Fee.countDocuments({ student: legacy._id }), 0);
@@ -367,9 +367,9 @@ test('L-2: a malformed record id is a 400, never a 500 with internals', async ()
 test('AUTH: a pending student cannot log in', async () => {
   await api(null, 'POST', '/api/auth/register', {
     name: 'Waiting', studentId: 'RB002', email: 'waiting@college.edu',
-    password: 'Student123', department: 'ROBOTICS', semester: '1st',
+    password: 'Str0ngStudent!26', department: 'ROBOTICS', semester: '1st',
   });
-  const res = await api(null, 'POST', '/api/auth/login', { studentId: 'RB002', password: 'Student123' });
+  const res = await api(null, 'POST', '/api/auth/login', { studentId: 'RB002', password: 'Str0ngStudent!26' });
   assert.strictEqual(res.status, 403);
   assert.match(res.body.message, /pending admin approval/i);
 });

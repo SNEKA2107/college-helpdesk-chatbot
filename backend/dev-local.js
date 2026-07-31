@@ -8,6 +8,7 @@
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const mongoose  = require('mongoose');
 const bcrypt    = require('bcryptjs');
+const { seedPassword } = require('./utils/seedPassword');
 
 // ── Name pools (same as seed-students.js) ──────────────────────────────────
 const MALE_FIRST = [
@@ -87,17 +88,21 @@ async function seed() {
   // ── Admin + demo student ─────────────────────────────────────────────────
   const admin = await User.create({
     name:'Admin User', studentId:'ADMIN01', email:'admin@college.edu',
-    password:'admin@123', department:'Admin', semester:'', role:'admin',
+    password: seedPassword('admin').password, mustChangePassword: true,
+    department:'Admin', semester:'', role:'admin',
   });
   const demoStudent = await User.create({
     name:'Sneka S', studentId:'22IT101', email:'sneka@college.edu',
-    password:'student123', department:'IT', semester:'5th', role:'student', phone:'9876543210',
+    password: seedPassword('student').password, mustChangePassword: true,
+    department:'IT', semester:'5th', role:'student', phone:'9876543210',
   });
   console.log('  ✅ Admin + demo student created');
 
   // ── 1000 students (pre-hash once, insertMany) ────────────────────────────
   console.log('  🔐 Pre-hashing password for bulk insert…');
-  const hashed = await bcrypt.hash('student123', 12);
+  // Bulk students share one seed password so a demo login is predictable, but it
+  // is env-supplied or generated — never the published 'student123'.
+  const hashed = await bcrypt.hash(seedPassword('student').password, 12);
   const studentDocs = [];
   let gi = 0;
   for (const b of BATCHES) {
@@ -166,7 +171,8 @@ async function seed() {
         { code: 'ME3591', name: 'Design of Machine Elements', department: 'MECH', semester: '6th', section: '' },
       ] },
   ];
-  for (const f of FACULTY) await User.create({ ...f, password: 'faculty123', role: 'faculty', semester: '' });
+  for (const f of FACULTY) await User.create({ ...f, password: seedPassword('faculty').password,
+                                               mustChangePassword: true, role: 'faculty', semester: '' });
   console.log('  ✅ 4 faculty (FAC01–FAC04, pw: faculty123) + ECE/MECH students created');
 
   // ── Notices ──────────────────────────────────────────────────────────────

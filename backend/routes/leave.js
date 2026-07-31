@@ -2,55 +2,31 @@ const express = require('express');
 const Leave   = require('../models/Leave');
 const User    = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
-const { sendEmail, emailTemplate } = require('../utils/email');
+const { sendEmail, emailTemplate, html, raw } = require('../utils/email');
 const { logAudit } = require('../utils/audit');
 const { fail } = require('../utils/apiError');
+const { validateUpload, DOCUMENT_TYPES } = require('../utils/upload');
 
 const router = express.Router();
 
-// ── Supporting-document validation (base64 data URL stored in Mongo) ──────────
-// Kept conservative: only PDF/JPG/PNG, ≤3 MB decoded so the ~33% base64 inflation
-// stays under the server's 5 MB JSON body limit.
-const MAX_DOC_BYTES = 3 * 1024 * 1024;           // 3 MB raw
-const ALLOWED_DOC_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
-const ALLOWED_DOC_EXT = ['pdf', 'jpg', 'jpeg', 'png'];
+// ── Supporting-document validation ───────────────────────────────────────────
+// The checks that used to be written out here became utils/upload.js, so every
+// other upload route in the app now gets the same treatment. Delegating rather
+// than keeping a second copy also means this route picks up the magic-byte
+// verification that the shared version adds.
+const MAX_DOC_BYTES = 3 * 1024 * 1024;           // 3 MB decoded
 
-// Returns { ok, error?, fields? }. fields = sanitized {document, documentName, documentType}.
+// Returns { ok, error?, fields? }. fields = { document, documentName, documentType }.
 function validateDocument(document, documentName, documentType) {
   if (!document) return { ok: true, fields: null };          // optional
-  const m = /^data:([a-zA-Z0-9.+/-]+);base64,(.+)$/.exec(document);
-  if (!m) return { ok: false, error: 'Document must be a valid base64 data URL.' };
-
-  const declaredMime = m[1].toLowerCase();
-  const b64 = m[2];
-  // The MIME inside the data URL is the source of truth; the client-sent documentType must agree.
-  if (!ALLOWED_DOC_TYPES.includes(declaredMime)) {
-    return { ok: false, error: 'Only PDF, JPG, or PNG files are allowed.' };
-  }
-  if (documentType && documentType.toLowerCase() !== declaredMime) {
-    return { ok: false, error: 'Document type mismatch.' };
-  }
-
-  // Decoded size guard (base64 length → byte count, accounting for padding).
-  const padding = (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0);
-  const byteLen = Math.floor(b64.length * 3 / 4) - padding;
-  if (byteLen > MAX_DOC_BYTES) {
-    return { ok: false, error: 'Document is too large. Maximum size is 3 MB.' };
-  }
-  if (!/^[A-Za-z0-9+/=]+$/.test(b64)) {
-    return { ok: false, error: 'Document contains invalid data.' };
-  }
-
-  // Sanitize the filename and verify its extension is allowed.
-  const safeName = String(documentName || 'document')
-    .replace(/[^\w.\- ]+/g, '_')
-    .slice(0, 120);
-  const ext = safeName.includes('.') ? safeName.split('.').pop().toLowerCase() : '';
-  if (ext && !ALLOWED_DOC_EXT.includes(ext)) {
-    return { ok: false, error: 'File extension not allowed. Use PDF, JPG, or PNG.' };
-  }
-
-  return { ok: true, fields: { document, documentName: safeName, documentType: declaredMime } };
+  const r = validateUpload(document, documentName || 'document', documentType, {
+    allowed: DOCUMENT_TYPES, maxBytes: MAX_DOC_BYTES, label: 'Document',
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    fields: { document: r.fields.data, documentName: r.fields.name, documentType: r.fields.type },
+  };
 }
 
 // GET /api/leave — list (blob excluded to keep the payload small; name/type retained
@@ -96,6 +72,19 @@ router.post('/', protect, async (req, res) => {
   if (!leaveType || !fromDate || !toDate || !reason) {
     return res.status(400).json({ success: false, message: 'Leave type, dates, and reason are required.' });
   }
+  // The dates were stored verbatim, so an inverted range (return before departure)
+  // was accepted and then rendered as a negative-length leave everywhere it was
+  // displayed. Reject it here, where the request is still the user's to correct.
+  const from = new Date(fromDate);
+  const to   = new Date(toDate);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    return res.status(400).json({ success: false, message: 'From date and to date must be valid dates.' });
+  }
+  if (to < from) {
+    return res.status(400).json({ success: false, message: 'The to date cannot be earlier than the from date.' });
+  }
+  // Delegates to the shared validator now (extracted from this very function),
+  // which adds magic-byte verification on top of the checks that were here.
   const docCheck = validateDocument(document, documentName, documentType);
   if (!docCheck.ok) {
     return res.status(400).json({ success: false, message: docCheck.error });
@@ -125,8 +114,8 @@ router.put('/:id/status', protect, adminOnly, async (req, res) => {
   try {
     const leave = await Leave.findByIdAndUpdate(
       req.params.id,
-      { status, remarks: remarks || '', approvedBy: req.user.name },
-      { new: true }
+      { status, remarks: String(remarks == null ? '' : remarks).slice(0, 1000), approvedBy: req.user.name },
+      { new: true, runValidators: true }
     );
     if (!leave) return res.status(404).json({ success: false, message: 'Leave not found' });
 
@@ -140,17 +129,22 @@ router.put('/:id/status', protect, adminOnly, async (req, res) => {
     const student = await User.findOne({ studentId: leave.studentId });
     if (student && student.email) {
       const icon = status === 'Approved' ? '✅' : '❌';
+      // html`` escapes every interpolated value; the student's name, the leave
+      // type and the admin's remarks all reach this template from user input.
+      const remarksRow = leave.remarks
+        ? html`<tr><td style="padding:6px 0;color:#94a3b8;">Remarks</td><td style="color:#e2e8f0;">${leave.remarks}</td></tr>`
+        : '';
       await sendEmail({
         to: student.email,
-        subject: `${icon} Leave Application ${status} — CampusAssist`,
-        html: emailTemplate(`Leave Application ${status}`, `
+        subject: `${icon} Leave Application ${status} — Campus HelpDesk`,
+        html: emailTemplate(`Leave Application ${status}`, html`
           <p>Dear <strong>${leave.name}</strong>,</p>
-          <p>Your leave application has been <strong style="color:${status === 'Approved' ? '#4ade80' : '#f87171'};">${status.toLowerCase()}</strong>.</p>
+          <p>Your leave application has been <strong style="color:${raw(status === 'Approved' ? '#4ade80' : '#f87171')};">${status.toLowerCase()}</strong>.</p>
           <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
             <tr><td style="padding:6px 0;color:#94a3b8;">Leave Type</td><td style="color:#e2e8f0;">${leave.leaveType}</td></tr>
             <tr><td style="padding:6px 0;color:#94a3b8;">From</td><td style="color:#e2e8f0;">${new Date(leave.fromDate).toDateString()}</td></tr>
             <tr><td style="padding:6px 0;color:#94a3b8;">To</td><td style="color:#e2e8f0;">${new Date(leave.toDate).toDateString()}</td></tr>
-            ${remarks ? `<tr><td style="padding:6px 0;color:#94a3b8;">Remarks</td><td style="color:#e2e8f0;">${remarks}</td></tr>` : ''}
+            ${raw(remarksRow)}
           </table>
           <p style="color:#94a3b8;">Approved by: ${req.user.name}</p>
         `),

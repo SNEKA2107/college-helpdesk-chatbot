@@ -8,7 +8,7 @@ import '../styles/landing.css';
 gsap.registerPlugin(ScrollTrigger);
 
 const FEATURES = [
-  { icon: '💬', cls: 'fi-blue', title: 'AI Chatbot Support', text: 'Get instant answers to your queries about exams, fees, library and more through our intelligent campus bot.' },
+  { icon: '💬', cls: 'fi-blue', title: 'Campus HelpDesk', text: 'Get instant answers to your queries about exams, fees, library and more through Campus HelpDesk.' },
   { icon: '📄', cls: 'fi-green', title: 'Request Tracking', text: 'Submit and track all your document requests — marksheets, bonafide certificates, and more with real-time status updates.' },
   { icon: '📘', cls: 'fi-purple', title: 'Exam Information', text: 'Stay updated with exam schedules, hall ticket downloads, practical exam dates, and important instructions.' },
   { icon: '💳', cls: 'fi-orange', title: 'Fee Management', text: 'View semester fee breakdown, payment status, due dates and payment history — all in one place.' },
@@ -21,7 +21,7 @@ const FEATURES = [
 ];
 
 const HIW_STEPS = [
-  { num: '01', title: 'Create Your Account', text: 'Register with your student ID and college email to create your personal CampusAssist account securely.' },
+  { num: '01', title: 'Create Your Account', text: 'Register with your student ID and college email to create your personal Campus HelpDesk account securely.' },
   { num: '02', title: 'Access All Services', text: 'Browse your personalized dashboard to access exam info, fees, timetable, library, notices and more.' },
   { num: '03', title: 'Track & Get Help', text: 'Track your requests, chat with the helpdesk bot, apply for leave, and stay on top of everything.' },
 ];
@@ -29,7 +29,7 @@ const HIW_STEPS = [
 // Honest product highlights — capability descriptions, NOT fabricated reviews or ratings.
 const HIGHLIGHTS = [
   { icon: '📄', title: 'Requests & Leave', tag: 'Student workflow', text: 'Submit and track document requests, leave and OD applications online — no more queuing at the admin office.' },
-  { icon: '💬', title: 'AI Chatbot', tag: 'Always available', text: 'Ask the campus bot about exams, fees and library hours and get instant, data-backed answers any time.' },
+  { icon: '💬', title: 'Campus HelpDesk', tag: 'Always available', text: 'Ask Campus HelpDesk about exams, fees and library hours and get instant, data-backed answers any time.' },
   { icon: '🎯', title: 'Student Dashboard', tag: 'All-in-one', text: 'Check attendance, marks, CGPA, timetable and fees from a single personalized dashboard.' },
 ];
 
@@ -45,7 +45,7 @@ const STATS = [
   { value: 'All-in-One', label: 'Campus Services' },
   { value: 'Real-Time', label: 'Request Tracking' },
   { value: 'Secure', label: 'Auth & Roles' },
-  { value: '24/7', label: 'AI Chatbot' },
+  { value: '24/7', label: 'Campus HelpDesk' },
 ];
 
 function smoothScroll(e, selector) {
@@ -169,7 +169,7 @@ export default function Landing() {
         <div className="nav-pill">
           <div className="nav-logo">
             <div className="nav-logo-icon">🎓</div>
-            <h1>CampusAssist</h1>
+            <h1>Campus HelpDesk</h1>
           </div>
           <div className="nav-links">
             <a href="#features" onClick={e => smoothScroll(e, '#features')}>Features</a>
@@ -212,7 +212,7 @@ export default function Landing() {
           <div className="hero-content">
             <div className="hero-badge">🚀 Smart College Helpdesk v2.0</div>
             <h1>Simplify Your <em>College Life,</em> One Click at a Time</h1>
-            <p>CampusAssist brings all your academic services together — exam info, fee tracking, marksheet status, leave applications, chatbot support, and more.</p>
+            <p>Campus HelpDesk brings all your academic services together — exam info, fee tracking, marksheet status, leave applications, chatbot support, and more.</p>
             <div className="hero-actions">
               <button className="btn-hero-primary" onClick={() => navigate('/register')}>Get Started Free →</button>
               <button className="btn-hero-outline" onClick={() => navigate('/login')}>Student Login</button>
@@ -241,11 +241,11 @@ export default function Landing() {
         <div className="section-head">
           <span className="section-label">Portals</span>
           <h2>Choose Your <em>Portal</em></h2>
-          <p>CampusAssist serves students, faculty and administrators — one sign-in takes you to the right portal.</p>
+          <p>Campus HelpDesk serves students, faculty and administrators — one sign-in takes you to the right portal.</p>
         </div>
         <div className="features-grid" style={{ maxWidth: 980, margin: '0 auto' }}>
           {[
-            { icon: '🎓', cls: 'fi-blue',   title: 'Student', text: 'Attendance, CGPA, results, fees, timetable, leave & OD, events and the AI assistant.', role: 'student' },
+            { icon: '🎓', cls: 'fi-blue',   title: 'Student', text: 'Attendance, CGPA, results, fees, timetable, leave & OD, events and Campus HelpDesk.', role: 'student' },
             { icon: '👨‍🏫', cls: 'fi-green', title: 'Faculty', text: 'Mark attendance, enter & publish marks, approve leave/OD, post notices and view your classes.', role: 'faculty' },
             { icon: '👨‍💼', cls: 'fi-purple', title: 'Admin', text: 'Manage students, marks, attendance, notices, events, timetables, users and audits.', role: 'admin' },
           ].map(p => (
@@ -279,7 +279,7 @@ export default function Landing() {
         <div className="section-head">
           <span className="section-label">Features</span>
           <h2>Everything You Need <em>in One Place</em></h2>
-          <p>From chatbot support to marksheet tracking, CampusAssist covers every student need.</p>
+          <p>From instant chat answers to marksheet tracking, Campus HelpDesk covers every student need.</p>
         </div>
         <div className="features-grid">
           {FEATURES.map(f => (
@@ -298,7 +298,7 @@ export default function Landing() {
           <div className="section-head">
             <span className="section-label">How It Works</span>
             <h2>Up and Running in <em>3 Simple Steps</em></h2>
-            <p>Getting started with CampusAssist takes less than 2 minutes.</p>
+            <p>Getting started with Campus HelpDesk takes less than 2 minutes.</p>
           </div>
           <div className="hiw-grid">
             {HIW_STEPS.map(s => (
@@ -355,7 +355,7 @@ export default function Landing() {
             <div className="footer-brand">
               <div className="logo-wrap">
                 <div className="logo-icon">🎓</div>
-                <span className="logo-text">CampusAssist</span>
+                <span className="logo-text">Campus HelpDesk</span>
               </div>
               <p>Smart College Helpdesk System. Connecting students to services that matter.</p>
             </div>
@@ -384,7 +384,7 @@ export default function Landing() {
             <div className="footer-col">
               <h4>Support</h4>
               <ul>
-                <li><Link to="/chat">Chat with Bot</Link></li>
+                <li><Link to="/chat">Campus HelpDesk</Link></li>
                 <li><Link to="/contact">Contact Office</Link></li>
                 <li><Link to="/login">Student Login</Link></li>
                 <li><Link to="/register">Register</Link></li>
@@ -392,7 +392,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>© 2026 CampusAssist. All rights reserved.</p>
+            <p>© 2026 Campus HelpDesk. All rights reserved.</p>
             <div className="footer-social">
               <a href="#" onClick={e => e.preventDefault()}>📘</a>
               <a href="#" onClick={e => e.preventDefault()}>🐦</a>

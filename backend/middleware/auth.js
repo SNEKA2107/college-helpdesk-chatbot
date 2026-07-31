@@ -19,6 +19,15 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Token is invalid — user not found.' });
     }
 
+    // Session revocation. The token carries the tokenVersion current when it was
+    // issued; logout, a password change and admin deactivation all increment the
+    // stored value, so every token handed out before that moment stops working.
+    // Tokens minted before this field existed carry no `v` and are treated as
+    // version 0, which matches the default — existing sessions keep working.
+    if ((decoded.v || 0) !== (user.tokenVersion || 0)) {
+      return res.status(401).json({ success: false, message: 'Session has expired. Please sign in again.' });
+    }
+
     // Account state is re-checked on EVERY request, not just at login. Tokens live
     // for 30 days, so without this an admin who deactivated or rejected an account
     // did not actually cut off access — the holder's existing token kept working

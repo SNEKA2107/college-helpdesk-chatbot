@@ -9,7 +9,7 @@ const NAV_SECTIONS = [
     title: 'Main',
     links: [
       { to: '/student/dashboard', icon: '🗂️', label: 'Dashboard' },
-      { to: '/student/chat',      icon: '💬', label: 'AI Assistant' },
+      { to: '/student/chat',      icon: '💬', label: 'Campus HelpDesk' },
       { to: '/student/requests',  icon: '📋', label: 'My Requests' },
     ],
   },
@@ -53,7 +53,7 @@ export default function Sidebar({ open, onClose }) {
       <div className="sidebar-header">
         <Link to="/student/dashboard" className="logo-wrap">
           <div className="logo-icon">🎓</div>
-          <div className="logo-text"><h2>CampusAssist</h2><span>Smart Helpdesk</span></div>
+          <div className="logo-text"><span className="logo-name">Campus HelpDesk</span><span>Student Portal</span></div>
         </Link>
       </div>
       <nav className="sidebar-nav">
@@ -77,7 +77,7 @@ export default function Sidebar({ open, onClose }) {
         <div className="user-card">
           <div className="user-avatar">{(user?.name || 'S')[0].toUpperCase()}</div>
           <div className="user-info">
-            <h4>{user?.name || 'Student'}</h4>
+            <p className="user-name">{user?.name || 'Student'}</p>
             <span>{user?.studentId || ''}</span>
           </div>
         </div>

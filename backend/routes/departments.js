@@ -23,8 +23,17 @@ async function isAdminRequest(req) {
   try {
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(header.split(' ')[1], process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('role');
-    return !!user && user.role === 'admin';
+    const user = await User.findById(decoded.id).select('role isActive approvalStatus tokenVersion');
+    if (!user || user.role !== 'admin') return false;
+
+    // Apply the SAME account-state rules protect() enforces. This shortcut used
+    // to check only the role, so a deactivated or rejected admin — and a token
+    // that had been revoked — still received the privileged ?all=true view,
+    // defeating the revoke-on-every-request property the middleware guarantees.
+    if (user.isActive === false) return false;
+    if (user.approvalStatus === 'pending' || user.approvalStatus === 'rejected') return false;
+    if ((decoded.v || 0) !== (user.tokenVersion || 0)) return false;
+    return true;
   } catch {
     return false;
   }

@@ -89,7 +89,7 @@ export default function KnowledgeTab() {
   return (
     <div>
       <div className="page-header mb-6" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div className="page-header-text"><h2>📚 Knowledge Base Manager</h2><p>Upload regulations, handbooks, policies & FAQs — the Copilot cites them in answers</p></div>
+        <div className="page-header-text"><h2>📚 Knowledge Base Manager</h2><p>Upload regulations, handbooks, policies & FAQs — Campus HelpDesk cites them in answers</p></div>
         <div className="flex gap-2">
           <button className={`btn btn-sm ${view === 'documents' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('documents')}>Documents</button>
           <button className={`btn btn-sm ${view === 'analytics' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('analytics')}>Knowledge Analytics</button>
@@ -127,7 +127,7 @@ export default function KnowledgeTab() {
             </div>
             <div className="form-group">
               <label className="form-label">Content / extracted text {!editId && !file && '*'}</label>
-              <textarea className="form-textarea" style={{ minHeight: 110 }} placeholder="Paste the document text the Copilot should search and cite…"
+              <textarea className="form-textarea" style={{ minHeight: 110 }} placeholder="Paste the document text Campus HelpDesk should search and cite…"
                 value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>

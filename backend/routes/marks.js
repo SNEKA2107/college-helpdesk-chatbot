@@ -3,6 +3,7 @@ const Marks   = require('../models/Marks');
 const User    = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
 const { fail } = require('../utils/apiError');
+const { coerceQuery } = require('../utils/sanitize');
 
 const router = express.Router();
 
@@ -32,9 +33,10 @@ function computeCgpa(records) {
 
 // Resolve which student's marks to read: admin may pass ?studentId=, a student only sees their own.
 function targetStudentId(req) {
-  return (req.user.role === 'admin' && req.query.studentId)
-    ? req.query.studentId.toUpperCase()
-    : req.user.studentId;
+  // coerceQuery rejects arrays/objects, so a repeated or operator-shaped
+  // ?studentId can no longer throw a TypeError into the 500 handler.
+  const q = coerceQuery(req.query.studentId);
+  return (req.user.role === 'admin' && q) ? q.toUpperCase() : req.user.studentId;
 }
 
 // Students only ever see published marks. Admin/faculty views see everything.

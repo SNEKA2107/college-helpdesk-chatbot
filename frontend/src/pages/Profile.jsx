@@ -237,18 +237,18 @@ export default function Profile() {
           <div className="card">
             <div className="card-header"><div className="card-title">✏ Edit Profile</div></div>
             <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input type="text" className="form-input" placeholder="Your name"
+              <label className="form-label" htmlFor="pf-name">Full Name</label>
+              <input id="pf-name" type="text" className="form-input" placeholder="Your name"
                 value={profileForm.name} onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Phone Number</label>
-              <input type="tel" className="form-input" placeholder="+91 XXXXX XXXXX"
+              <label className="form-label" htmlFor="pf-phone">Phone Number</label>
+              <input id="pf-phone" type="tel" className="form-input" placeholder="+91 XXXXX XXXXX"
                 value={profileForm.phone} onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Semester</label>
-              <select className="form-input" value={profileForm.semester}
+              <label className="form-label" htmlFor="pf-semester">Semester</label>
+              <select id="pf-semester" className="form-input" value={profileForm.semester}
                 onChange={e => setProfileForm(f => ({ ...f, semester: e.target.value }))}>
                 <option value="">Select semester</option>
                 {SEMESTERS.map(s => <option key={s} value={s}>Semester {s}</option>)}
@@ -262,36 +262,36 @@ export default function Profile() {
             <div className="card-header"><div className="card-title">👨‍👩‍👧 Edit Parent Details</div></div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Father's Name</label>
-                <input type="text" className="form-input" placeholder="Father's full name"
+                <label className="form-label" htmlFor="pf-father">Father's Name</label>
+                <input id="pf-father" type="text" className="form-input" placeholder="Father's full name"
                   value={parentForm.parentName} onChange={e => setParentForm(f => ({ ...f, parentName: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">Mother's Name</label>
-                <input type="text" className="form-input" placeholder="Mother's full name"
+                <label className="form-label" htmlFor="pf-mother">Mother's Name</label>
+                <input id="pf-mother" type="text" className="form-input" placeholder="Mother's full name"
                   value={parentForm.motherName} onChange={e => setParentForm(f => ({ ...f, motherName: e.target.value }))} />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Parent Phone</label>
-                <input type="tel" className="form-input" placeholder="+91 XXXXX XXXXX"
+                <label className="form-label" htmlFor="pf-parent-phone">Parent Phone</label>
+                <input id="pf-parent-phone" type="tel" className="form-input" placeholder="+91 XXXXX XXXXX"
                   value={parentForm.parentPhone} onChange={e => setParentForm(f => ({ ...f, parentPhone: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">Parent Email</label>
-                <input type="email" className="form-input" placeholder="parent@email.com"
+                <label className="form-label" htmlFor="pf-parent-email">Parent Email</label>
+                <input id="pf-parent-email" type="email" className="form-input" placeholder="parent@email.com"
                   value={parentForm.parentEmail} onChange={e => setParentForm(f => ({ ...f, parentEmail: e.target.value }))} />
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Parent Occupation</label>
-              <input type="text" className="form-input" placeholder="e.g. Business, Government Employee"
+              <label className="form-label" htmlFor="pf-parent-occupation">Parent Occupation</label>
+              <input id="pf-parent-occupation" type="text" className="form-input" placeholder="e.g. Business, Government Employee"
                 value={parentForm.parentOccupation} onChange={e => setParentForm(f => ({ ...f, parentOccupation: e.target.value }))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Parent Address</label>
-              <textarea className="form-textarea" rows={2} placeholder="Home address"
+              <label className="form-label" htmlFor="pf-parent-address">Parent Address</label>
+              <textarea id="pf-parent-address" className="form-textarea" rows={2} placeholder="Home address"
                 value={parentForm.parentAddress} onChange={e => setParentForm(f => ({ ...f, parentAddress: e.target.value }))} />
             </div>
             <button className="btn btn-primary btn-full" onClick={saveParentDetails}>💾 Save Parent Details</button>
@@ -301,18 +301,18 @@ export default function Profile() {
             <div className="card-header"><div className="card-title">🔒 Change Password</div></div>
             <div>
               <div className="form-group">
-                <label className="form-label">Current Password</label>
-                <input type="password" className="form-input" placeholder="Enter current password"
+                <label className="form-label" htmlFor="pf-pw-current">Current Password</label>
+                <input id="pf-pw-current" type="password" className="form-input" placeholder="Enter current password"
                   value={pw.cur} onChange={e => setPw(p => ({ ...p, cur: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">New Password</label>
-                <input type="password" className="form-input" placeholder="At least 8 characters"
+                <label className="form-label" htmlFor="pf-pw-new">New Password</label>
+                <input id="pf-pw-new" type="password" className="form-input" placeholder="At least 8 characters"
                   value={pw.nw} onChange={e => setPw(p => ({ ...p, nw: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">Confirm New Password</label>
-                <input type="password" className="form-input" placeholder="Repeat new password"
+                <label className="form-label" htmlFor="pf-pw-confirm">Confirm New Password</label>
+                <input id="pf-pw-confirm" type="password" className="form-input" placeholder="Repeat new password"
                   value={pw.conf} onChange={e => setPw(p => ({ ...p, conf: e.target.value }))} />
               </div>
               {pwError && <div className="alert alert-danger mb-4" style={{ display: 'flex' }}>{pwError}</div>}

@@ -28,7 +28,7 @@ export default function FacultySidebar({ open, onClose }) {
       <div className="sidebar-header">
         <Link to="/faculty/dashboard" className="logo-wrap">
           <div className="logo-icon">🎓</div>
-          <div className="logo-text"><h2>CampusAssist</h2><span>Faculty Portal</span></div>
+          <div className="logo-text"><span className="logo-name">Campus HelpDesk</span><span>Faculty Portal</span></div>
         </Link>
       </div>
       <nav className="sidebar-nav">

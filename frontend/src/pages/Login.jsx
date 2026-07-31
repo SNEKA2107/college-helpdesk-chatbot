@@ -115,7 +115,7 @@ export default function Login() {
             <div className={s.logo}>
               <GraduationCap size={32} strokeWidth={2.1} />
             </div>
-            <h1 className={s.brand}>CampusAssist</h1>
+            <h1 className={s.brand}>Campus HelpDesk</h1>
             <p className={s.subtitle}>AI-Powered College Operating System</p>
           </motion.div>
 

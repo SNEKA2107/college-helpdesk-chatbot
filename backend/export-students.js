@@ -36,7 +36,7 @@ const User     = require('./models/User');
   // ── SQL ──
   const sqlEsc = v => v == null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`;
   const sqlLines = [
-    '-- CampusAssist students exported from MongoDB Atlas',
+    '-- Campus HelpDesk students exported from MongoDB Atlas',
     `-- Generated ${new Date().toISOString()}`,
     'CREATE TABLE students (',
     '  student_id VARCHAR(20) PRIMARY KEY,',

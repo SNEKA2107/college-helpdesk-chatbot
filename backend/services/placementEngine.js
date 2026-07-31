@@ -159,7 +159,7 @@ async function interviewPrep(user, gap, readiness) {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 260,
         system:
-`You are CampusAssist Copilot, a placement coach. Write a short, motivating 2-week interview-prep plan (3-4 sentences) for a student.
+`You are Campus HelpDesk, a placement coach. Write a short, motivating 2-week interview-prep plan (3-4 sentences) for a student.
 Use ONLY these facts — do not invent numbers. Plain text, no headings or bullets.`,
         messages: [{ role: 'user', content:
 `Name: ${user.name}

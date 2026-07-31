@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">CampusAssist</string>
-    <string name="title_activity_main">CampusAssist</string>
+    <string name="app_name">Campus HelpDesk</string>
+    <string name="title_activity_main">Campus HelpDesk</string>
     <string name="package_name">com.campusassist.app</string>
     <string name="custom_url_scheme">com.campusassist.app</string>
 </resources>

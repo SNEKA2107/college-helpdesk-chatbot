@@ -1,5 +1,5 @@
 /* Role-selection ("Choose Your Role") entry screen.
-   Styling follows the existing CampusAssist auth pages: a local CSS-variable
+   Styling follows the existing Campus HelpDesk auth pages: a local CSS-variable
    palette scoped to .page, overridden per data-theme (dark / light / night).
    No Tailwind — consistent with the rest of the app. */
 

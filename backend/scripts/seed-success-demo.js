@@ -90,7 +90,7 @@ async function main() {
   // ── Skill & project profile ──
   student.skills = ['Java', 'Python', 'React', 'Node.js', 'SQL', 'Data Structures', 'Git', 'MongoDB'];
   student.projects = [
-    { title: 'CampusAssist AI', tech: 'React + Express + MongoDB' },
+    { title: 'Campus HelpDesk AI', tech: 'React + Express + MongoDB' },
     { title: 'Library Management System', tech: 'Java + MySQL' },
   ];
   student.cgpa = cgpa;

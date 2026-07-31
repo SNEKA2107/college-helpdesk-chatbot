@@ -1,6 +1,6 @@
 {
   "appId": "com.campusassist.app",
-  "appName": "CampusAssist",
+  "appName": "Campus HelpDesk",
   "webDir": "dist",
   "android": {
     "allowMixedContent": false

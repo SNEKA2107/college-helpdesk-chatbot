@@ -5,22 +5,22 @@ import { getUser } from '../services/auth';
 import { useToast } from '../hooks/useToast';
 
 const OFFICES = [
-  { icon: '🏫', name: 'Admin Office', room: 'Room 101, Administrative Block', phone: '+91 98765 43210', phoneColor: 'var(--primary)', email: 'admin@campusassist.edu', hours: 'Mon–Fri: 9 AM – 5 PM', border: 'var(--primary)' },
-  { icon: '📘', name: 'Examination Cell', room: 'Room 205, Academic Block', phone: '+91 98765 43211', phoneColor: 'var(--secondary)', email: 'exam@campusassist.edu', hours: 'Mon–Fri: 10 AM – 4 PM', border: 'var(--secondary)' },
-  { icon: '💳', name: 'Accounts Office', room: 'Room 102, Administrative Block', phone: '+91 98765 43212', phoneColor: 'var(--warning)', email: 'accounts@campusassist.edu', hours: 'Mon–Fri: 9 AM – 3 PM', border: 'var(--warning)' },
-  { icon: '🏥', name: 'Student Welfare', room: 'Room 110, Administrative Block', phone: '+91 98765 43213', phoneColor: '#ec4899', email: 'welfare@campusassist.edu', hours: 'Mon–Sat: 9 AM – 5 PM', border: '#ec4899' },
-  { icon: '📚', name: 'Library', room: 'Central Library Building', phone: '+91 98765 43214', phoneColor: '#06b6d4', email: 'library@campusassist.edu', hours: 'Mon–Sat: 8 AM – 6 PM', border: '#06b6d4' },
-  { icon: '🚨', name: 'Security & Emergency', room: 'Main Gate, Campus', phone: '+91 98765 43200', phoneColor: 'var(--danger)', email: 'security@campusassist.edu', hours: '24 / 7 Available', border: '#8b5cf6' },
+  { icon: '🏫', name: 'Admin Office', room: 'Room 101, Administrative Block', phone: '+91 98765 43210', phoneColor: 'var(--primary)', email: 'admin@campushelpdesk.edu', hours: 'Mon–Fri: 9 AM – 5 PM', border: 'var(--primary)' },
+  { icon: '📘', name: 'Examination Cell', room: 'Room 205, Academic Block', phone: '+91 98765 43211', phoneColor: 'var(--secondary)', email: 'exam@campushelpdesk.edu', hours: 'Mon–Fri: 10 AM – 4 PM', border: 'var(--secondary)' },
+  { icon: '💳', name: 'Accounts Office', room: 'Room 102, Administrative Block', phone: '+91 98765 43212', phoneColor: 'var(--warning)', email: 'accounts@campushelpdesk.edu', hours: 'Mon–Fri: 9 AM – 3 PM', border: 'var(--warning)' },
+  { icon: '🏥', name: 'Student Welfare', room: 'Room 110, Administrative Block', phone: '+91 98765 43213', phoneColor: '#ec4899', email: 'welfare@campushelpdesk.edu', hours: 'Mon–Sat: 9 AM – 5 PM', border: '#ec4899' },
+  { icon: '📚', name: 'Library', room: 'Central Library Building', phone: '+91 98765 43214', phoneColor: '#06b6d4', email: 'library@campushelpdesk.edu', hours: 'Mon–Sat: 8 AM – 6 PM', border: '#06b6d4' },
+  { icon: '🚨', name: 'Security & Emergency', room: 'Main Gate, Campus', phone: '+91 98765 43200', phoneColor: 'var(--danger)', email: 'security@campushelpdesk.edu', hours: '24 / 7 Available', border: '#8b5cf6' },
 ];
 
 const DEPARTMENTS = ['Admin Office', 'Examination Cell', 'Accounts Office', 'Student Welfare', 'Library', 'HOD – IT Department', 'HOD – CSE Department'];
 
 const FAQS = [
-  ['How do I download my Hall Ticket?', 'Log in to CampusAssist, go to Exam Info page, and click "Download Hall Ticket". Hall tickets are available from June 10, 2026 onwards.'],
+  ['How do I download my Hall Ticket?', 'Log in to Campus HelpDesk, go to Exam Info page, and click "Download Hall Ticket". Hall tickets are available from June 10, 2026 onwards.'],
   ['How long does a marksheet request take?', 'Normal marksheet requests take 5–7 working days. Urgent requests (with additional fee) take 2–3 working days. You can track the status on the Marksheet Status page.'],
   ['What is the fee payment mode?', 'Fees can be paid online via Net Banking, UPI (GPay, Paytm, PhonePe), or Debit/Credit cards. Cash payments are accepted at the Accounts Office only.'],
   ['How do I apply for a scholarship?', 'Visit the Student Welfare office with your income certificate, previous year marksheet, and a filled application form. Scholarship applications are accepted every academic year by June 5.'],
-  ['Can I renew library books online?', 'Yes! Library book renewal can be requested through the Library page in CampusAssist. You can renew up to 2 times per book, provided no one else has reserved the same book.'],
+  ['Can I renew library books online?', 'Yes! Library book renewal can be requested through the Library page in Campus HelpDesk. You can renew up to 2 times per book, provided no one else has reserved the same book.'],
 ];
 
 export default function Contact() {

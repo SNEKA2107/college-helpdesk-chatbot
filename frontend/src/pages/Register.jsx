@@ -97,7 +97,7 @@ export default function Register() {
           <div className={s.authLeftInner}>
             <div className={s.authBrand}>
               <div className={s.authBrandIcon}>🎓</div>
-              <div><h1>CampusAssist</h1><span>Smart College Helpdesk</span></div>
+              <div><h1>Campus HelpDesk</h1><span>Student Portal</span></div>
             </div>
             <div className={s.authHeadline}>
               <h2>Join <span>Campus</span>Assist Today</h2>

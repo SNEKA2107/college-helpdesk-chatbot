@@ -88,7 +88,7 @@ export default function Setup() {
         >
           <div className={s.brandBlock}>
             <div className={s.logo}><ShieldCheck size={32} strokeWidth={2.1} /></div>
-            <h1 className={s.brand}>CampusAssist</h1>
+            <h1 className={s.brand}>Campus HelpDesk</h1>
             <p className={s.subtitle}>First-time setup · create your administrator</p>
           </div>
 

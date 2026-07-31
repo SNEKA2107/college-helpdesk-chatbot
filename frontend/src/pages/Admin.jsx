@@ -107,7 +107,7 @@ export default function Admin() {
         <div className="sidebar-header">
           <a href="#" className="logo-wrap" onClick={e => { e.preventDefault(); showTab('overview'); }}>
             <div className="logo-icon">🎓</div>
-            <div className="logo-text"><h2>CampusAssist</h2><span>Admin Panel</span></div>
+            <div className="logo-text"><span className="logo-name">Campus HelpDesk</span><span>Admin Panel</span></div>
           </a>
         </div>
         <nav className="sidebar-nav">

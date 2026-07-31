@@ -62,7 +62,7 @@ export default function FacultyLogin() {
             <div className={s.authBrand}>
               <div className={s.authBrandIcon}>🎓</div>
               <div>
-                <h1>CampusAssist</h1>
+                <h1>Campus HelpDesk</h1>
                 <span>Faculty Portal</span>
               </div>
             </div>
@@ -97,7 +97,7 @@ export default function FacultyLogin() {
                 <input
                   type="email"
                   className={`${s.formInput}${errors.email ? ` ${s.error}` : ''}`}
-                  placeholder="e.g. john@campusassist.edu"
+                  placeholder="e.g. john@campushelpdesk.edu"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />

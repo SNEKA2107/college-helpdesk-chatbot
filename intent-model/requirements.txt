@@ -1,0 +1,25 @@
+# CampusAssist intent classifier — pinned dependencies.
+#
+# Versions are exact, not floors. joblib pickles embed scikit-learn's internal
+# class layout, so a sidecar running a different sklearn minor version can fail
+# to unpickle intent_model.pkl — or, worse, load it and score differently.
+# Train and serve on the same pins.
+#
+# Verified on Python 3.10.0 (Windows). Recorded in model/model_meta.json on
+# every run, so an artefact can always be traced to the environment that built it.
+#
+#   pip install -r intent-model/requirements.txt
+
+# ── Training pipeline (train.py) ─────────────────────────────────────────────
+scikit-learn==1.7.2
+numpy==2.2.6
+pandas==2.3.3
+scipy==1.15.3
+joblib==1.5.3
+threadpoolctl==3.6.0
+
+# ── Inference sidecar (integration/serve_intent.py) ──────────────────────────
+# Needs the training pins above as well — it unpickles what train.py wrote.
+fastapi==0.141.1
+pydantic==2.13.4
+uvicorn==0.38.0

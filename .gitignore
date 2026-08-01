@@ -47,3 +47,6 @@ device-screenshots/
 screenshots-phase1/
 releases/
 *.apk
+
+# Local-only secret handoff file — must never be committed.
+.jwt-secret-to-set-on-render.txt

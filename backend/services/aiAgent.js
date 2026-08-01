@@ -12,6 +12,7 @@ const KBDoc      = require('../models/KnowledgeDocument');
 const Faculty    = require('../models/Faculty');
 const { computeSuccess } = require('./successEngine');
 const { copilotSummary: placementSummary } = require('./placementEngine');
+const intentRouter = require('./intentClassifier');
 
 const fmtDate = (d) => {
   if (!d) return '';
@@ -168,15 +169,45 @@ async function retrieve(intent, user, message = '') {
 // ── 3. Generation ───────────────────────────────────────────────────────────
 // Grounds Claude on retrieved facts + conversation memory; parses out follow-ups.
 async function generate({ message, history = [], user }) {
-  const intent = classifyIntent(message);
-  const { context, sources } = await retrieve(intent, user, message);
+  // The trained classifier decides WHAT is being asked; retrieval below is
+  // unchanged and remains the only source of any fact in the answer. If the
+  // model is unavailable or unsure, `routed` carries the old keyword result.
+  const routed = intentRouter.classify(message);
+  const intent = routed.intent;
+
+  // Hard guard: the Campus HelpDesk answers college questions, not questions
+  // about how the portal is built. Enforced here rather than left to the system
+  // prompt, so it cannot be talked around, and short-circuited before retrieval
+  // so no record is fetched for it.
+  if (intent === 'out_of_scope_technical') {
+    return {
+      reply: intentRouter.cannedReply(intent),
+      intent, sources: [], followUps: [], matched: false,
+      confidence: routed.confidence, category: routed.category, source: routed.source,
+    };
+  }
+
+  // Greetings, thanks and "what can you do" need no student record and no model
+  // call — answering them directly saves a round-trip and a token spend.
+  if (routed.canned) {
+    return {
+      reply: intentRouter.cannedReply(intent),
+      intent, sources: [], followUps: [], matched: true,
+      confidence: routed.confidence, category: routed.category, source: routed.source,
+    };
+  }
+
+  // `routed.retrieval` is always one of the coarse buckets retrieve() already
+  // handles, so the retrieval layer is untouched by the 78-class model.
+  const { context, sources } = await retrieve(routed.retrieval, user, message);
   const matched = sources.length > 0;
 
   if (!process.env.ANTHROPIC_API_KEY) {
     const reply = context
       ? `Here's what I found:\n${context}`
       : "I couldn't find that in your records yet — please check the relevant page in the menu.";
-    return { reply, intent, sources, followUps: [], matched };
+    return { reply, intent, sources, followUps: [], matched,
+             confidence: routed.confidence, category: routed.category, source: routed.source };
   }
 
   try {
@@ -205,11 +236,13 @@ ${context || '(no records retrieved)'}`,
       followUps = fm[1].split('|').map(s => s.trim()).filter(Boolean).slice(0, 3);
       text = text.replace(fm[0], '').trim();
     }
-    return { reply: text, intent, sources, followUps, matched };
+    return { reply: text, intent, sources, followUps, matched,
+             confidence: routed.confidence, category: routed.category, source: routed.source };
   } catch (err) {
     console.error('Claude API error:', err.message);
     const reply = context ? `Here's what I found:\n${context}` : "Sorry, I'm having trouble right now. Please try again.";
-    return { reply, intent, sources, followUps: [], matched };
+    return { reply, intent, sources, followUps: [], matched,
+             confidence: routed.confidence, category: routed.category, source: routed.source };
   }
 }
 

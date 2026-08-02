@@ -33,6 +33,18 @@
   --text:       #d0d0d0;
   --text-muted: #888888;
 
+  /* Sidebar text. The sidebar is dark in every theme, so these are solid
+     colours rather than white-alpha: alpha over an unknown backdrop makes the
+     real contrast impossible to reason about, and the old rgba values landed
+     under WCAG AA (nav links 4.49:1, section titles 1.77:1). Measured against
+     the darkest sidebar (--sidebar-bg #0a0a0a): fg 9.4:1, muted 6.1:1,
+     strong 18.2:1, danger 7.2:1 — all AA, most AAA. Hierarchy is preserved by
+     keeping muted dimmer than fg. */
+  --sidebar-fg:        #b3b3b3;
+  --sidebar-fg-muted:  #8f8f8f;
+  --sidebar-fg-strong: #f5f5f5;
+  --sidebar-danger:    #f87171;
+
   /* Borders */
   --border: #252525;
 
@@ -127,6 +139,11 @@ html[data-theme="night"] {
   --primary-light:   #d4a84e;
   --primary-bg:      rgba(191,138,46,0.12);
   --accent-gradient: linear-gradient(90deg, #d4a84e 0%, #bf8a2e 100%);
+  /* Warm equivalents so the sidebar keeps the night palette instead of
+     dropping to neutral grey. On --sidebar-bg #080604: fg 9.8:1, muted 6.0:1. */
+  --sidebar-fg:        #cbb08f;
+  --sidebar-fg-muted:  #a0886a;
+  --sidebar-fg-strong: #f5e6c8;
   --shadow-sm:  0 1px 2px rgba(0,0,0,0.5);
   --shadow:     0 1px 3px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.5);
   --shadow-md:  0 4px 12px rgba(0,0,0,0.6);
@@ -247,13 +264,13 @@ img { max-width: 100%; }
   display: block;
   font-size: 16px;
   font-weight: 700;
-  color: #f0f0f0;
+  color: var(--sidebar-fg-strong);
   line-height: 1.2;
 }
 
 .logo-text span {
   font-size: 11px;
-  color: rgba(255,255,255,0.3);
+  color: var(--sidebar-fg-muted);
   font-weight: 400;
 }
 
@@ -269,7 +286,7 @@ img { max-width: 100%; }
 .nav-section-title {
   font-size: 10px;
   font-weight: 600;
-  color: rgba(255,255,255,0.2);
+  color: var(--sidebar-fg-muted);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   padding: 14px 8px 5px;
@@ -279,7 +296,7 @@ img { max-width: 100%; }
   display: flex;
   align-items: center;
   gap: 10px;
-  color: rgba(255,255,255,0.45);
+  color: var(--sidebar-fg);
   padding: 9px 10px;
   border-radius: var(--radius-sm);
   margin-bottom: 1px;
@@ -297,7 +314,7 @@ img { max-width: 100%; }
 
 .nav-link:hover {
   background: rgba(255,255,255,0.06);
-  color: #e0e0e0;
+  color: var(--sidebar-fg-strong);
 }
 
 .nav-link.active {
@@ -339,17 +356,17 @@ img { max-width: 100%; }
 .user-info .user-name {
   font-size: 13px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--sidebar-fg-strong);
   line-height: 1.2;
 }
 
 .user-info span {
   font-size: 11px;
-  color: rgba(255,255,255,0.3);
+  color: var(--sidebar-fg-muted);
 }
 
 .nav-link.logout {
-  color: rgba(239,68,68,0.7);
+  color: var(--sidebar-danger);
 }
 
 .nav-link.logout:hover {

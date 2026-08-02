@@ -1,4 +1,4 @@
-name: Check 1400 Test Cases Excel
+name: Check Excel Files
 
 on:
   workflow_dispatch:
@@ -16,14 +16,22 @@ jobs:
           pwd
           ls -lah
 
-      - name: Verify Excel File
+      - name: Verify Both Excel Files
         run: |
-          test -f "SELENIUM_NODE-JS_1400_TEST_CASES.xlsx"
-          echo "✅ Excel file found."
+          test -f "selenium test.xlsx"
+          echo "✅ selenium test.xlsx found"
 
-      - name: Upload Excel File
+          test -f "SELENIUM_NODE-JS_1400_TEST_CASES.xlsx"
+          echo "✅ SELENIUM_NODE-JS_1400_TEST_CASES.xlsx found"
+
+      - name: Upload Selenium Test Workbook
+        uses: actions/upload-artifact@v4
+        with:
+          name: Selenium-Test-Workbook
+          path: "selenium test.xlsx"
+
+      - name: Upload 1400 Test Cases Workbook
         uses: actions/upload-artifact@v4
         with:
           name: Selenium-1400-Test-Cases
           path: "SELENIUM_NODE-JS_1400_TEST_CASES.xlsx"
-          if-no-files-found: error

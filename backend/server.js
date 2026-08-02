@@ -274,6 +274,14 @@ if (IS_SERVERLESS) {
 const MONGO_STATES = ['disconnected', 'connected', 'connecting', 'disconnecting'];
 const HEALTH_CONNECT_GRACE_MS = 5000;
 
+// Which build is actually serving. Render and Vercel both inject the deployed
+// commit, so nothing has to be baked in at build time or kept in sync by hand.
+// Empty when running locally, where the answer is just `git rev-parse HEAD`.
+const BUILD_COMMIT =
+  process.env.RENDER_GIT_COMMIT || process.env.VERCEL_GIT_COMMIT_SHA || '';
+const BUILD_BRANCH =
+  process.env.RENDER_GIT_BRANCH || process.env.VERCEL_GIT_COMMIT_REF || '';
+
 app.get('/api/health', async (req, res) => {
   // Report readiness, not a bare snapshot. A cold serverless instance answers
   // this before its connect() has resolved, so a snapshot would flash 503 on a
@@ -297,17 +305,29 @@ app.get('/api/health', async (req, res) => {
   //
   // The diagnostic detail is still available — set HEALTH_DIAGNOSTIC_KEY and
   // send it as ?key= (or the x-health-key header) to get the full body.
+  //
+  // `commit` is the exception to that minimalism: it answers "did my push
+  // actually go live?" without opening the Render dashboard, and it leaks
+  // nothing, because the repository is public — the short SHA points at a
+  // commit anyone can already read. Make this key-gated if the repo ever
+  // goes private.
   const diagKey = process.env.HEALTH_DIAGNOSTIC_KEY;
   const supplied = req.get('x-health-key') || req.query.key;
   const showDetail = Boolean(diagKey) && supplied === diagKey;
 
-  const body = { success: healthy, status: healthy ? 'ok' : 'degraded' };
+  const body = {
+    success: healthy,
+    status: healthy ? 'ok' : 'degraded',
+    commit: BUILD_COMMIT ? BUILD_COMMIT.slice(0, 7) : 'local',
+  };
   if (showDetail) {
     Object.assign(body, {
       database: dbState,
       missingEnv: missingRequired,
       environment: process.env.NODE_ENV || 'development',
       serverless: IS_SERVERLESS,
+      commitFull: BUILD_COMMIT || null,
+      branch: BUILD_BRANCH || null,
       uptimeSeconds: Math.round(process.uptime()),
       timestamp: new Date().toISOString(),
     });

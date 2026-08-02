@@ -20,10 +20,14 @@ export function usePageAnimations() {
             scrollTrigger: { trigger: el, start: 'top 88%', once: true } },
         );
       });
-      gsap.fromTo('.nav-link',
-        { opacity: 0, x: -12 },
-        { opacity: 1, x: 0, duration: 0.4, ease: 'power2.out', stagger: 0.04, delay: 0.2 },
-      );
+      /* The sidebar is deliberately NOT animated here. Every page renders its
+         own <Layout>, so navigating remounts the shell and re-ran this tween:
+         the outgoing page's ctx.revert() would kill the incoming page's
+         in-flight tween, stranding .nav-link at whatever opacity it had
+         reached (measured in the browser: 0.33, 0.08, 0.007, then 0 for the
+         rest) with no tween left to finish it. The nav then stayed invisible
+         until a full reload. Sidebar links are persistent chrome, not page
+         content, so they should not re-enter on every navigation. */
     });
     return () => ctx.revert();
   }, []);

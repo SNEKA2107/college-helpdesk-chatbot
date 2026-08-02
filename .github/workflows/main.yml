@@ -1,27 +1,37 @@
-name: Check Excel File
+name: Check Excel Files
 
 on:
   workflow_dispatch:
 
 jobs:
-  check-file:
+  check-excel:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Show repository files
+      - name: Show Repository Files
         run: |
-          ls -la
+          pwd
+          ls -lah
 
-      - name: Check Excel file
+      - name: Verify Both Excel Files
         run: |
           test -f "selenium test.xlsx"
-          echo "✅ Excel file is available successfully!"
+          echo "✅ selenium test.xlsx found"
 
-      - name: Upload Excel file
+          test -f "SELENIUM_NODEJS_1400_TEST_CASES.xlsx"
+          echo "✅ SELENIUM_NODEJS_1400_TEST_CASES.xlsx found"
+
+      - name: Upload Selenium Test Workbook
         uses: actions/upload-artifact@v4
         with:
-          name: Selenium-Test-Excel
+          name: Selenium-Test-Workbook
           path: "selenium test.xlsx"
+
+      - name: Upload 1400 Test Cases Workbook
+        uses: actions/upload-artifact@v4
+        with:
+          name: Selenium-1400-Test-Cases
+          path: "SELENIUM_NODEJS_1400_TEST_CASES.xlsx"

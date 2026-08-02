@@ -19,14 +19,6 @@ const queryLogSchema = new mongoose.Schema({
   category:  { type: String, default: 'General' },                            // knowledge category (from intent)
   role:      { type: String, default: 'student' },                           // asker's role
   message:   { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },       // assistant message rated
-
-  // ── Intent classifier telemetry ─────────────────────────────────────────────
-  // Which router produced `intent`, and how confident it was. Rows with
-  // source 'keyword' are the ones the model declined (below its calibrated
-  // threshold) — together with the 👎 rows they are the shortlist of real
-  // questions worth relabelling and feeding into the next training run.
-  confidence: { type: Number, default: null },
-  source:     { type: String, enum: ['model', 'keyword'], default: 'keyword', index: true },
 }, { timestamps: true });
 
 // ── Retention ───────────────────────────────────────────────────────────────

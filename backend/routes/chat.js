@@ -34,8 +34,7 @@ router.post('/', protect, async (req, res) => {
     await Message.create({ conversation: convo._id, role: 'user', content: text });
 
     const t0 = Date.now();
-    const { reply, intent, sources, followUps, matched, confidence, category, source } =
-      await generate({ message: text, history, user: req.user });
+    const { reply, intent, sources, followUps, matched } = await generate({ message: text, history, user: req.user });
     const latencyMs = Date.now() - t0;
 
     const assistantMsg = await Message.create({ conversation: convo._id, role: 'assistant', content: reply, intent, sources, followUps, latencyMs });
@@ -43,15 +42,7 @@ router.post('/', protect, async (req, res) => {
     // Phase 7: log a complete (query → response) training example with category + role.
     await QueryLog.create({
       user: req.user._id, query: text, intent, matched, latencyMs, hour: new Date().getHours(),
-      // The classifier already knows the knowledge category for its 78 intents;
-      // categoryForIntent only covers the 9 legacy keyword intents and would
-      // flatten everything else to 'General'.
-      response: reply, category: category || categoryForIntent(intent),
-      role: req.user.role, message: assistantMsg._id,
-      // Which router answered, and how sure it was — this is what makes the
-      // live log usable for retraining and for tuning the fallback threshold.
-      confidence: typeof confidence === 'number' ? confidence : null,
-      source: source || 'keyword',
+      response: reply, category: categoryForIntent(intent), role: req.user.role, message: assistantMsg._id,
     });
 
     res.json({

@@ -1,37 +1,36 @@
-name: Check Excel Files
+name: Upload CampusHelpDesk Excel Reports
 
 on:
   workflow_dispatch:
 
 jobs:
-  check-excel:
+  upload-reports:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Show Repository Files
-        run: |
-          pwd
-          ls -lah
-
-      - name: Verify Both Excel Files
+      - name: Verify Excel Files
         run: |
           test -f "selenium test.xlsx"
-          echo "✅ selenium test.xlsx found"
-
           test -f "SELENIUM_NODE-JS_1400_TEST_CASES.xlsx"
-          echo "✅ SELENIUM_NODE-JS_1400_TEST_CASES.xlsx found"
+          test -f "CampusHelpDesk_MASTER_TEST_AUDIT_REPORT.xlsx"
+          echo "✅ All Excel files found."
 
-      - name: Upload Selenium Test Workbook
+      - name: Upload Selenium Workbook
         uses: actions/upload-artifact@v4
         with:
           name: Selenium-Test-Workbook
           path: "selenium test.xlsx"
 
-      - name: Upload 1400 Test Cases Workbook
+      - name: Upload 1400 Test Cases
         uses: actions/upload-artifact@v4
         with:
           name: Selenium-1400-Test-Cases
           path: "SELENIUM_NODE-JS_1400_TEST_CASES.xlsx"
+
+      - name: Upload Master Audit Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: CampusHelpDesk-Master-Audit-Report
+          path: "CampusHelpDesk_MASTER_TEST_AUDIT_REPORT.xlsx"
